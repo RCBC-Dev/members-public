@@ -1,0 +1,673 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Job Workload Distribution - Members Enquiries{% endblock %}
+
+{% block container_class %}container-fluid{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/reports.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'application:index' %}">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Job Workload</li>
+            </ol>
+        </nav>
+        <h1>💼 {{ page_title|default:"Job Workload Distribution" }}</h1>
+        {% if selected_section %}
+            <p class="text-muted">{{ page_subtitle }} for job types in <strong>{{ selected_section.name }}</strong> ({{ selected_section.department.name }})</p>
+        {% else %}
+            <p class="text-muted">Please select a section to view job workload distribution.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filter Controls -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Filters</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" id="filterForm">
+                    <div class="row g-3">
+                        <div class="col-md-2">
+                            <label for="section" class="form-label">Section</label>
+                            <select name="section" id="section" class="form-select">
+                                <option value="">Select a section...</option>
+                                <option value="all" {% if section_filter == 'all' %}selected{% endif %}>All Sections</option>
+                                {% for section in all_sections %}
+                                    <option value="{{ section.id }}"
+                                            {% if selected_section and section.id == selected_section.id %}selected{% endif %}>
+                                        {{ section.name }} ({{ section.department.name }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_range" class="form-label">Date Range</label>
+                            <select name="date_range" id="date_range" class="form-select">
+                                <option value="all" {% if date_range == 'all' %}selected{% endif %}>All time</option>
+                                <option value="3months" {% if date_range == '3months' %}selected{% endif %}>Last 3 months</option>
+                                <option value="6months" {% if date_range == '6months' %}selected{% endif %}>Last 6 months</option>
+                                <option value="12months" {% if date_range == '12months' %}selected{% endif %}>Last 12 months</option>
+                                <option value="custom" {% if date_range == 'custom' %}selected{% endif %}>Custom Range</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_from" class="form-label">From Date</label>
+                            <input type="date" name="date_from" id="date_from" class="form-control" value="{{ filters.date_from }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_to" class="form-label">To Date</label>
+                            <input type="date" name="date_to" id="date_to" class="form-control" value="{{ filters.date_to }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="service_type" class="form-label">Service Type</label>
+                            <select name="service_type" id="service_type" class="form-select">
+                                <option value="">All Service Types</option>
+                                <option value="failed_service" {% if service_type == 'failed_service' %}selected{% endif %}>Failed service</option>
+                                <option value="new_addition" {% if service_type == 'new_addition' %}selected{% endif %}>New/addition requests</option>
+                                <option value="pre_programmed" {% if service_type == 'pre_programmed' %}selected{% endif %}>Pre-programmed work</option>
+                                <option value="not_rcbc" {% if service_type == 'not_rcbc' %}selected{% endif %}>Not RCBC</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+                <script type="text/javascript" nonce="{{ request.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+  // Auto-submit form when any filter changes
+  const filterForm = document.getElementById('filterForm');
+  if (filterForm) {
+    const filterInputs = filterForm.querySelectorAll('select, input[type="date"]');
+    filterInputs.forEach(input => {
+      input.addEventListener('change', function() {
+        filterForm.submit();
+      });
+    });
+  }
+});
+</script>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if selected_section or show_all_sections %}
+<!-- Summary Stats -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        {% if show_all_sections %}
+        <a href="{% url 'application:enquiry_list' %}?date_range={{ date_range }}{% if date_range == 'custom' %}{% if date_from_str %}&date_from={{ date_from_str }}{% endif %}{% if date_to_str %}&date_to={{ date_to_str }}{% endif %}{% endif %}{% if service_type %}&service_type={{ service_type }}{% endif %}" class="text-decoration-none">
+        {% else %}
+        <a href="{% url 'application:enquiry_list' %}?section={{ selected_section.id }}&date_range={{ date_range }}{% if date_range == 'custom' %}{% if date_from_str %}&date_from={{ date_from_str }}{% endif %}{% if date_to_str %}&date_to={{ date_to_str }}{% endif %}{% endif %}{% if service_type %}&service_type={{ service_type }}{% endif %}" class="text-decoration-none">
+        {% endif %}
+            <div class="card workload-card workload-card-enquiries">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Total Enquiries</h5>
+                    <h2 id="totalEnquiries">{{ system_total_enquiries }}</h2>
+                    <small>{% if show_all_sections %}All Sections{% else %}{{ selected_section.name }}{% endif %} - {{ date_range_info.range_type|capfirst }}{% if date_range_info.months %} ({{ date_range_info.months }} months){% endif %}</small>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        {% if show_all_sections %}
+        <a href="{% url 'application:enquiry_list' %}?status=open&date_range={{ date_range }}{% if date_range == 'custom' %}{% if date_from_str %}&date_from={{ date_from_str }}{% endif %}{% if date_to_str %}&date_to={{ date_to_str }}{% endif %}{% endif %}{% if service_type %}&service_type={{ service_type }}{% endif %}" class="text-decoration-none">
+        {% else %}
+        <a href="{% url 'application:enquiry_list' %}?section={{ selected_section.id }}&status=open&date_range={{ date_range }}{% if date_range == 'custom' %}{% if date_from_str %}&date_from={{ date_from_str }}{% endif %}{% if date_to_str %}&date_to={{ date_to_str }}{% endif %}{% endif %}{% if service_type %}&service_type={{ service_type }}{% endif %}" class="text-decoration-none">
+        {% endif %}
+            <div class="card workload-card workload-card-open">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Open Enquiries</h5>
+                    <h2 id="totalOpen">{{ system_open_enquiries }}</h2>
+                    <small>currently open</small>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        {% if show_all_sections %}
+        <a href="{% url 'application:enquiry_list' %}?status=closed&date_range={{ date_range }}{% if date_range == 'custom' %}{% if date_from_str %}&date_from={{ date_from_str }}{% endif %}{% if date_to_str %}&date_to={{ date_to_str }}{% endif %}{% endif %}{% if service_type %}&service_type={{ service_type }}{% endif %}" class="text-decoration-none">
+        {% else %}
+        <a href="{% url 'application:enquiry_list' %}?section={{ selected_section.id }}&status=closed&date_range={{ date_range }}{% if date_range == 'custom' %}{% if date_from_str %}&date_from={{ date_from_str }}{% endif %}{% if date_to_str %}&date_to={{ date_to_str }}{% endif %}{% endif %}{% if service_type %}&service_type={{ service_type }}{% endif %}" class="text-decoration-none">
+        {% endif %}
+            <div class="card workload-card workload-card-closed">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Closed Enquiries</h5>
+                    <h2 id="totalClosed">{{ system_closed_enquiries }}</h2>
+                    <small>resolved</small>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+{% if job_types %}
+<!-- Charts -->
+<div class="row">
+    <!-- Horizontal Bar Chart -->
+    <div class="col-12 mb-4">
+        <div class="card chart-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Total Enquiries by Job Type</h5>
+                <small class="text-muted">Top job types {% if show_all_sections %}across all sections{% else %}in {{ selected_section.name }}{% endif %} by total enquiry volume</small>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="jobTotalChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Stacked Bar Chart -->
+    <div class="col-md-8">
+        <div class="card chart-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Open vs Closed Enquiries by Job Type</h5>
+                <small class="text-muted">Breakdown showing current workload vs completed work</small>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="jobStackedChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Job Types Distribution Chart -->
+    <div class="col-md-4">
+        <div class="card chart-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Job Types Distribution</h5>
+                <small class="text-muted">Distribution of enquiry types {% if show_all_sections %}across all sections{% else %}in {{ selected_section.name }}{% endif %}</small>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="jobTypesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Chart: Workload Intensity -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card chart-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Workload Intensity</h5>
+                <small class="text-muted">Open enquiries percentage by job type</small>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="workloadIntensityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Chart: Job Type Performance -->
+    <div class="col-md-6">
+        <div class="card chart-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Completion Rate</h5>
+                <small class="text-muted">Percentage of closed enquiries by job type</small>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="completionRateChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Job Type Details Table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Job Type Details{% if show_all_sections %} - All Sections{% else %} - {{ selected_section.name }}{% endif %}</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Job Type</th>
+                                <th>Total Enquiries</th>
+                                <th>Open</th>
+                                <th>Closed</th>
+                                <th>Open Rate %</th>
+                                <th>Completion Rate %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for job_type in job_types %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'application:enquiry_list' %}?job_type={{ job_type.id }}&section={{ selected_section.id }}&date_range={{ date_range }}{% if date_range == 'custom' %}{% if date_from_str %}&date_from={{ date_from_str }}{% endif %}{% if date_to_str %}&date_to={{ date_to_str }}{% endif %}{% endif %}{% if service_type %}&service_type={{ service_type }}{% endif %}"
+                                       class="text-decoration-none">
+                                        {{ job_type.name }}
+                                    </a>
+                                </td>
+                                <td>
+                                    {% if show_all_sections %}
+                                    <a href="{% url 'application:enquiry_list' %}?job_type={{ job_type.id }}&date_range={{ date_range }}{% if date_range == 'custom' %}{% if date_from_str %}&date_from={{ date_from_str }}{% endif %}{% if date_to_str %}&date_to={{ date_to_str }}{% endif %}{% endif %}{% if service_type %}&service_type={{ service_type }}{% endif %}"
+                                       class="badge bg-primary text-decoration-none"
+                                       title="View all {{ job_type.total_enquiries }} enquiries for {{ job_type.name }} across all sections">
+                                        {{ job_type.total_enquiries }}
+                                    </a>
+                                    {% else %}
+                                    <a href="{% url 'application:enquiry_list' %}?job_type={{ job_type.id }}&section={{ selected_section.id }}&date_range={{ date_range }}{% if date_range == 'custom' %}{% if date_from_str %}&date_from={{ date_from_str }}{% endif %}{% if date_to_str %}&date_to={{ date_to_str }}{% endif %}{% endif %}{% if service_type %}&service_type={{ service_type }}{% endif %}"
+                                       class="badge bg-primary text-decoration-none"
+                                       title="View all {{ job_type.total_enquiries }} enquiries for {{ job_type.name }} in {{ selected_section.name }}">
+                                        {{ job_type.total_enquiries }}
+                                    </a>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if show_all_sections %}
+                                    <a href="{% url 'application:enquiry_list' %}?job_type={{ job_type.id }}&status=open&date_range={{ date_range }}{% if service_type %}&service_type={{ service_type }}{% endif %}"
+                                       class="badge bg-warning text-decoration-none"
+                                       title="View {{ job_type.open_enquiries }} open enquiries for {{ job_type.name }} across all sections">
+                                        {{ job_type.open_enquiries }}
+                                    </a>
+                                    {% else %}
+                                    <a href="{% url 'application:enquiry_list' %}?job_type={{ job_type.id }}&section={{ selected_section.id }}&status=open&date_range={{ date_range }}{% if service_type %}&service_type={{ service_type }}{% endif %}"
+                                       class="badge bg-warning text-decoration-none"
+                                       title="View {{ job_type.open_enquiries }} open enquiries for {{ job_type.name }} in {{ selected_section.name }}">
+                                        {{ job_type.open_enquiries }}
+                                    </a>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if show_all_sections %}
+                                    <a href="{% url 'application:enquiry_list' %}?job_type={{ job_type.id }}&status=closed&date_range={{ date_range }}{% if service_type %}&service_type={{ service_type }}{% endif %}"
+                                       class="badge bg-success text-decoration-none"
+                                       title="View {{ job_type.closed_enquiries }} closed enquiries for {{ job_type.name }} across all sections">
+                                        {{ job_type.closed_enquiries }}
+                                    </a>
+                                    {% else %}
+                                    <a href="{% url 'application:enquiry_list' %}?job_type={{ job_type.id }}&section={{ selected_section.id }}&status=closed&date_range={{ date_range }}{% if service_type %}&service_type={{ service_type }}{% endif %}"
+                                       class="badge bg-success text-decoration-none"
+                                       title="View {{ job_type.closed_enquiries }} closed enquiries for {{ job_type.name }} in {{ selected_section.name }}">
+                                        {{ job_type.closed_enquiries }}
+                                    </a>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if job_type.total_enquiries > 0 %}
+                                        <span class="{% widthratio job_type.open_enquiries job_type.total_enquiries 100 as open_rate %}{% if open_rate > 50 %}text-danger{% elif open_rate > 25 %}text-warning{% else %}text-success{% endif %}">
+                                            {{ open_rate }}%
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">0%</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if job_type.total_enquiries > 0 %}
+                                        <span class="{% widthratio job_type.closed_enquiries job_type.total_enquiries 100 as completion_rate %}{% if completion_rate > 75 %}text-success{% elif completion_rate > 50 %}text-warning{% else %}text-danger{% endif %}">
+                                            {{ completion_rate }}%
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">0%</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No job type data found{% if show_all_sections %} across all sections{% else %} for {{ selected_section.name }}{% endif %} {{ page_subtitle|lower }}.
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script nonce="{{ request.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize shared date range functionality with server-provided dates for consistency
+    if (window.initializeDateRangeFilters) {
+        window.initializeDateRangeFilters({
+            additionalSelectors: ['section'],
+            serverDates: {{ js_date_constants|safe }}
+        });
+    }
+
+    {% if job_types %}{% if selected_section or show_all_sections %}
+    // Data from Django
+    console.log('Job Workload Chart loading...');
+    const jobTypes = [
+        {% for job_type in job_types %}
+        {
+            id: {{ job_type.id }},
+            name: "{{ job_type.name|escapejs }}",
+            total: {{ job_type.total_enquiries }},
+            open: {{ job_type.open_enquiries }},
+            closed: {{ job_type.closed_enquiries }}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    {% if show_all_sections %}
+    const sectionParam = "";  // No section filter for All Sections
+    {% else %}
+    const sectionParam = "&section={{ selected_section.id }}";
+    {% endif %}
+
+    // Build standardized date range parameters
+    const currentDateRange = "{{ date_range }}";
+    const dateFrom = "{{ filters.date_from }}";
+    const dateTo = "{{ filters.date_to }}";
+
+    let dateRangeParam = "&date_range=" + currentDateRange;
+
+    // Always include date parameters when present (for both preset and custom ranges)
+    if (dateFrom) dateRangeParam += "&date_from=" + dateFrom;
+    if (dateTo) dateRangeParam += "&date_to=" + dateTo;
+
+    // Include service type parameter
+    {% if service_type %}const serviceTypeParam = "&service_type={{ service_type }}";{% else %}const serviceTypeParam = "";{% endif %}
+
+    // Extract data for charts
+    const jobTypeNames = jobTypes.map(jt => jt.name);
+    const totalData = jobTypes.map(jt => jt.total);
+    const openData = jobTypes.map(jt => jt.open);
+    const closedData = jobTypes.map(jt => jt.closed);
+    const workloadPercentages = jobTypes.map(jt => jt.total > 0 ? (jt.open / jt.total * 100) : 0);
+    const completionPercentages = jobTypes.map(jt => jt.total > 0 ? (jt.closed / jt.total * 100) : 0);
+
+    // Total Enquiries Chart (Horizontal Bar)
+    const ctx1 = document.getElementById('jobTotalChart').getContext('2d');
+
+    // Set dynamic height based on number of job types (30px per job type, minimum 500px)
+    const chartHeight = Math.max(500, jobTypes.length * 30);
+    ctx1.canvas.style.height = chartHeight + 'px';
+    ctx1.canvas.parentElement.style.height = chartHeight + 'px';
+
+    new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: jobTypeNames,
+            datasets: [{
+                label: 'Total Enquiries',
+                data: totalData,
+                backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                borderColor: 'rgb(75, 192, 192)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Enquiries'
+                    },
+                    ticks: {
+                        stepSize: 1,
+                        precision: 0
+                    }
+                },
+                y: {
+                    ticks: {
+                        maxTicksLimit: 0,  // Show all ticks
+                        autoSkip: false,   // Don't skip any labels
+                        font: {
+                            size: 12  // Fixed readable font size
+                        },
+                        padding: 5
+                    },
+                    grid: {
+                        display: true,
+                        drawBorder: true
+                    }
+                }
+            },
+            onClick: function(event, elements) {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    const jobType = jobTypes[index];
+                    window.location.href = `{% url "application:enquiry_list" %}?job_type=${jobType.id}${sectionParam}${dateRangeParam}${serviceTypeParam}`;
+                }
+            }
+        }
+    });
+
+    // Stacked Bar Chart
+    const ctx2 = document.getElementById('jobStackedChart').getContext('2d');
+    new Chart(ctx2, {
+        type: 'bar',
+        data: {
+            labels: jobTypeNames,
+            datasets: [{
+                label: 'Closed',
+                data: closedData,
+                backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                borderColor: 'rgb(54, 162, 235)',
+                borderWidth: 1
+            }, {
+                label: 'Open',
+                data: openData,
+                backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                borderColor: 'rgb(220, 53, 69)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    stacked: true,
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Enquiries'
+                    },
+                    ticks: {
+                        stepSize: 1,
+                        precision: 0
+                    }
+                }
+            },
+            onClick: function(event, elements) {
+                if (elements.length > 0) {
+                    const element = elements[0];
+                    const index = element.index;
+                    const datasetIndex = element.datasetIndex;
+                    const jobType = jobTypes[index];
+
+                    // Determine status based on which dataset (0=Closed, 1=Open)
+                    const status = datasetIndex === 0 ? 'closed' : 'open';
+
+                    window.location.href = `{% url "application:enquiry_list" %}?job_type=${jobType.id}&status=${status}${sectionParam}${dateRangeParam}${serviceTypeParam}`;
+                }
+            }
+        }
+    });
+
+    // Job Types Distribution Chart (Doughnut)
+    const ctx3 = document.getElementById('jobTypesChart').getContext('2d');
+
+    // Generate colors for job types
+    const jobTypeColors = jobTypes.map((_, index) => {
+        const hue = (index * 137.508) % 360; // Golden angle for nice color distribution
+        return `hsl(${hue}, 65%, 60%)`;
+    });
+
+    const jobTypeBorderColors = jobTypes.map((_, index) => {
+        const hue = (index * 137.508) % 360;
+        return `hsl(${hue}, 65%, 45%)`;
+    });
+
+    new Chart(ctx3, {
+        type: 'doughnut',
+        data: {
+            labels: jobTypes.map(jt => jt.name),
+            datasets: [{
+                data: jobTypes.map(jt => jt.total),
+                backgroundColor: jobTypeColors,
+                borderColor: jobTypeBorderColors,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: `${jobTypes.reduce((sum, jt) => sum + jt.total, 0)} Total Enquiries`
+                },
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 8,
+                        usePointStyle: true,
+                        font: {
+                            size: 11
+                        }
+                    }
+                }
+            },
+            onClick: function(event, elements) {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    const jobType = jobTypes[index];
+                    window.location.href = `{% url "application:enquiry_list" %}?job_type=${jobType.id}${sectionParam}${dateRangeParam}${serviceTypeParam}`;
+                }
+            }
+        }
+    });
+
+    // Workload Intensity Chart (Radar)
+    const ctx4 = document.getElementById('workloadIntensityChart').getContext('2d');
+    new Chart(ctx4, {
+        type: 'polarArea',
+        data: {
+            labels: jobTypeNames,
+            datasets: [{
+                label: 'Open Rate %',
+                data: workloadPercentages,
+                backgroundColor: jobTypeColors.map(color => color.replace('60%', '50%')),
+                borderColor: jobTypeBorderColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 8,
+                        usePointStyle: true,
+                        font: {
+                            size: 10
+                        }
+                    }
+                }
+            },
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Completion Rate Chart (Bar)
+    const ctx5 = document.getElementById('completionRateChart').getContext('2d');
+    new Chart(ctx5, {
+        type: 'bar',
+        data: {
+            labels: jobTypeNames,
+            datasets: [{
+                label: 'Completion Rate %',
+                data: completionPercentages,
+                backgroundColor: completionPercentages.map(rate =>
+                    rate > 75 ? 'rgba(40, 167, 69, 0.8)' :
+                    rate > 50 ? 'rgba(255, 193, 7, 0.8)' :
+                    'rgba(220, 53, 69, 0.8)'
+                ),
+                borderColor: completionPercentages.map(rate =>
+                    rate > 75 ? 'rgb(40, 167, 69)' :
+                    rate > 50 ? 'rgb(255, 193, 7)' :
+                    'rgb(220, 53, 69)'
+                ),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: 'Completion Rate (%)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    {% endif %}{% endif %}
+
+    // Note: Date range functionality is now handled by the shared initializeDateRangeFilters function above
+});
+</script>
+{% endblock %}

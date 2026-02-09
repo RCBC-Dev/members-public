@@ -1,0 +1,126 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+    &rsaquo; <a href="{% url 'admin:application_usermapping_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+    &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="module">
+    <p>This wizard helps you map legacy Django users to new Microsoft SSO users. This will update historical enquiry assignments to maintain data integrity.</p>
+    
+    {% if legacy_users %}
+    <form method="post" class="wide">
+        {% csrf_token %}
+        
+        <fieldset class="module aligned">
+            <h2>Legacy Users with Enquiries</h2>
+            <p>The following legacy users have enquiries assigned but no SSO mapping:</p>
+            
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background-color: #f8f9fa;">
+                        <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Legacy Username</th>
+                        <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Full Name</th>
+                        <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Email</th>
+                        <th style="padding: 10px; border: 1px solid #ddd; text-align: center;">Enquiries</th>
+                        <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Map to SSO User</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in legacy_users %}
+                    <tr>
+                        <td style="padding: 10px; border: 1px solid #ddd;"><strong>{{ user.username }}</strong></td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">{{ user.full_name|default:"N/A" }}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;"><small>{{ user.email|default:"N/A" }}</small></td>
+                        <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">
+                            <span class="badge" style="background-color: #007cba; color: white; padding: 4px 8px; border-radius: 4px;">
+                                {{ user.enquiry_count }}
+                            </span>
+                        </td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">
+                            <select name="mapping_{{ user.id }}" style="width: 100%; padding: 6px;">
+                                <option value="">-- Select SSO User --</option>
+                                {% for sso_user in sso_users %}
+                                <option value="{{ sso_user.id }}">
+                                    {{ sso_user.get_full_name|default:sso_user.username }} ({{ sso_user.username }})
+                                    {% if sso_user.email %} - {{ sso_user.email }}{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </fieldset>
+        
+        <div class="submit-row" style="margin-top: 20px;">
+            <input type="submit" value="Create Mappings" class="default" />
+            <a href="../" class="button">Cancel</a>
+        </div>
+    </form>
+    
+    {% else %}
+    <div class="alert alert-info" style="background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; margin: 15px 0; border-radius: 4px;">
+        <strong>Good news!</strong> All legacy users with enquiries have been mapped to SSO users.
+    </div>
+    <p><a href="../" class="button">Return to User Mappings</a></p>
+    {% endif %}
+</div>
+
+{% if existing_mappings %}
+<div class="module" style="margin-top: 30px;">
+    <h2>Existing Mappings</h2>
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background-color: #f8f9fa;">
+                <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Legacy Username</th>
+                <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">SSO User</th>
+                <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">SSO Username</th>
+                <th style="padding: 10px; border: 1px solid #ddd; text-align: center;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mapping in existing_mappings %}
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd;">{{ mapping.legacy_user.username }}</td>
+                <td style="padding: 10px; border: 1px solid #ddd;">{{ mapping.sso_user.get_full_name|default:"N/A" }}</td>
+                <td style="padding: 10px; border: 1px solid #ddd;"><code>{{ mapping.sso_user.username }}</code></td>
+                <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">
+                    {% if mapping.applied_at %}
+                        <span style="color: green;">✓ Applied</span>
+                    {% elif mapping.is_primary_mapping %}
+                        <span style="color: orange;">⏳ Pending</span>
+                    {% else %}
+                        <span style="color: gray;">Secondary</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="module" style="margin-top: 30px; background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 4px;">
+    <h3 style="color: #856404;">Next Steps</h3>
+    <ol style="color: #856404;">
+        <li>Create the user mappings above</li>
+        <li>Go back to the <a href="../">User Mappings list</a></li>
+        <li>Select the mappings you want to apply</li>
+        <li>Use the "Apply selected user mappings to enquiries" bulk action</li>
+        <li>Add the new SSO users to the <a href="{% url 'admin:application_admin_changelist' %}">Admin table</a> so they can create enquiries</li>
+    </ol>
+</div>
+
+{% endblock %}

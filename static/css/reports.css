@@ -1,0 +1,97 @@
+/* Reports CSS - CSP Compliant */
+
+.chart-container {
+    position: relative;
+    height: 400px;
+    margin-bottom: 2rem;
+}
+
+.chart-card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+/* Status distribution cards */
+.status-card {
+    border-radius: 0.375rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.status-card-new {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+}
+
+.status-card-open {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+}
+
+.status-card-closed {
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+}
+
+/* Section workload cards */
+.workload-card {
+    border-radius: 0.375rem;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.workload-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    transition: all 0.2s ease;
+}
+
+.workload-card-sections {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+}
+
+.workload-card-enquiries {
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+}
+
+.workload-card-open {
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+}
+
+.workload-card-closed {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+}
+
+/* Performance dashboard cards */
+.performance-card-created {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+}
+
+.performance-card-within-sla {
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+}
+
+.performance-card-outside-sla {
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+}
+
+.performance-card-still-open {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+}
+
+/* Chart loading states */
+.chart-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    color: #6c757d;
+}
+
+.chart-loading::before {
+    content: "Loading chart...";
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .chart-container {
+        height: 300px;
+    }
+}

@@ -1,0 +1,110 @@
+/* Members Enquiries Custom CSS */
+
+/* General styling */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+    background-color: #f8f9fa;
+}
+
+/* Navbar styling */
+.navbar-brand {
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+/* Card styling */
+.card {
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+    border-top-left-radius: 0.5rem !important;
+    border-top-right-radius: 0.5rem !important;
+}
+
+/* Task status badges */
+.badge {
+    font-weight: normal;
+    padding: 0.5em 0.8em;
+}
+
+/* Overdue tasks */
+.overdue {
+    background-color: #fff3f3;
+}
+
+/* Task detail sections */
+.task-details h6 {
+    font-weight: bold;
+    color: #555;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+}
+
+/* Comment styling */
+.comment-body {
+    background: #f8f9fa;
+    border-radius: 0.25rem;
+    padding: 10px;
+}
+
+/* Footer styling */
+footer {
+    margin-top: 4rem;
+    font-size: 0.9rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .hide-on-mobile {
+        display: none;
+    }
+}
+
+/* Custom button styles */
+.btn-countryside {
+    background-color: #3c8f40;
+    color: white;
+}
+
+.btn-countryside:hover {
+    background-color: #2d7032;
+    color: white;
+}
+
+/* Summernote customization */
+.note-toolbar {
+    background-color: #f8f9fa;
+}
+
+/* DataTable customization */
+.dataTables_wrapper .dataTables_filter input {
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    padding: 0.375rem 0.75rem;
+}
+
+/* Attachment section */
+.attachments .attachment-item {
+    border-left: 3px solid #3c8f40;
+}
+
+/* Audit log timeline */
+.audit-timeline .list-group-item {
+    border-left: 3px solid #3c8f40;
+    padding-left: 15px;
+}
+
+/* Search results highlighting */
+.search-result-highlight {
+    background-color: rgba(60, 143, 64, 0.1);
+    border-left: 3px solid #3c8f40;
+}

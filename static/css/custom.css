@@ -1,0 +1,2418 @@
+/* Custom styles for Members Enquiries application */
+
+/* File Management Dashboard Styles */
+.storage-card {
+    border-left: 4px solid #007bff;
+    transition: transform 0.2s;
+}
+
+.storage-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.storage-card.warning {
+    border-left-color: #ffc107;
+}
+
+.storage-card.danger {
+    border-left-color: #dc3545;
+}
+
+.storage-card.success {
+    border-left-color: #28a745;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.metric-label {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.action-button {
+    margin: 0.25rem;
+}
+
+.progress-container {
+    margin-top: 1rem;
+}
+
+.log-output {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    max-height: 300px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+
+.file-row {
+    transition: background-color 0.2s;
+}
+
+.file-row:hover {
+    background-color: #f8f9fa;
+}
+
+.file-icon {
+    width: 20px;
+    text-align: center;
+}
+
+.file-linked {
+    color: #28a745;
+}
+
+.file-orphaned {
+    color: #dc3545;
+}
+
+.directory-tabs .nav-link {
+    border-radius: 0.375rem 0.375rem 0 0;
+}
+
+.directory-tabs .nav-link.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.file-stats {
+    background-color: #f8f9fa;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.hidden {
+    display: none;
+}
+
+.progress-height-8 {
+    height: 8px;
+}
+
+/* Missing file indicators */
+.attachment-missing {
+    opacity: 0.7;
+}
+
+.attachment-available {
+    opacity: 1.0;
+}
+
+.missing-file-container {
+    background-color: #fff5f5;
+}
+
+.missing-file-placeholder {
+    background-color: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    padding: 1rem;
+    text-align: center;
+    color: #6c757d;
+    border-radius: 0.375rem;
+}
+
+.missing-file-placeholder::before {
+    content: "⚠️";
+    display: block;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Enhanced Alert System Styles */
+.alert-fixed-top {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1055;
+    min-width: 300px;
+    max-width: 600px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.alert-fixed-bottom {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1055;
+    min-width: 300px;
+    max-width: 600px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Legacy support for existing success-alert-fixed class */
+.success-alert-fixed {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1055;
+    min-width: 300px;
+    max-width: 600px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Dropzone styles */
+.dropzone-custom {
+    border: 2px dashed #007bff;
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.dropzone-custom:hover {
+    border-color: #0056b3;
+    background-color: #e9ecef;
+}
+
+.dropzone-custom.dz-drag-hover {
+    border-color: #28a745;
+    background-color: #d4edda;
+}
+
+.email-dropzone-card {
+    border-left: 4px solid #17a2b8;
+}
+
+.photo-dropzone-card {
+    border-left: 4px solid #28a745;
+}
+
+/* Smaller dropzone styles */
+.dropzone-custom-small {
+    border: 2px dashed #007bff;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dropzone-custom-small:hover {
+    border-color: #0056b3;
+    background-color: #e9ecef;
+}
+
+.dropzone-custom-small.dz-drag-hover {
+    border-color: #28a745;
+    background-color: #d4edda;
+}
+
+/* Photo dropzone specific styling */
+#photo-dropzone.dropzone-custom-small {
+    border-color: #28a745;
+}
+
+#photo-dropzone.dropzone-custom-small:hover {
+    border-color: #1e7e34;
+    background-color: #d4edda;
+}
+
+/* Progress bar height override */
+.progress-bar-height-20 {
+    height: 20px;
+}
+
+/* Hidden utility class */
+.d-none {
+    display: none !important;
+}
+
+/* CSP-compliant utility classes for common inline styles */
+.img-thumbnail-60 {
+    max-width: 60px !important;
+    max-height: 60px !important;
+}
+
+.img-attachment-120 {
+    width: 120px !important;
+    height: 120px !important;
+    object-fit: cover !important;
+}
+
+.img-preview-large {
+    max-width: 150px !important;
+    max-height: 150px !important;
+    object-fit: cover !important;
+}
+
+/* Asset dropdown menu styling */
+.asset-dropdown-menu {
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    background-color: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* Dropzone styles for CSP compliance */
+
+.login-btn-maxwidth {
+    max-width: 280px;
+}
+
+.dropzone {
+    border: 2px dashed #0087F7;
+    border-radius: 5px;
+    background: white;
+    min-height: 80px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+.dropzone .dz-message {
+    text-align: center;
+    margin: 1em 0;
+    font-size: 0.9rem;
+}
+
+/* Additional custom styles can be added here */
+
+.icon-2rem {
+    font-size: 2rem;
+}
+
+/* Progress bar width classes for CSP compliance - file management dashboard */
+/* Generate classes for each percentage 0-100 */
+.progress-width-0 { width: 0% !important; }
+.progress-width-10 { width: 10% !important; }
+.progress-width-15 { width: 15% !important; }
+.progress-width-20 { width: 20% !important; }
+.progress-width-25 { width: 25% !important; }
+.progress-width-30 { width: 30% !important; }
+.progress-width-35 { width: 35% !important; }
+.progress-width-40 { width: 40% !important; }
+.progress-width-45 { width: 45% !important; }
+.progress-width-50 { width: 50% !important; }
+.progress-width-55 { width: 55% !important; }
+.progress-width-60 { width: 60% !important; }
+.progress-width-65 { width: 65% !important; }
+.progress-width-70 { width: 70% !important; }
+.progress-width-75 { width: 75% !important; }
+.progress-width-80 { width: 80% !important; }
+.progress-width-85 { width: 85% !important; }
+.progress-width-90 { width: 90% !important; }
+.progress-width-95 { width: 95% !important; }
+.progress-width-100 { width: 100% !important; }
+
+/* Transition for smooth progress animation */
+.progress-bar {
+    transition: width 0.3s ease;
+}
+
+/* Highlight overdue task rows in task_list.html - more subtle styling */
+.overdue-row {
+    background-color: var(--bs-warning-bg-subtle) !important;
+    color: var(--bs-warning-text-emphasis) !important;
+    border-left: 3px solid var(--bs-warning) !important;
+}
+
+/* Style for Reset Filters button in task_list.html */
+.reset-filters-btn {
+    /* Add any button-specific styling here, e.g.: */
+    margin-top: 0.25rem;
+    /* You can add your own custom css here */
+}
+
+.email-body-pre-wrap {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: monospace;
+}
+
+
+.email-quote {
+    border-left: 3px solid #ccc;
+    padding-left: 15px;
+    margin: 10px 0 10px 5px;
+    color: #555;
+    font-style: italic;
+    background-color: #f8f9fa; /* Subtle background for quoted text */
+}
+
+/* Print title styling for task list */
+.print-title {
+    display: none;
+}
+
+@media print {
+  /* General print styles - charts and canvas */
+  .chart-container,
+  canvas {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    box-shadow: none !important;
+  }
+
+  .table-responsive {
+    overflow: visible !important;
+  }
+
+  /* Hide navigation elements */
+  .navbar, .sidebar, .footer {
+    display: none !important;
+  }
+
+  /* Task list specific print styles */
+  .card-body .btn,
+  .dataTables_wrapper .dt-buttons,
+  .dataTables_wrapper .dataTables_filter,
+  .dataTables_wrapper .dataTables_length,
+  .dataTables_wrapper .dataTables_info,
+  .dataTables_wrapper .dataTables_paginate,
+  .filter-card {
+    display: none !important;
+  }
+
+  .table {
+    font-size: 12px;
+  }
+
+  .print-title {
+    display: block !important;
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 20px;
+  }
+}
+
+/* ========================================
+   SUMMERNOTE CSP-COMPLIANT STYLES
+   ======================================== */
+
+/* CSP-compliant Summernote styling overrides */
+.note-editor {
+    border: 1px solid #dee2e6 !important;
+    border-radius: 0.375rem !important;
+}
+.note-toolbar {
+    background-color: #f8f9fa !important;
+    border-bottom: 1px solid #dee2e6 !important;
+    padding: 0.5rem !important;
+}
+.note-editable {
+    min-height: 300px !important;
+    padding: 1rem !important;
+    background-color: white !important;
+    color: #212529 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+}
+.note-statusbar {
+    background-color: #f8f9fa !important;
+    border-top: 1px solid #dee2e6 !important;
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.875rem !important;
+}
+/* Force override any inline styles */
+.note-editor .note-editable {
+    background-color: white !important;
+    color: #212529 !important;
+}
+/* Fix dialog positioning */
+.note-modal {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 1050 !important;
+}
+/* Hide any problematic elements that might cause CSP issues */
+.note-editor .note-editable[style] {
+    background: white !important;
+    color: inherit !important;
+}
+
+/* Comprehensive Summernote CSP-compliant styles */
+.note-editor * {
+    background-color: inherit !important;
+    color: inherit !important;
+    border: inherit !important;
+    margin: inherit !important;
+    padding: inherit !important;
+    width: auto !important;
+    height: auto !important;
+    position: static !important;
+    display: inherit !important;
+    font-size: inherit !important;
+    font-family: inherit !important;
+    line-height: inherit !important;
+    text-align: inherit !important;
+    vertical-align: inherit !important;
+    z-index: auto !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    overflow: visible !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    outline: none !important;
+    cursor: auto !important;
+    pointer-events: auto !important;
+    user-select: auto !important;
+    resize: none !important;
+    float: none !important;
+    clear: none !important;
+    white-space: normal !important;
+    word-wrap: normal !important;
+    word-break: normal !important;
+    text-decoration: none !important;
+    text-transform: none !important;
+    letter-spacing: normal !important;
+    word-spacing: normal !important;
+    text-indent: 0 !important;
+    direction: ltr !important;
+    unicode-bidi: normal !important;
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    text-rendering: auto !important;
+    font-variant: normal !important;
+    font-weight: normal !important;
+    font-style: normal !important;
+    font-stretch: normal !important;
+    font-size-adjust: none !important;
+    font-kerning: auto !important;
+    font-feature-settings: normal !important;
+    font-language-override: normal !important;
+    font-synthesis: weight style !important;
+    font-variant-alternates: normal !important;
+    font-variant-caps: normal !important;
+    font-variant-east-asian: normal !important;
+    font-variant-ligatures: normal !important;
+    font-variant-numeric: normal !important;
+    font-variant-position: normal !important;
+}
+
+/* Override specific Summernote elements that commonly get inline styles */
+.note-editor, .note-toolbar, .note-editable, .note-statusbar,
+.note-modal, .note-popover, .note-dialog, .note-dropdown-menu,
+.note-color-palette, .note-para, .note-style, .note-fontsize {
+    background: inherit !important;
+    color: inherit !important;
+    border: inherit !important;
+    position: static !important;
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    z-index: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* ========================================
+   DESCRIPTION CONTENT DISPLAY STYLES
+   ======================================== */
+
+/* Clean display of rich text content (Summernote/TinyMCE output) */
+.description-content {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-top: 0.5rem;
+    line-height: 1.0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Clean up legacy Summernote/Word HTML styling */
+.description-content p {
+    margin-bottom: 1rem;
+}
+
+.description-content p:last-child {
+    margin-bottom: 0;
+}
+
+/* Handle MsoNormal and other Word/Summernote classes */
+.description-content .MsoNormal,
+.description-content p.MsoNormal {
+    margin: 0 0 1rem 0 !important;
+    padding: 0 !important;
+    line-height: 1.0 !important;
+    font-family: inherit !important;
+    font-size: inherit !important;
+}
+
+/* Clean up any inline styles that might cause issues */
+.description-content * {
+    max-width: 100% !important;
+}
+
+/* Handle images in description */
+.description-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.25rem;
+    margin: 0.5rem 0;
+}
+
+/* Handle links in description */
+.description-content a {
+    color: #0d6efd;
+    text-decoration: underline;
+}
+
+.description-content a:hover {
+    color: #0a58ca;
+}
+
+/* Handle lists in description */
+.description-content ul,
+.description-content ol {
+    margin-bottom: 1rem;
+    padding-left: 2rem;
+}
+
+.description-content li {
+    margin-bottom: 0.25rem;
+}
+
+/* ========================================
+   DATATABLES BUTTON STYLING (CSP COMPLIANT)
+   ======================================== */
+
+/* DataTables buttons container */
+.dt-buttons {
+    margin-bottom: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+/* Reset DataTables button styling to use Bootstrap classes properly */
+.dt-buttons .btn {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+
+/* Ensure button text is visible */
+.dt-buttons .btn span {
+    color: inherit;
+}
+
+/* Button icons */
+.dt-buttons .btn i {
+    margin-right: 5px;
+}
+
+/* DataTables button collection (dropdown) */
+.dt-button-collection {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    display: none;
+    min-width: 10rem;
+    padding: 0.5rem 0;
+    margin: 0.125rem 0 0;
+    font-size: 1rem;
+    color: #212529;
+    text-align: left;
+    list-style: none;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 0.375rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.dt-button-collection.show {
+    display: block;
+}
+
+/* Ensure buttons container is visible */
+.dataTables_wrapper .dt-buttons {
+    float: left;
+    margin-bottom: 0.5rem;
+}
+
+/* Responsive button layout */
+@media (max-width: 768px) {
+    .dt-buttons {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .dt-buttons .btn {
+        margin-right: 0;
+        margin-bottom: 5px;
+        width: 100%;
+        max-width: 200px;
+    }
+}
+
+/* ========================================
+   ENQUIRY LIST TABLE STYLING
+   ======================================== */
+
+/* Table header styling */
+.table th {
+    background-color: #f8f9fa;
+    border-top: none;
+    font-weight: 600;
+}
+
+/* Badge styling */
+.badge {
+    font-size: 0.75em;
+}
+
+/* Small button styling */
+.btn-group-sm > .btn,
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Auto-apply filter message styling */
+.text-muted {
+    font-size: 0.875rem;
+}
+
+/* Filter form styling */
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+/* Card styling */
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Table responsive wrapper */
+.table-responsive {
+    border-radius: 0.375rem;
+}
+
+/* Status badge colors */
+.badge.bg-warning {
+    background-color: #ffc107 !important;
+    color: #000 !important;
+}
+
+.badge.bg-primary {
+    background-color: #0d6efd !important;
+}
+
+.badge.bg-success {
+    background-color: #198754 !important;
+}
+
+.badge.bg-secondary {
+    background-color: #6c757d !important;
+}
+
+/* Overdue highlighting */
+.table-warning {
+    background-color: #fff3cd !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+/* Link styling in table */
+.text-decoration-none {
+    text-decoration: none !important;
+}
+
+.text-decoration-none:hover {
+    text-decoration: underline !important;
+}
+
+/* Button group styling */
+.btn-group .btn {
+    margin-right: 0;
+}
+
+/* Form control focus states */
+.form-control:focus,
+.form-select:focus {
+    border-color: #86b7fe;
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Visual feedback for auto-filtering */
+.border-primary {
+    border-color: #0d6efd !important;
+}
+
+/* DataTable loading styles */
+.table-loading-container {
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 3rem 0;
+}
+
+.table-loading-spinner {
+    width: 3rem;
+    height: 3rem;
+}
+
+.table-container-hidden {
+    display: none;
+}
+
+/* Clear filters button styling */
+.clear-filters-column {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 140px; /* Approximate height to span both filter rows */
+}
+
+.clear-filters-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100px;
+    padding: 8px 4px;
+    text-align: center;
+    line-height: 1.2;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.clear-filters-btn i {
+    font-size: 1.2rem;
+    margin-bottom: 4px;
+}
+
+.clear-filters-btn small {
+    font-size: 0.75rem;
+    line-height: 1.1;
+}
+
+/* ========================================
+   SUCCESS NOTIFICATION STYLING
+   ======================================== */
+
+/* Fixed positioning for success alerts */
+.success-alert-fixed {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 350px;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* Hidden form utility class */
+.d-none-form {
+    display: none;
+}
+
+/* Attachment list scrollable container */
+.attachment-list-container {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Small attachment thumbnail */
+.attachment-thumb-small {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+}
+
+/* Dropzone preview hiding */
+.dropzone-preview-hidden {
+    display: none !important;
+}
+
+/* Attachment section hiding */
+.attachment-section-hidden {
+    display: none !important;
+}
+
+/* Filename display with natural wrapping */
+.attachment-filename {
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+    hyphens: none !important;
+    line-height: 1.4 !important;
+    text-align: center !important;
+    padding: 0 4px !important;
+    min-height: 2.5em !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* ========================================
+   ENQUIRY FORM IMAGE HANDLING STYLES
+   ======================================== */
+
+.extracted-image-item {
+    transition: all 0.2s ease;
+}
+
+.extracted-image-item:hover {
+    background-color: #f8f9fa;
+}
+
+.remove-image-btn {
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.remove-image-btn:hover {
+    opacity: 1;
+}
+
+.extracted-image-item .remove-image-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ========================================
+   MONTHLY REPORTS STICKY COLUMN STYLES
+   ======================================== */
+
+.sticky-col {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 10;
+    min-width: 200px !important;
+    max-width: 200px !important;
+    width: 200px !important;
+    background-color: #f8f9fa !important;
+}
+
+.sticky-col-2 {
+    position: sticky !important;
+    left: 200px !important;
+    z-index: 10;
+    min-width: 120px !important;
+    max-width: 120px !important;
+    width: 120px !important;
+    background-color: #f8f9fa !important;
+}
+
+.table-responsive {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+/* Improve header contrast and visibility */
+#memberMonthlyTable thead th {
+    background-color: #343a40 !important;
+    color: white !important;
+    border-color: #454d55 !important;
+    font-weight: 600;
+    position: relative;
+    z-index: 11;
+}
+
+/* Fix sticky column header positioning */
+#memberMonthlyTable thead th.sticky-col {
+    left: 0;
+    z-index: 12;
+}
+
+#memberMonthlyTable thead th.sticky-col-2 {
+    left: 200px;
+    z-index: 12;
+}
+
+/* Fix DataTables search and length controls positioning */
+.dataTables_wrapper .dataTables_filter {
+    text-align: right;
+}
+
+.dataTables_wrapper .dataTables_length {
+    text-align: right;
+}
+
+/* Remove any blocking elements */
+.dataTables_wrapper .dataTables_processing {
+    display: none !important;
+}
+
+/* Ensure proper spacing for controls */
+.dataTables_wrapper .row {
+    margin-bottom: 10px;
+}
+
+/* Force table layout to respect column widths */
+#memberMonthlyTable {
+    table-layout: fixed;
+    width: 100%;
+}
+
+/* Ensure month columns have consistent width */
+#memberMonthlyTable th:not(.sticky-col):not(.sticky-col-2) {
+    min-width: 80px;
+    width: 80px;
+}
+
+/* Fix any DataTables column width conflicts */
+#memberMonthlyTable_wrapper .dataTables_scrollHead table {
+    table-layout: fixed !important;
+}
+
+/* Section monthly table specific styles */
+#sectionMonthlyTable thead th {
+    background-color: #343a40 !important;
+    color: white !important;
+    border-color: #454d55 !important;
+    font-weight: 600;
+    position: relative;
+    z-index: 11;
+}
+
+#sectionMonthlyTable thead th.sticky-col {
+    left: 0;
+    z-index: 12;
+}
+
+#sectionMonthlyTable thead th.sticky-col-2 {
+    left: 200px;
+    z-index: 12;
+}
+
+#sectionMonthlyTable {
+    table-layout: fixed;
+    width: 100%;
+}
+
+#sectionMonthlyTable th:not(.sticky-col):not(.sticky-col-2) {
+    min-width: 80px;
+    width: 80px;
+}
+
+#sectionMonthlyTable_wrapper .dataTables_scrollHead table {
+    table-layout: fixed !important;
+}
+
+/* Ward monthly table specific styles */
+#wardMonthlyTable thead th {
+    background-color: #343a40 !important;
+    color: white !important;
+    border-color: #454d55 !important;
+    font-weight: 600;
+    position: relative;
+    z-index: 11;
+}
+
+#wardMonthlyTable thead th.sticky-col {
+    left: 0;
+    z-index: 12;
+}
+
+#wardMonthlyTable {
+    table-layout: fixed;
+    width: 100%;
+}
+
+#wardMonthlyTable th:not(.sticky-col) {
+    min-width: 80px;
+    width: 80px;
+}
+
+#wardMonthlyTable_wrapper .dataTables_scrollHead table {
+    table-layout: fixed !important;
+}
+
+/* ========================================
+   SECTION WORKLOAD CHART STYLES
+   ======================================== */
+
+.badge.text-decoration-none:hover {
+    transform: scale(1.05);
+    transition: transform 0.2s ease;
+    opacity: 0.9;
+}
+
+.badge.text-decoration-none {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* workload-card styles moved to reports.css for better organization */
+
+/* ========================================
+   DOCUMENT ICON STYLES
+   ======================================== */
+
+/* Document icons - 100px wide, maintain aspect ratio */
+.doc-icon-100 {
+    width: 100px;
+    height: auto;
+    max-width: 100px;
+}
+
+/* Fallback container for unknown file types */
+.doc-icon-fallback {
+    width: 100px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    padding: 0.75rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+}
+
+.doc-icon-fallback .bi-file-earmark {
+    font-size: 2.5rem;
+    color: #6c757d;
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 9999;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+.loading-overlay.show {
+    display: flex !important;
+}
+
+.loading-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    max-width: 300px;
+}
+
+.loading-content .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* ========================================
+   EMAIL METADATA STYLES
+   ======================================== */
+
+/* Email metadata container - CSP-friendly styling */
+.email-metadata {
+    background-color: #f8f9fa;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-left: 4px solid #007bff;
+    border-radius: 4px;
+}
+
+.email-metadata h6 {
+    margin-bottom: 10px;
+    color: #495057;
+}
+
+.email-metadata p {
+    margin: 5px 0;
+}
+
+.email-metadata .bi-envelope {
+    margin-right: 8px;
+}
+
+/* ========================================
+   TRANSPARENT SCROLLBAR WITH DARK THUMB
+   ======================================== */
+
+/* Firefox */
+html {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.6) transparent;
+}
+
+/* Webkit browsers (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+    width: 16px;
+    background: transparent;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 8px;
+    border: 4px solid transparent;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+/* ========================================
+   DATATABLE LIGHT HEADER OVERRIDE
+   ======================================== */
+
+/* Force Bootstrap light table styling for DataTables headers */
+#memberMonthlyTable thead th,
+#sectionMonthlyTable thead th,
+#wardMonthlyTable thead th {
+    background-color: var(--bs-light) !important;
+    border-color: var(--bs-border-color) !important;
+    color: var(--bs-body-color) !important;
+}
+
+/* ========================================
+   DARK MODE TOGGLE STYLES
+   ======================================== */
+
+/* Dark mode toggle button styling */
+#theme-toggle {
+    color: rgba(255, 255, 255, 0.75) !important;
+    transition: color 0.15s ease-in-out, transform 0.15s ease-in-out;
+}
+
+#theme-toggle:hover {
+    color: rgba(255, 255, 255, 1) !important;
+    transform: scale(1.1);
+}
+
+#theme-toggle:focus {
+    box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.25);
+}
+
+/* Dark mode specific adjustments for custom components */
+[data-bs-theme="dark"] .loading-overlay {
+    background: rgba(33, 37, 41, 0.8);
+}
+
+[data-bs-theme="dark"] .loading-content {
+    background: var(--bs-dark);
+    color: var(--bs-light);
+    border: 1px solid var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .table-loading-container {
+    color: var(--bs-body-color);
+}
+
+/* ========================================
+   DARK MODE COMPONENT FIXES
+   ======================================== */
+
+/* Footer dark mode */
+[data-bs-theme="dark"] footer {
+    background-color: var(--bs-dark) !important;
+    color: var(--bs-light) !important;
+}
+
+/* Card titles and headers in dark mode */
+[data-bs-theme="dark"] .card-title {
+    color: var(--bs-light) !important;
+}
+
+[data-bs-theme="dark"] .card-header {
+    background-color: var(--bs-secondary) !important;
+    color: var(--bs-light) !important;
+    border-bottom-color: var(--bs-border-color) !important;
+}
+
+/* Table headers in dark mode - override the light styling */
+[data-bs-theme="dark"] .table th,
+[data-bs-theme="dark"] .table thead th {
+    background-color: var(--bs-secondary) !important;
+    color: var(--bs-light) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+/* DataTables headers specifically */
+[data-bs-theme="dark"] #memberMonthlyTable thead th,
+[data-bs-theme="dark"] #sectionMonthlyTable thead th,
+[data-bs-theme="dark"] #wardMonthlyTable thead th,
+[data-bs-theme="dark"] #enquiriesTable thead th {
+    background-color: var(--bs-secondary) !important;
+    color: var(--bs-light) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+/* Dropzones in dark mode */
+[data-bs-theme="dark"] .dropzone-custom,
+[data-bs-theme="dark"] .dropzone-custom-small {
+    background-color: var(--bs-dark) !important;
+    border-color: var(--bs-primary) !important;
+    color: var(--bs-light) !important;
+}
+
+[data-bs-theme="dark"] .dropzone-custom:hover,
+[data-bs-theme="dark"] .dropzone-custom-small:hover {
+    background-color: var(--bs-secondary) !important;
+    border-color: var(--bs-info) !important;
+}
+
+[data-bs-theme="dark"] .dropzone-custom.dz-drag-hover,
+[data-bs-theme="dark"] .dropzone-custom-small.dz-drag-hover {
+    background-color: var(--bs-success-bg-subtle) !important;
+    border-color: var(--bs-success) !important;
+}
+
+/* Regular dropzone styling */
+[data-bs-theme="dark"] .dropzone,
+[data-bs-theme="dark"] #photo-dropzone {
+    background-color: var(--bs-dark) !important;
+    border-color: var(--bs-primary) !important;
+    color: var(--bs-light) !important;
+}
+
+/* Card body text in dark mode */
+[data-bs-theme="dark"] .card-body {
+    color: var(--bs-body-color) !important;
+}
+
+/* Report card specific fixes */
+[data-bs-theme="dark"] .card {
+    background-color: var(--bs-dark) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+/* TinyMCE dark mode - this needs to be applied after TinyMCE loads */
+[data-bs-theme="dark"] .tox-tinymce {
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .tox .tox-toolbar,
+[data-bs-theme="dark"] .tox .tox-toolbar__primary {
+    background: var(--bs-secondary) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .tox .tox-edit-area__iframe {
+    background: var(--bs-dark) !important;
+}
+
+/* Ensure text contrast in dark mode */
+[data-bs-theme="dark"] .text-muted {
+    color: var(--bs-secondary-color) !important;
+}
+
+/* ========================================
+   NAVBAR DARK MODE IMPROVEMENTS
+   ======================================== */
+
+/* Make navbar darker and text more grey in dark mode */
+[data-bs-theme="dark"] .navbar-dark {
+    background-color: #1a1d20 !important;
+}
+
+[data-bs-theme="dark"] .navbar-dark .navbar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.65) !important;
+}
+
+[data-bs-theme="dark"] .navbar-dark .navbar-nav .nav-link:hover,
+[data-bs-theme="dark"] .navbar-dark .navbar-nav .nav-link:focus {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+[data-bs-theme="dark"] .navbar-dark .navbar-brand {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* ========================================
+   ADDITIONAL DARK MODE FIXES
+   ======================================== */
+
+/* Description content display in enquiry detail */
+[data-bs-theme="dark"] .description-content {
+    background-color: var(--bs-dark) !important;
+    color: var(--bs-body-color) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+/* TinyMCE editor content area (iframe body) */
+[data-bs-theme="dark"] .tox .tox-edit-area iframe {
+    background-color: var(--bs-dark) !important;
+}
+
+/* More comprehensive TinyMCE dark mode */
+[data-bs-theme="dark"] .tox:not(.tox-tinymce-inline) .tox-editor-header {
+    background: var(--bs-secondary) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .tox .tox-tbtn {
+    color: var(--bs-light) !important;
+}
+
+[data-bs-theme="dark"] .tox .tox-tbtn:hover {
+    background: var(--bs-primary) !important;
+}
+
+/* Fix specific dropdown buttons (font, size, etc.) */
+[data-bs-theme="dark"] .tox .tox-tbtn--select,
+[data-bs-theme="dark"] .tox .tox-tbtn--bespoke {
+    color: var(--bs-light) !important;
+    background: var(--bs-secondary) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .tox .tox-tbtn--select:hover,
+[data-bs-theme="dark"] .tox .tox-tbtn--bespoke:hover {
+    background: var(--bs-primary) !important;
+    color: var(--bs-white) !important;
+}
+
+/* Fix dropdown button labels */
+[data-bs-theme="dark"] .tox .tox-tbtn__select-label {
+    color: var(--bs-light) !important;
+}
+
+/* Fix dropdown chevron icons */
+[data-bs-theme="dark"] .tox .tox-tbtn__select-chevron svg path {
+    fill: var(--bs-light) !important;
+}
+
+/* Fix TinyMCE menubar buttons (Edit, View, Insert, Format, Tools, Table) */
+[data-bs-theme="dark"] .tox .tox-menubar {
+    background: var(--bs-dark) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .tox .tox-mbtn,
+[data-bs-theme="dark"] .tox .tox-mbtn--select {
+    color: var(--bs-white) !important;
+    background: var(--bs-dark) !important;
+}
+
+[data-bs-theme="dark"] .tox .tox-mbtn:hover,
+[data-bs-theme="dark"] .tox .tox-mbtn--select:hover {
+    background: var(--bs-primary) !important;
+    color: var(--bs-white) !important;
+}
+
+/* Fix menubar button labels */
+[data-bs-theme="dark"] .tox .tox-mbtn__select-label {
+    color: var(--bs-white) !important;
+}
+
+/* Fix menubar chevron icons */
+[data-bs-theme="dark"] .tox .tox-mbtn__select-chevron svg path {
+    fill: var(--bs-white) !important;
+}
+
+/* Fix TinyMCE statusbar (bottom bar with path and word count) */
+[data-bs-theme="dark"] .tox .tox-statusbar {
+    background: var(--bs-dark) !important;
+    border-color: var(--bs-border-color) !important;
+    color: var(--bs-light) !important;
+}
+
+[data-bs-theme="dark"] .tox .tox-statusbar__text-container {
+    color: var(--bs-light) !important;
+}
+
+[data-bs-theme="dark"] .tox .tox-statusbar__path-item {
+    color: var(--bs-light) !important;
+    background: transparent !important;
+}
+
+[data-bs-theme="dark"] .tox .tox-statusbar__path-item:hover {
+    background: var(--bs-primary) !important;
+    color: var(--bs-white) !important;
+}
+
+[data-bs-theme="dark"] .tox .tox-statusbar__wordcount {
+    color: var(--bs-light) !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+/* Fix TinyMCE editor content text color - ensure all text is light */
+[data-bs-theme="dark"] .tox .tox-edit-area iframe body,
+[data-bs-theme="dark"] .tox .tox-edit-area iframe body.dark-mode-content,
+[data-bs-theme="dark"] .tox .tox-edit-area iframe body * {
+    color: var(--bs-light) !important;
+    background-color: transparent !important;
+}
+
+[data-bs-theme="dark"] .tox .tox-edit-area iframe body {
+    background-color: var(--bs-dark) !important;
+}
+
+/* Ensure paragraphs and other text elements are light colored */
+[data-bs-theme="dark"] .tox .tox-edit-area iframe body p,
+[data-bs-theme="dark"] .tox .tox-edit-area iframe body div,
+[data-bs-theme="dark"] .tox .tox-edit-area iframe body span,
+[data-bs-theme="dark"] .tox .tox-edit-area iframe body h1,
+[data-bs-theme="dark"] .tox .tox-edit-area iframe body h2,
+[data-bs-theme="dark"] .tox .tox-edit-area iframe body h3,
+[data-bs-theme="dark"] .tox .tox-edit-area iframe body h4,
+[data-bs-theme="dark"] .tox .tox-edit-area iframe body h5,
+[data-bs-theme="dark"] .tox .tox-edit-area iframe body h6 {
+    color: var(--bs-light) !important;
+}
+
+/* Fix font/size dropdown buttons showing light on light */
+[data-bs-theme="dark"] .tox .tox-collection {
+    background: var(--bs-secondary) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .tox .tox-collection__item {
+    color: var(--bs-light) !important;
+    background: transparent !important;
+}
+
+[data-bs-theme="dark"] .tox .tox-collection__item:hover {
+    background: var(--bs-primary) !important;
+    color: var(--bs-white) !important;
+}
+
+/* Read-only form controls (like Section dropdown) */
+[data-bs-theme="dark"] .form-control[readonly],
+[data-bs-theme="dark"] .form-select[readonly],
+[data-bs-theme="dark"] .form-control:disabled,
+[data-bs-theme="dark"] .form-select:disabled {
+    background-color: var(--bs-secondary) !important;
+    color: var(--bs-body-color) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+/* TinyMCE iframe body content - needs to be applied via JavaScript */
+[data-bs-theme="dark"] .mce-content-body {
+    background-color: var(--bs-dark) !important;
+    color: var(--bs-light) !important;
+}
+
+/* Email metadata styling for dark mode */
+[data-bs-theme="dark"] .email-metadata {
+    background-color: var(--bs-secondary) !important;
+    color: var(--bs-light) !important;
+    border-left-color: var(--bs-info) !important;
+}
+
+/* Specific TinyMCE class targeting */
+[data-bs-theme="dark"] .tinymce {
+    background-color: var(--bs-dark) !important;
+    color: var(--bs-light) !important;
+}
+
+/* Specific section dropdown targeting */
+[data-bs-theme="dark"] #id_section {
+    background-color: var(--bs-dark) !important;
+    color: var(--bs-light) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] #id_section option {
+    background-color: var(--bs-dark) !important;
+    color: var(--bs-light) !important;
+}
+
+/* Remove pink overdue styling - use standard table styling */
+[data-bs-theme="dark"] .overdue-row {
+    background-color: var(--bs-warning-bg-subtle) !important;
+    color: var(--bs-warning-text-emphasis) !important;
+}
+
+/* Fix monthly report sticky columns */
+[data-bs-theme="dark"] .sticky-col,
+[data-bs-theme="dark"] .sticky-col-2 {
+    background-color: var(--bs-secondary) !important;
+    color: var(--bs-light) !important;
+}
+
+/* Fix monthly report table headers */
+[data-bs-theme="dark"] #memberMonthlyTable thead th.sticky-col,
+[data-bs-theme="dark"] #memberMonthlyTable thead th.sticky-col-2,
+[data-bs-theme="dark"] #sectionMonthlyTable thead th.sticky-col,
+[data-bs-theme="dark"] #sectionMonthlyTable thead th.sticky-col-2,
+[data-bs-theme="dark"] #wardMonthlyTable thead th.sticky-col {
+    background-color: var(--bs-dark) !important;
+    color: var(--bs-light) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+/* General form controls in dark mode */
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select {
+    background-color: var(--bs-dark) !important;
+    color: var(--bs-light) !important;
+    border-color: var(--bs-border-color) !important;
+}
+
+[data-bs-theme="dark"] .form-control:focus,
+[data-bs-theme="dark"] .form-select:focus {
+    background-color: var(--bs-dark) !important;
+    color: var(--bs-light) !important;
+    border-color: var(--bs-primary) !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* DataTables column visibility dropdown */
+[data-bs-theme="dark"] .dropdown-menu.dt-button-collection {
+    background-color: var(--bs-dark) !important;
+    border-color: var(--bs-border-color) !important;
+    color: var(--bs-light) !important;
+}
+
+[data-bs-theme="dark"] .dt-button.dropdown-item {
+    color: var(--bs-light) !important;
+    background-color: transparent !important;
+}
+
+[data-bs-theme="dark"] .dt-button.dropdown-item:hover,
+[data-bs-theme="dark"] .dt-button.dropdown-item:focus {
+    background-color: var(--bs-primary) !important;
+    color: var(--bs-white) !important;
+}
+
+[data-bs-theme="dark"] .dt-button.dropdown-item.dt-button-active {
+    background-color: var(--bs-success-bg-subtle) !important;
+    color: var(--bs-success-text-emphasis) !important;
+}
+
+/* ========================================
+   DASHBOARD CARDS DARK MODE STYLING
+   ======================================== */
+
+/* Option 1: Muted/subtle approach - less vibrant colors in dark mode */
+[data-bs-theme="dark"] .bg-info {
+    background-color: var(--bs-info-bg-subtle) !important;
+    color: var(--bs-info-text-emphasis) !important;
+}
+
+[data-bs-theme="dark"] .bg-primary {
+    background-color: var(--bs-primary-bg-subtle) !important;
+    color: var(--bs-primary-text-emphasis) !important;
+}
+
+[data-bs-theme="dark"] .bg-danger {
+    background-color: var(--bs-danger-bg-subtle) !important;
+    color: var(--bs-danger-text-emphasis) !important;
+}
+
+[data-bs-theme="dark"] .bg-success {
+    background-color: var(--bs-success-bg-subtle) !important;
+    color: var(--bs-success-text-emphasis) !important;
+}
+
+/* Performance dashboard cards - light mode (bright colors) */
+.performance-card-created {
+    background-color: var(--bs-info) !important;
+    color: white !important;
+}
+
+.performance-card-within-sla {
+    background-color: var(--bs-success) !important;
+    color: white !important;
+}
+
+.performance-card-outside-sla {
+    background-color: var(--bs-danger) !important;
+    color: white !important;
+}
+
+.performance-card-still-open {
+    background-color: var(--bs-warning) !important;
+    color: var(--bs-dark) !important;
+}
+
+/* Performance dashboard cards - dark mode (outline style) */
+[data-bs-theme="dark"] .performance-card-created {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: 2px solid var(--bs-info) !important;
+    color: var(--bs-info) !important;
+    box-shadow: none !important;
+}
+
+[data-bs-theme="dark"] .performance-card-within-sla {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: 2px solid var(--bs-success) !important;
+    color: var(--bs-success) !important;
+    box-shadow: none !important;
+}
+
+[data-bs-theme="dark"] .performance-card-outside-sla {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: 2px solid var(--bs-danger) !important;
+    color: var(--bs-danger) !important;
+    box-shadow: none !important;
+}
+
+[data-bs-theme="dark"] .performance-card-still-open {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: 2px solid var(--bs-warning) !important;
+    color: var(--bs-warning) !important;
+    box-shadow: none !important;
+}
+
+/* Section workload cards - light mode (bright colors) */
+.workload-card-enquiries {
+    background-color: var(--bs-info) !important;
+    color: white !important;
+}
+
+.workload-card-open {
+    background-color: var(--bs-warning) !important;
+    color: var(--bs-dark) !important;
+}
+
+.workload-card-closed {
+    background-color: var(--bs-success) !important;
+    color: white !important;
+}
+
+/* Section workload cards - dark mode (outline style) */
+[data-bs-theme="dark"] .workload-card-enquiries {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: 2px solid var(--bs-info) !important;
+    color: var(--bs-info) !important;
+    box-shadow: none !important;
+}
+
+[data-bs-theme="dark"] .workload-card-open {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: 2px solid var(--bs-warning) !important;
+    color: var(--bs-warning) !important;
+    box-shadow: none !important;
+}
+
+[data-bs-theme="dark"] .workload-card-closed {
+    background: transparent !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    border: 2px solid var(--bs-success) !important;
+    color: var(--bs-success) !important;
+    box-shadow: none !important;
+}
+
+/* Ensure buttons in cards remain visible */
+[data-bs-theme="dark"] .bg-info .btn-light,
+[data-bs-theme="dark"] .bg-primary .btn-light,
+[data-bs-theme="dark"] .bg-danger .btn-light,
+[data-bs-theme="dark"] .bg-success .btn-light {
+    background-color: var(--bs-light) !important;
+    border-color: var(--bs-light) !important;
+    color: var(--bs-dark) !important;
+}
+
+/* ========================================
+   TOAST NOTIFICATION STYLES
+   ======================================== */
+
+/* Toast container positioning */
+.toast-container {
+    z-index: 1055 !important;
+}
+
+/* ========================================
+   ATTACHMENT DROPZONE STYLES
+   ======================================== */
+
+/* Attachment dropzone styling */
+.attachment-dropzone {
+    min-height: 80px;
+    cursor: pointer;
+}
+
+/* Upload status indicator */
+.attachment-upload-status {
+    display: none;
+}
+
+/* ========================================
+   HISTORY TIMELINE STYLES
+   ======================================== */
+
+/* History entry styling */
+.history-entry {
+    position: relative;
+    border-left: 3px solid #e9ecef !important;
+    transition: all 0.2s ease;
+}
+
+.history-entry:hover {
+    border-left-color: #007bff !important;
+    box-shadow: 0 2px 8px rgba(0,123,255,0.1);
+}
+
+/* History note type icon styling */
+.history-entry .bi {
+    font-size: 1.1em;
+    min-width: 20px;
+}
+
+/* History note type badge styling */
+.history-entry .badge {
+    font-size: 0.7em;
+    font-weight: normal;
+}
+
+/* ========================================
+   CUSTOM EMAIL DIRECTION ICONS
+   ======================================== */
+
+/* Custom email incoming icon: arrow pointing right in circle → TO envelope */
+.email-incoming-icon {
+    position: relative;
+    display: inline-block;
+    font-size: 1.3em !important;
+    width: 2em;
+    height: 1.2em;
+}
+
+.email-incoming-icon::before {
+    content: "\f138"; /* bi-arrow-right-circle */
+    font-family: "bootstrap-icons";
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-size: 1em;
+    color: inherit;
+}
+
+.email-incoming-icon::after {
+    content: "\F32F"; /* bi-envelope */
+    font-family: "bootstrap-icons";
+    position: absolute;
+    right: 0;
+    top: 0;
+    font-size: 1em;
+    color: inherit;
+}
+
+/* Custom email outgoing icon: envelope with arrow pointing right in circle (on right side) */
+.email-outgoing-icon {
+    position: relative;
+    display: inline-block;
+    font-size: 1.3em !important;
+    width: 2em;
+    height: 1.2em;
+}
+
+.email-outgoing-icon::before {
+    content: "\F32F"; /* bi-envelope */
+    font-family: "bootstrap-icons";
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-size: 1em;
+    color: inherit;
+}
+
+.email-outgoing-icon::after {
+    content: "\f138"; /* bi-arrow-right-circle */
+    font-family: "bootstrap-icons";
+    position: absolute;
+    right: 0;
+    top: 0;
+    font-size: 1em;
+    color: inherit;
+}
+
+/* Make all history icons bigger and more visible */
+.history-entry .bi,
+.history-entry .email-incoming-icon,
+.history-entry .email-outgoing-icon {
+    font-size: 1.3em !important;
+    min-width: 24px !important;
+    margin-right: 8px !important;
+}
+
+/* ========================================
+   TOAST NOTIFICATION STYLES
+   ======================================== */
+
+/* Warning toast styling - black text on yellow background */
+.toast-warning {
+    color: #000 !important;
+}
+
+.toast-warning .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* Form validation field highlighting */
+.field-highlight-error {
+    transition: box-shadow 0.3s ease !important;
+    box-shadow: 0 0 10px rgba(220, 53, 69, 0.5) !important;
+}
+
+.field-highlight-warning {
+    transition: box-shadow 0.3s ease !important;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.5) !important;
+}
+
+/* ========================================
+   EMAIL DROPZONE STYLES
+   ======================================== */
+
+/* Enhanced dropzone visibility */
+.email-dropzone-visible {
+    min-height: 120px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.3s ease !important;
+    cursor: pointer !important;
+    position: relative !important;
+    border: 3px dashed #6c757d !important;
+}
+
+.email-dropzone-visible:hover {
+    border: 3px dashed #0d6efd !important;
+    background-color: #f8f9ff !important;
+}
+
+.email-dropzone-visible.border-success {
+    border: 3px dashed #198754 !important;
+    background-color: #f8fff9 !important;
+}
+
+.email-dropzone-visible.bg-light {
+    background-color: #f8fff9 !important;
+}
+
+/* Dropzone content styling */
+.email-dropzone-visible .dropzone-content {
+    width: 100% !important;
+}
+
+.email-dropzone-visible .bi-cloud-upload {
+    opacity: 0.8 !important;
+    transition: all 0.3s ease !important;
+}
+
+.email-dropzone-visible:hover .bi-cloud-upload {
+    opacity: 1 !important;
+    transform: scale(1.1) !important;
+}
+
+/* Loading state */
+.email-dropzone-visible .dropzone-loading {
+    width: 100% !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .email-dropzone-visible {
+        min-height: 100px !important;
+        padding: 1rem !important;
+    }
+
+    .email-dropzone-visible .bi-cloud-upload {
+        font-size: 1.5rem !important;
+    }
+}
+
+/* ========================================
+   PRINT STYLES - ENQUIRY DETAIL PAGE
+   ======================================== */
+
+@media print {
+    /* Hide non-essential elements for printing */
+    .btn, .dropzone, .dropzone-area, .alert,
+    .email-update-dropzone, .attachment-dropzone,
+    .navbar, .breadcrumb, .card-header .btn,
+    .remove-image-btn, .delete-attachment-btn,
+    .attachment-upload-status, .email-status,
+    #clearEmailBtn, #clearPhotosBtn, #add-email-note,
+    #clear-email, .dz-message, .dropzone-content,
+    .dropzone-loading, form.crispy, .form-group, .crispy-form,
+    input, textarea, select, button, .btn-group,
+    label, .form-label, .form-text, .help-text,
+    #email-update-dropzone, .email-dropzone-visible {
+        display: none !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Hide small text in dropzone messages, but NOT in history */
+    .dz-message small,
+    .dropzone small,
+    .card-body > .mb-3 small {
+        display: none !important;
+    }
+
+    /* Completely collapse form areas - use position absolute to remove from flow */
+    form, form.crispy, .form-group, .crispy-form,
+    #email-update-dropzone, .email-dropzone-visible {
+        position: absolute !important;
+        left: -9999px !important;
+        width: 0 !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    /* Hide the d-flex gap-2 that contains print button */
+    .d-flex.gap-2:has(.btn) {
+        display: none !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Hide breadcrumb and nav areas */
+    nav[aria-label="breadcrumb"],
+    .breadcrumb {
+        display: none !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Collapse the History card body form section */
+    .card-body > form,
+    .card-body > .crispy {
+        position: absolute !important;
+        left: -9999px !important;
+    }
+
+    /* Ensure title container doesn't have extra spacing */
+    .d-flex.justify-content-between {
+        margin-bottom: 5px !important;
+        margin-top: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Remove extra spacing from top of page */
+    .d-flex.justify-content-between.align-items-start {
+        page-break-before: avoid !important;
+    }
+
+    /* Optimize layout for A4 portrait */
+    body {
+        font-size: 10pt !important;
+        line-height: 1.3 !important;
+        color: #000 !important;
+        background: white !important;
+    }
+
+    /* Force all content to start at top - no orphans */
+    * {
+        orphans: 3 !important;
+        widows: 3 !important;
+    }
+
+    /* Prevent page breaks after titles */
+    h1, h2, h3, h4, h5, h6, .h2, .h6 {
+        page-break-after: avoid !important;
+    }
+
+    /* Page container - no extra spacing */
+    .container-fluid {
+        padding: 5px !important;
+        margin: 0 !important;
+    }
+
+    /* Remove margin from top-level divs */
+    .container-fluid > div {
+        margin: 0 !important;
+    }
+
+    /* Layout adjustments for print */
+    .col-md-10 {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Reposition sidebar to appear after history */
+    .col-md-2 {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        order: 999 !important;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    /* Make the parent row flex to allow reordering */
+    .row:has(.col-md-10):has(.col-md-2) {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    /* Main content comes first */
+    .col-md-10 {
+        order: 1 !important;
+    }
+
+    /* Hide the Actions card in sidebar */
+    .col-md-2 .card:not(:has(#attachments-list)) {
+        display: none !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Attachments card should flow naturally */
+    .col-md-2 .card:has(#attachments-list) {
+        margin-top: 5px !important;
+        margin-bottom: 0 !important;
+        page-break-before: avoid !important;
+    }
+
+    /* Hide attachment dropzone and upload status */
+    #attachment-dropzone,
+    #attachment-upload-status {
+        display: none !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Ensure all columns display properly */
+    .col-md-3, .col-md-4, .col-md-6, .col-md-8, .col-md-12 {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    /* Enquiry info card - make it visible and keep with title */
+    .row.mb-4:first-of-type .card,
+    .card:first-of-type {
+        display: block !important;
+        page-break-before: avoid !important;
+        page-break-after: avoid !important;
+        margin-bottom: 5px !important;
+        margin-top: 0 !important;
+    }
+
+    /* Title and first card should stay together */
+    .d-flex.justify-content-between + .row {
+        page-break-before: avoid !important;
+        margin-top: 0 !important;
+    }
+
+    /* Enquiry details - keep them visible and compact */
+    .card-body .row .col-md-2 {
+        width: 16.66% !important;
+        display: inline-block !important;
+        font-size: 9pt !important;
+        padding: 2px 5px !important;
+        margin-bottom: 3px !important;
+    }
+
+    /* Cards and borders */
+    .card {
+        display: block !important;
+        border: 1px solid #ddd !important;
+        box-shadow: none !important;
+        margin-bottom: 8px !important;
+        page-break-inside: avoid !important;
+        background: white !important;
+    }
+
+    .card-header {
+        display: block !important;
+        background: #f0f0f0 !important;
+        border-bottom: 1px solid #ddd !important;
+        padding: 5px 10px !important;
+        font-size: 11pt !important;
+        font-weight: bold !important;
+    }
+
+    .card-body {
+        display: block !important;
+        padding: 10px !important;
+    }
+
+    /* Make sure rows display properly */
+    .row {
+        display: block !important;
+        margin: 0 !important;
+    }
+
+    /* History entries */
+    .history-entry {
+        border: 1px solid #ddd !important;
+        margin-bottom: 0.5rem !important;
+        padding: 0.5rem !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Attachments - show in compact list */
+    .attachment-item {
+        display: inline-block !important;
+        width: auto !important;
+        margin: 0.2rem !important;
+        padding: 0.3rem !important;
+        border: 1px solid #ddd !important;
+        font-size: 9pt !important;
+    }
+
+    /* Hide icon images for PDFs and Word docs */
+    img[src*="pdf-icon"],
+    img[src*="doc-icon"],
+    img[src*="word-icon"],
+    img[src*="missing-image"],
+    .doc-icon-100 {
+        display: none !important;
+    }
+
+    /* Hide PDF and Word document attachments completely */
+    #attachments-list > div:has(img[src*="pdf-icon"]),
+    #attachments-list > div:has(img[src*="doc-icon"]),
+    #attachments-list > div:has(img[src*="word-icon"]) {
+        display: none !important;
+    }
+
+    /* Show actual image attachments */
+    #attachments-list .img-thumbnail,
+    #attachments-list .img-attachment-120 {
+        display: block !important;
+        max-width: 400px !important;
+        width: auto !important;
+        height: auto !important;
+        margin: 10px auto !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* ALWAYS show images in the description content area */
+    .description-content img {
+        display: block !important;
+        max-width: 100% !important;
+        height: auto !important;
+        margin: 5px 0 !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Style attachment section for print */
+    #attachments-list > div {
+        margin-bottom: 15px !important;
+        text-align: center !important;
+    }
+
+    /* Attachment filename below image */
+    .attachment-filename {
+        display: block !important;
+        font-size: 10pt !important;
+        margin-top: 5px !important;
+    }
+
+    /* Make text more readable */
+    h1, h2, h3, h4, h5, h6 {
+        color: #000 !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    /* Page breaks */
+    .page-break-before {
+        page-break-before: always !important;
+    }
+
+    .page-break-after {
+        page-break-after: always !important;
+    }
+
+    /* Ensure important content doesn't break across pages */
+    .description-content, .history-timeline {
+        page-break-inside: avoid !important;
+    }
+
+    /* Prevent unnecessary page breaks between sections */
+    .card:not(:first-child) {
+        page-break-before: auto !important;
+    }
+
+    /* Keep Description close to Enquiry Info */
+    .card:nth-child(2) {
+        page-break-before: avoid !important;
+        margin-top: 0.5rem !important;
+    }
+
+    /* Remove all unnecessary margins and spacing */
+    .mb-4, .my-4, .mb-3, .my-3, .mt-4, .mb-2, .my-2 {
+        margin-bottom: 3px !important;
+        margin-top: 0 !important;
+    }
+
+    /* First card on page should have no top margin */
+    .row.mb-4:first-of-type,
+    .card:first-of-type {
+        margin-top: 0 !important;
+        page-break-before: avoid !important;
+    }
+
+    /* Make sure title area is visible */
+    h1, h2, .h2, .h6 {
+        display: block !important;
+        margin: 5px 0 !important;
+    }
+
+    h1, .h2 {
+        font-size: 16pt !important;
+        font-weight: bold !important;
+    }
+
+    .h6 {
+        font-size: 10pt !important;
+    }
+
+    h3, h4, h5, h6 {
+        font-size: 11pt !important;
+        margin: 3px 0 !important;
+    }
+
+    /* Ensure description content is visible and all child elements display */
+    .description-content {
+        display: block !important;
+        visibility: visible !important;
+        background: white !important;
+        border: 1px solid #ddd !important;
+        padding: 10px !important;
+        margin: 5px 0 !important;
+        min-height: auto !important;
+        height: auto !important;
+    }
+
+    /* Make sure all content inside description displays */
+    .description-content * {
+        display: block !important;
+        visibility: visible !important;
+        color: #000 !important;
+    }
+
+    .description-content p,
+    .description-content div,
+    .description-content span {
+        display: block !important;
+        margin: 3px 0 !important;
+        line-height: 1.4 !important;
+    }
+
+    /* If description is empty, show placeholder */
+    .description-content:empty::after {
+        content: "No description provided";
+        color: #666 !important;
+        font-style: italic;
+    }
+
+    /* History timeline */
+    .history-entry {
+        display: block !important;
+        margin-bottom: 5px !important;
+        padding: 8px !important;
+        border: 1px solid #ddd !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Email metadata boxes in history */
+    .email-metadata {
+        display: block !important;
+        background: #f5f5f5 !important;
+        border-left: 3px solid #007bff !important;
+        padding: 8px !important;
+        margin: 5px 0 !important;
+    }
+
+    /* History note content */
+    .history-note {
+        display: block !important;
+        margin: 5px 0 !important;
+        white-space: pre-wrap !important;
+    }
+
+    /* Ensure timestamp in history displays */
+    .history-entry small,
+    .history-entry .text-muted small {
+        display: inline !important;
+        font-size: 9pt !important;
+        color: #666 !important;
+    }
+
+    /* History entry header sections */
+    .history-entry .d-flex {
+        display: flex !important;
+        justify-content: space-between !important;
+        margin-bottom: 3px !important;
+    }
+
+    .history-entry .d-flex strong {
+        display: inline !important;
+        margin-right: 5px !important;
+    }
+
+    /* Ensure strong/bold text is visible */
+    strong {
+        font-weight: bold !important;
+        color: #000 !important;
+    }
+
+    /* Text elements */
+    span, p, div {
+        color: #000 !important;
+    }
+
+    /* Badges should be visible */
+    .badge {
+        display: inline-block !important;
+        border: 1px solid #000 !important;
+        padding: 2px 6px !important;
+        font-size: 9pt !important;
+    }
+}

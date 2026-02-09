@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Members Enquiries - A secure Django application for managing councillor enquiries with Microsoft Entra ID Single Sign-On authentication.">
+    <title>{% block title %}Members Enquiries{% endblock %}</title>
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="{% static 'img/members.ico' %}" type="image/x-icon">
+    <link rel="icon" type="image/x-icon" href="{% static 'img/members.ico' %}">
+    <!-- Bootstrap CSS -->
+    <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
+    <!-- DataTables CSS -->
+    <link href="{% static 'vendor/datatables/dataTables.bootstrap5.min.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/datatables/buttons.bootstrap5.min.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/datatables/buttons.bootstrap5.min.css' %}" rel="stylesheet">
+    <!-- Dropzone CSS -->
+    <link href="{% static 'vendor/dropzone/dropzone.min.css' %}" rel="stylesheet">
+    <!-- Alertify CSS - Removed: Now using Bootstrap alerts consistently -->
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons/bootstrap-icons.css' %}">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+    {% block extra_css %}{% endblock %}
+
+    <style nonce="{{ request.csp_nonce }}">
+        .changelog-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+    
+    <!-- Inline script to prevent theme flash - must run before body renders -->
+    <script nonce="{{ request.csp_nonce }}">
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', savedTheme);
+        })();
+    </script>
+
+</head>
+<body data-theme="light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'application:index' %}">
+                <img src="{% static 'img/members.ico' %}" alt="Members Enquiries Logo" height="32" class="d-inline-block align-text-top me-2">
+                Members' Enquiries
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    {% if user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'application:index' %}">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'application:enquiry_list' %}">Enquiries</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="createDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Quick Actions
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'application:enquiry_create' %}">Create Enquiry</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'application:enquiry_list' %}?status=open">Open Enquiries</a></li>
+                            <li><a class="dropdown-item" href="{% url 'application:enquiry_list' %}?overdue_only=true">Overdue Enquiries</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="reportsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Reports
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><h6 class="dropdown-header">Performance Reports</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'application:performance_dashboard_report' %}">📈 Performance Dashboard</a></li>
+                            <li><a class="dropdown-item" href="{% url 'application:average_response_time_report' %}">⏱️ Average Response Time</a></li>
+                            <li><a class="dropdown-item" href="{% url 'application:overdue_enquiries_report' %}">⚠️ Overdue Enquiries</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Visual Reports</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'application:section_workload_chart_report' %}">📊 Section Workload</a></li>
+                            <li><a class="dropdown-item" href="{% url 'application:job_workload_chart_report' %}">💼 Job Workload</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">Statistical Reports</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'application:enquiries_per_member_report' %}">👤 Enquiries per Member</a></li>
+                            <li><a class="dropdown-item" href="{% url 'application:enquiries_per_member_monthly_report' %}">📅 Enquiries per Member (Monthly)</a></li>
+                            <li><a class="dropdown-item" href="{% url 'application:enquiries_per_section_report' %}">🏢 Enquiries per Section</a></li>
+                            <li><a class="dropdown-item" href="{% url 'application:enquiries_per_section_monthly_report' %}">📅 Enquiries per Section (Monthly)</a></li>
+                            <li><a class="dropdown-item" href="{% url 'application:enquiries_per_job_report' %}">💼 Enquiries per Job</a></li>
+                            <li><a class="dropdown-item" href="{% url 'application:enquiries_per_job_monthly_report' %}">📅 Enquiries per Job (Monthly)</a></li>
+                            <li><a class="dropdown-item" href="{% url 'application:enquiries_per_ward_report' %}">🗺️ Enquiries per Ward</a></li>
+                            <li><a class="dropdown-item" href="{% url 'application:enquiries_per_ward_monthly_report' %}">📅 Enquiries per Ward (Monthly)</a></li>
+                            <li><a class="dropdown-item" href="{% url 'application:monthly_enquiries_report' %}">📈 Monthly Trends</a></li>
+                            {% if user.is_staff %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">System Reports</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'application:file_management_dashboard' %}">💾 File Management</a></li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                    <!-- Dark Mode Toggle -->
+                    <li class="nav-item">
+                        <button id="theme-toggle" class="btn btn-link nav-link border-0 p-2" type="button" title="Toggle dark mode">
+                            <i id="theme-icon" class="bi bi-moon-stars"></i>
+                        </button>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            {{ user.username }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {% if user.is_staff %}
+                            <li><a class="dropdown-item" href="{% url 'admin:index' %}">Admin</a></li>
+                            {% endif %}
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#aboutModal">About</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'application:logout' %}">Logout</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <!-- Global Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay{% if show_loading_overlay %} show{% endif %}">
+        <div class="loading-content">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h5>{{ loading_title|default:"Loading..." }}</h5>
+            <p class="text-muted">{{ loading_message|default:"Please wait while we process your request" }}</p>
+        </div>
+    </div>
+
+    {% if show_loading_overlay %}
+    <!-- Server-side loading overlay JavaScript -->
+    <script nonce="{{ request.csp_nonce }}">
+    document.addEventListener('DOMContentLoaded', function() {
+        // Overlay is already shown via CSS class, but we can add additional logic here
+        console.log('Server-side loading overlay is active');
+        
+        // Optional: Auto-hide after a certain time as a fallback
+        {% if loading_timeout %}
+        setTimeout(function() {
+            if (window.hideLoadingOverlay) {
+                window.hideLoadingOverlay();
+                console.log('Loading overlay auto-hidden after timeout');
+            }
+        }, {{ loading_timeout }});
+        {% endif %}
+    });
+    </script>
+    {% endif %}
+
+    <div class="{% block container_class %}container-fluid{% endblock %} my-4">
+        {% if messages %}
+        <script nonce="{{ request.csp_nonce }}">
+            document.addEventListener('DOMContentLoaded', function() {
+                {% for message in messages %}
+                    // Map Django message tags to unified toast types
+                    let messageType = '{{ message.tags|default:"info" }}';
+
+                    // Extract the normalized type from tags (set by MessageService)
+                    const tags = messageType.split(' ');
+                    let toastType = 'info'; // default
+
+                    // Look for our normalized types in the tags
+                    if (tags.includes('success')) toastType = 'success';
+                    else if (tags.includes('error')) toastType = 'error';
+                    else if (tags.includes('warning')) toastType = 'warning';
+                    else if (tags.includes('info')) toastType = 'info';
+                    // Legacy mappings for backward compatibility
+                    else if (messageType.includes('error') || messageType.includes('danger')) toastType = 'error';
+                    else if (messageType.includes('debug')) toastType = 'info';
+
+                    // Use the global toast notification system
+                    showToast("{{ message|escapejs }}", toastType);
+                {% endfor %}
+            });
+        </script>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- About Modal -->
+    <div class="modal fade" id="aboutModal" tabindex="-1" aria-labelledby="aboutModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="aboutModalLabel">About Members Enquiries</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Members Enquiries System</h6>
+                    <p>Version: {{ version }}</p>
+                    <p>A Django application for managing councillor enquiries with Microsoft Entra ID Single Sign-On authentication, email integration, and comprehensive reporting.</p>
+
+                    <h6 class="mt-3">Environment</h6>
+                    <p>Running in <span class="badge bg-warning">{{ environment|default:"DEVELOPMENT" }}</span> mode</p>
+
+                    <h6 class="mt-3">Database</h6>
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <th>Server:</th>
+                                <td>{{ db_server|default:"SQLite" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Database:</th>
+                                <td>{{ db_name|default:"Template" }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+                        <h6 class="mb-0" id="changelogHeading">Recent Changes (Last 5)</h6>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="toggleChangelog">
+                            <label class="form-check-label small" for="toggleChangelog">
+                                Show All History
+                            </label>
+                        </div>
+                    </div>
+                    <div id="changelogContainer" class="changelog-container">
+                        <ul class="list-group" id="recentChanges">
+                            {% for version_num, date, description in change_log|slice:":5" %}
+                            <li class="list-group-item">
+                                <strong>v{{ version_num }}</strong> ({{ date }}) - {{ description }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        <ul class="list-group d-none" id="allChanges">
+                            {% for version_num, date, description in change_log %}
+                            <li class="list-group-item">
+                                <strong>v{{ version_num }}</strong> ({{ date }}) - {{ description }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Toast Container -->
+    <div id="toast-container" class="position-fixed top-0 end-0 p-3 toast-container"></div>
+
+    <footer class="bg-light py-4 mt-5">
+        <div class="container text-center">
+            <p class="mb-0">{% now "Y" %} Members Enquiries System - Your Council Name Here</p>
+        </div>
+    </footer>
+
+    <!-- jQuery (must come before Alertify and any JS using $) -->
+    <script src="{% static 'vendor/jquery/jquery-3.7.1.min.js' %}"></script>
+    <!-- Bootstrap JS -->
+    <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
+    
+    <!-- Global Toast Notification System -->
+    <script nonce="{{ request.csp_nonce }}">
+    // Global toast notification function
+    function showToast(message, type, options) {
+        type = type || 'info';
+        options = options || {};
+        
+        var toastId = 'toast-' + Date.now();
+        var bgClass = {
+            'success': 'bg-success',
+            'error': 'bg-danger', 
+            'warning': 'bg-warning',
+            'info': 'bg-info'
+        }[type] || 'bg-info';
+        
+        var icon = {
+            'success': 'bi-check-circle',
+            'error': 'bi-exclamation-triangle',
+            'warning': 'bi-exclamation-triangle', 
+            'info': 'bi-info-circle'
+        }[type] || 'bi-info-circle';
+        
+        var strong = options.strong || {
+            'success': 'Success!',
+            'error': 'Error!',
+            'warning': 'Warning!',
+            'info': 'Info:'
+        }[type] || 'Notification:';
+        
+        // Add warning-specific class for custom styling
+        var toastTypeClass = type === 'warning' ? 'toast-warning' : '';
+        var textClass = type === 'warning' ? '' : 'text-white';
+
+        var toastHtml = `
+            <div id="${toastId}" class="toast align-items-center ${textClass} ${bgClass} ${toastTypeClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="bi ${icon} me-2"></i><strong>${strong}</strong> ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+        
+        $('#toast-container').append(toastHtml);
+        var toastElement = new bootstrap.Toast(document.getElementById(toastId), {
+            autohide: true,
+            delay: options.delay || 5000
+        });
+        toastElement.show();
+        
+        // Remove toast element after it's hidden
+        $('#' + toastId).on('hidden.bs.toast', function() {
+            $(this).remove();
+        });
+    }
+    
+    // Legacy function for backward compatibility
+    function showAlert(type, message, options) {
+        showToast(message, type, options);
+    }
+    </script>
+    <!-- DataTables JS -->
+    <script src="{% static 'vendor/datatables/jquery.dataTables.min.js' %}"></script>
+    <script src="{% static 'vendor/datatables/dataTables.bootstrap5.min.js' %}"></script>
+    <script src="{% static 'vendor/datatables/dataTables.buttons.min.js' %}"></script>
+    <script src="{% static 'vendor/datatables/buttons.bootstrap5.min.js' %}"></script>
+    <!-- Export tools (required for Excel/PDF export) -->
+    <script src="{% static 'vendor/export-tools/jszip.min.js' %}"></script>
+    <script src="{% static 'vendor/export-tools/pdfmake.min.js' %}"></script>
+    <script src="{% static 'vendor/export-tools/vfs_fonts.js' %}"></script>
+    <script src="{% static 'vendor/datatables/buttons.html5.min.js' %}"></script>
+    <script src="{% static 'vendor/datatables/buttons.print.min.js' %}"></script>
+    <script src="{% static 'vendor/datatables/buttons.colVis.min.js' %}"></script>
+    <!-- Dropzone JS -->
+    <script nonce="{{ request.csp_nonce }}">
+        // Disable Dropzone auto-discovery before loading the library
+        window.Dropzone = { autoDiscover: false };
+    </script>
+    <script src="{% static 'vendor/dropzone/dropzone.min.js' %}"></script>
+    <script nonce="{{ request.csp_nonce }}">
+        // Ensure auto-discovery is disabled after library loads
+        if (typeof Dropzone !== 'undefined') {
+            Dropzone.autoDiscover = false;
+        }
+    </script>
+    <!-- Alertify JS - Removed: Now using Bootstrap alerts consistently -->
+    <script src="{% static 'js/main.js' %}"></script>
+    <script src="{% static 'js/custom.js' %}"></script>
+    
+    {% block extra_js %}
+    {% endblock %}
+
+    <script nonce="{{ request.csp_nonce }}">
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleCheckbox = document.getElementById('toggleChangelog');
+            const recentChanges = document.getElementById('recentChanges');
+            const allChanges = document.getElementById('allChanges');
+            const heading = document.getElementById('changelogHeading');
+
+            if (toggleCheckbox && recentChanges && allChanges && heading) {
+                toggleCheckbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        // Show all changes
+                        recentChanges.classList.add('d-none');
+                        allChanges.classList.remove('d-none');
+                        heading.textContent = 'Complete Change History';
+                    } else {
+                        // Show recent changes only
+                        recentChanges.classList.remove('d-none');
+                        allChanges.classList.add('d-none');
+                        heading.textContent = 'Recent Changes (Last 5)';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

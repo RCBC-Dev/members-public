@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}Members Enquiries System - Welcome{% endblock %}
+
+{% load socialaccount %}
+
+{% block content %}
+<div class="text-center py-5">
+    <h1 class="display-4 mb-4">Members' Enquiries System</h1>
+    <p class="lead mb-5">Streamlined enquiry management for councillor requests with enhanced reporting and email integration</p>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body p-5 text-center">
+                    <h2 class="h4 mb-4">Please log in to access the system</h2>
+                    <p class="text-muted mb-4">Secure access with Microsoft Entra ID authentication for council staff and administrators.</p>
+                    <a href="{% provider_login_url 'microsoft' method='oauth2' %}" class="btn btn-primary btn-lg d-flex align-items-center justify-content-center mx-auto login-btn-maxwidth">
+                        <i class="bi bi-microsoft me-2"></i> Sign in with Microsoft
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,852 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+{% load list_extras %}
+{% load custom_filters %}
+
+{% block title %}{{ enquiry.reference|default:"Enquiry" }} - Members Enquiries System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'application:index' %}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'application:enquiry_list' %}">Enquiries</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ enquiry.reference|default:"No Reference" }}</li>
+            </ol>
+        </nav>
+        <h1 class="h2">{{ enquiry.title }}</h1>
+        <p class="h6 text-muted mb-0">{{ enquiry.reference|default:"No Reference" }}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button id="print-button" class="btn btn-outline-primary">
+            <i class="bi bi-printer me-1"></i>Print
+        </button>
+        <a href="{% url 'application:enquiry_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Back to List
+        </a>
+    </div>
+</div>
+
+<!-- Enquiry Information -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body py-3">
+                <!-- First Row: Core Info -->
+                <div class="row align-items-center mb-3">
+                    <div class="col-md-2">
+                        <strong>Member:</strong><br>
+                        <span class="text-muted">{{ enquiry.member.full_name }}</span><br>
+                        <small class="text-muted">({{ enquiry.member.ward.name }})</small>
+                    </div>
+                    <div class="col-md-2">
+                        <strong>Status:</strong><br>
+                        <span class="badge {% if enquiry.status == 'new' or enquiry.status == 'open' %}bg-primary{% elif enquiry.status == 'closed' %}bg-success{% else %}bg-secondary{% endif %}">
+                            {% if enquiry.status == 'new' %}Open{% else %}{{ enquiry.get_status_display }}{% endif %}
+                        </span>
+                    </div>
+                    <div class="col-md-2">
+                        <strong>Section:</strong><br>
+                        <span class="text-muted">{{ enquiry.section.name|default:"Not assigned" }}</span>
+                        {% if enquiry.section %}
+                            <br><small class="text-muted">({{ enquiry.section.department.name }})</small>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-2">
+                        <strong>Contact:</strong><br>
+                        <span class="text-muted">{{ enquiry.contact.name|default:"Not assigned" }}</span>
+                        {% if enquiry.contact %}
+                            <br><small class="text-muted">({{ enquiry.contact.telephone_number }})</small>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-2">
+                        <strong>Job:</strong><br>
+                        {% if enquiry.status == 'closed' and enquiry.job_type and enquiry.job_type.name == 'Miscellaneous' %}
+                            <!-- Editable for closed miscellaneous -->
+                            <div id="job-type-display">
+                                <span class="text-muted">{{ enquiry.job_type.name }}</span>
+                                <button type="button" class="btn btn-sm btn-outline-primary ms-2" id="edit-job-type-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </button>
+                            </div>
+                            <div id="job-type-edit-form" class="d-none">
+                                <select id="job-type-select" class="form-select form-select-sm mb-2">
+                                    <option value="">Loading...</option>
+                                </select>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-success" id="save-job-type-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                                        <i class="bi bi-check-circle"></i> Save
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-secondary" id="cancel-job-type-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                                        <i class="bi bi-x-circle"></i> Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        {% else %}
+                            <!-- Read-only for all other cases -->
+                            <span class="text-muted">{{ enquiry.job_type.name|default:"Not specified" }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-2">
+                        <strong>Service Type:</strong><br>
+                        {% if enquiry.service_type %}
+                            <span class="text-muted">{{ enquiry.get_service_type_display }}</span>
+                        {% else %}
+                            <span class="text-muted">Not set</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Action Buttons Row -->
+                <div class="row align-items-center mb-3">
+                    <div class="col-md-12 text-end">
+                        <div class="btn-group btn-group-sm" role="group">
+                            {% if enquiry.status != 'closed' %}
+                            <a href="{% url 'application:enquiry_edit' enquiry.id %}" class="btn btn-outline-primary">
+                                <i class="bi bi-pencil me-1"></i>Edit
+                            </a>
+                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#closeEnquiryModal{{ enquiry.id }}">
+                                <i class="bi bi-x-circle me-1"></i>Close
+                            </button>
+                            {% else %}
+                            <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#reopenEnquiryModal{{ enquiry.id }}">
+                                <i class="bi bi-arrow-clockwise me-1"></i>Re-Open
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Second Row: Dates -->
+                <div class="row align-items-center">
+                    <div class="col-md-2">
+                        <strong>Added By:</strong><br>
+                        <span class="text-muted">
+                            {% if enquiry.admin and enquiry.admin.user %}
+                                {{ enquiry.admin.user.get_full_name|default:enquiry.admin.user.username }}
+                            {% else %}
+                                Unassigned
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="col-md-2">
+                        <strong>Created:</strong><br>
+                        <span class="text-muted">{{ enquiry.created_at|date:"M d, Y H:i" }}</span>
+                    </div>
+                    <div class="col-md-2">
+                        <strong>Updated:</strong><br>
+                        <span class="text-muted">{{ enquiry.updated_at|date:"M d, Y H:i" }}</span>
+                    </div>
+                    <div class="col-md-2">
+                        <strong>Due Date:</strong><br>
+                        <span class="{% if enquiry.due_date < today and enquiry.status != 'closed' %}text-danger fw-bold{% else %}text-muted{% endif %}">
+                            {{ enquiry.due_date|date:"M d, Y" }}
+                        </span>
+                    </div>
+                    <div class="col-md-2">
+                        <strong>Closed:</strong><br>
+                        {% if enquiry.status == 'closed' and enquiry.closed_at %}
+                            <span class="text-muted">{{ enquiry.closed_at|date:"M d, Y H:i" }}</span>
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-2">
+                        <strong>Resolution Time:</strong><br>
+                        {% resolution_time_display enquiry %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enquiry Content -->
+<div class="row">
+    <div class="col-md-10">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Description</h5>
+            </div>
+            <div class="card-body">
+                <div class="description-content">
+                    {{ enquiry.description|safe }}
+                </div>
+            </div>
+        </div>
+
+        <!-- History Section -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">History & Notes ({{ history.count }})</h5>
+            </div>
+            <div class="card-body">
+                <!-- Add History Form -->
+                {% crispy history_form %}
+
+                <!-- History Timeline -->
+                <div class="mt-4">
+                    <h6>History Timeline</h6>
+                    {% if history %}
+                        {% for entry in history %}
+                        <div class="history-entry mb-3 p-3 border rounded">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi {{ entry.get_note_type_icon }} {{ entry.get_note_type_color }}"></i>
+                                    <span class="fw-bold text-dark me-3">{{ entry.get_note_type_display }}</span>
+                                </div>
+                                <div class="d-flex align-items-center text-muted">
+                                    <strong class="me-2">{{ entry.created_by.get_full_name|default:entry.created_by.username }}</strong>
+                                    <small>{{ entry.created_at|date:"M d, Y H:i" }}</small>
+                                </div>
+                            </div>
+                            <div class="history-note">
+                                {{ entry.note|smart_linebreaks }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No history entries yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-md-2">
+        <!-- Attachments -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-paperclip me-2"></i>Attachments (<span id="attachment-count">{{ attachments.count }}</span>)
+                </h6>
+            </div>
+            <div class="card-body">
+                <!-- Attachment Upload Dropzone -->
+                <div class="mb-3">
+                    <div id="attachment-dropzone" class="dropzone border border-2 border-dashed rounded p-3 text-center attachment-dropzone">
+                        <div class="dz-message">
+                            <i class="bi bi-cloud-upload fs-4 text-muted"></i>
+                            <p class="mt-2 mb-1 small">Drop files here or click to browse</p>
+                            <small class="text-muted">Images, PDFs, Word documents</small>
+                        </div>
+                    </div>
+                    <div id="attachment-upload-status" class="mt-2 attachment-upload-status">
+                        <div class="alert alert-info alert-sm mb-0">
+                            <i class="bi bi-upload me-1"></i>Uploading...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Existing Attachments -->
+                <div id="attachments-list">
+                    {% if attachments %}
+                        {% load file_utils %}
+                        {% for attachment in attachments %}
+                        <div class="mb-3 pb-2 {% if not forloop.last %}border-bottom{% endif %}">
+                            <div class="text-center mb-2">
+                                {% if attachment.filename|slice:"-4:"|lower == ".pdf" %}
+                                    {% if attachment.file_path|file_exists %}
+                                        <img src="{% static 'img/pdf-icon.svg' %}" alt="PDF Document" class="doc-icon-100">
+                                    {% else %}
+                                        <div class="missing-file-container text-center p-3 border border-danger rounded">
+                                            <img src="{% static 'img/pdf-icon.svg' %}" alt="Missing PDF" class="doc-icon-100 opacity-50">
+                                            <div class="text-danger small mt-2">
+                                                <i class="bi bi-exclamation-triangle"></i>
+                                                File not found
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                {% elif attachment.filename|slice:"-4:"|lower == ".doc" or attachment.filename|slice:"-5:"|lower == ".docx" %}
+                                    {% if attachment.file_path|file_exists %}
+                                        <img src="{% static 'img/word-icon.svg' %}" alt="Word Document" class="doc-icon-100">
+                                    {% else %}
+                                        <div class="missing-file-container text-center p-3 border border-danger rounded">
+                                            <img src="{% static 'img/word-icon.svg' %}" alt="Missing Document" class="doc-icon-100 opacity-50">
+                                            <div class="text-danger small mt-2">
+                                                <i class="bi bi-exclamation-triangle"></i>
+                                                File not found
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                {% else %}
+                                    {% if attachment.file_path|file_exists %}
+                                        <img src="{{ attachment.file_url }}" alt="{{ attachment.filename }}"
+                                             class="img-thumbnail img-attachment-120">
+                                    {% else %}
+                                        <div class="missing-file-container text-center p-3 border border-danger rounded">
+                                            <img src="{% static 'img/missing-image.svg' %}" alt="Missing Image" class="doc-icon-100 opacity-50">
+                                            <div class="text-danger small mt-2">
+                                                <i class="bi bi-exclamation-triangle"></i>
+                                                File not found
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                            <div class="text-center">
+                                <h6 class="mb-1 small attachment-filename" title="{{ attachment.filename }}">{{ attachment.filename }}</h6>
+                                <p class="mb-1 small text-muted">{{ attachment.file_size|filesizeformat }}</p>
+                                <p class="mb-2 small text-muted">{{ attachment.uploaded_at|date:"M d, Y" }}</p>
+
+                                {% if attachment.file_path|file_exists %}
+                                    <!-- File exists - show normal buttons -->
+                                    {% if attachment.filename|slice:"-4:"|lower == ".pdf" %}
+                                        <a href="{{ attachment.file_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye me-1"></i>View
+                                        </a>
+                                    {% elif attachment.filename|slice:"-4:"|lower == ".doc" or attachment.filename|slice:"-5:"|lower == ".docx" %}
+                                        <a href="{{ attachment.file_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-download me-1"></i>Download
+                                        </a>
+                                    {% else %}
+                                        <a href="{{ attachment.file_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye me-1"></i>View
+                                        </a>
+                                    {% endif %}
+                                {% else %}
+                                    <!-- File missing - show disabled button with warning -->
+                                    <button type="button" class="btn btn-sm btn-outline-danger" disabled title="File not found on server">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>Missing File
+                                    </button>
+                                    <div class="text-danger small mt-1">
+                                        <i class="bi bi-info-circle"></i>
+                                        File has been deleted or moved
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div id="no-attachments-message" class="text-center text-muted">
+                            <i class="bi bi-paperclip fs-4"></i>
+                            <p class="mt-2 mb-0 small">No attachments yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-gear me-2"></i>Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    {% if enquiry.status != 'closed' %}
+                    <!-- Edit Button -->
+                    <a href="{% url 'application:enquiry_edit' enquiry.id %}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-pencil me-1"></i>Edit Enquiry
+                    </a>
+
+                    <!-- Close Button -->
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100" data-bs-toggle="modal" data-bs-target="#closeEnquiryModal{{ enquiry.id }}">
+                        <i class="bi bi-x-circle me-1"></i>Close Enquiry
+                    </button>
+                    {% else %}
+                    <!-- Re-Open Button -->
+                    <button type="button" class="btn btn-outline-success btn-sm w-100" data-bs-toggle="modal" data-bs-target="#reopenEnquiryModal{{ enquiry.id }}">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Re-Open Enquiry
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+</div>
+
+<!-- Include reusable modal partial -->
+{% include 'partials/enquiry_action_modals.html' %}
+
+<script nonce="{{ request.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+    // Print button handler
+    const printButton = document.getElementById('print-button');
+    if (printButton) {
+        printButton.addEventListener('click', function() {
+            window.print();
+        });
+    }
+
+    // Insert email buttons into the form layout
+    const emailButtonsPlaceholder = document.getElementById('email-buttons-placeholder');
+    if (emailButtonsPlaceholder) {
+        let emailButtonsHtml = '';
+
+        {% if enquiry.member and enquiry.member.email %}
+        emailButtonsHtml += `
+            <a href="mailto:{{ enquiry.member.email }}?subject={{ enquiry.reference|urlencode }} - {{ enquiry.title|urlencode }}&body=Dear%20Councillor%2C%0A%0AThank%20you%20for%20your%20enquiry%20regarding%20{{ enquiry.title|urlencode }}.%0A%0AThe%20team%20will%20provide%20a%20detailed%20response%20shortly.%0A%0ABest%20regards%2C%0ACouncil%20Team"
+               class="btn btn-outline-primary btn-sm"
+               title="Send email to {{ enquiry.member.full_name }}">
+                <i class="bi bi-envelope me-1"></i>Email Member
+            </a>
+        `;
+        {% endif %}
+
+        {% if enquiry.contact and enquiry.contact.email %}
+        emailButtonsHtml += `
+            <a href="mailto:{{ enquiry.contact.email }}?subject={{ enquiry.reference|urlencode }} - {{ enquiry.title|urlencode }}&body=Hi%20{{ enquiry.contact.name|urlencode }}%2C%0A%0ARegarding%20enquiry%3A%20{{ enquiry.title|urlencode }}%20({{ enquiry.reference|urlencode }})%0A%0AFrom%20member%3A%20{{ enquiry.member.full_name|urlencode }}%0A%0A"
+               class="btn btn-outline-secondary btn-sm"
+               title="Send email to {{ enquiry.contact.name }} ({{ enquiry.contact.email }})">
+                <i class="bi bi-envelope-plus me-1"></i>Email Contact
+            </a>
+        `;
+        {% elif enquiry.contact %}
+        emailButtonsHtml += `
+            <span class="btn btn-outline-secondary btn-sm disabled" title="No email address for {{ enquiry.contact.name }}">
+                <i class="bi bi-envelope-plus me-1"></i>Email Contact
+            </span>
+        `;
+        {% endif %}
+
+        emailButtonsPlaceholder.innerHTML = emailButtonsHtml;
+    }
+
+    // Add client-side validation for note length
+    const historyForm = document.getElementById('enquiry-history-form');
+    console.log('History form found:', historyForm);
+
+    if (historyForm) {
+        historyForm.addEventListener('submit', function(e) {
+            console.log('Form submit event triggered');
+
+            const noteField = document.getElementById('id_note');
+            console.log('Note field found:', noteField);
+
+            if (noteField) {
+                const noteValue = noteField.value.trim();
+                console.log('Note value:', noteValue, 'Length:', noteValue.length);
+
+                // Check for empty note
+                if (noteValue.length === 0) {
+                    console.log('Note is empty, preventing submission');
+                    e.preventDefault();
+
+                    const warningMessage = 'Please enter a note/comment before submitting.';
+                    console.log('Showing empty note warning:', warningMessage);
+
+                    if (typeof showWarning === 'function') {
+                        console.log('Using showWarning for empty note');
+                        showWarning(warningMessage);
+                    } else if (typeof showToast === 'function') {
+                        console.log('Using showToast for empty note');
+                        showToast(warningMessage, 'warning', { strong: 'Warning!' });
+                    } else {
+                        console.log('Using alert fallback for empty note');
+                        alert('Warning: ' + warningMessage);
+                    }
+
+                    // Focus and highlight the field
+                    noteField.focus();
+                    noteField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                    // Add visual feedback (red for required field)
+                    noteField.classList.add('field-highlight-error');
+                    setTimeout(() => {
+                        noteField.classList.remove('field-highlight-error');
+                    }, 2000);
+
+                    return false;
+                }
+                // Check for too short note (but not empty)
+                else if (noteValue.length < 10) {
+                    console.log('Note too short, preventing submission');
+                    e.preventDefault();
+
+                    // Show warning toast with fallback
+                    const warningMessage = `Note is too short (${noteValue.length} characters). Please enter at least 10 characters.`;
+                    console.log('Showing short note warning:', warningMessage);
+
+                    if (typeof showWarning === 'function') {
+                        console.log('Using showWarning for short note');
+                        showWarning(warningMessage);
+                    } else if (typeof showToast === 'function') {
+                        console.log('Using showToast for short note');
+                        showToast(warningMessage, 'warning', { strong: 'Warning!' });
+                    } else {
+                        console.log('Using alert fallback for short note');
+                        alert('Warning: ' + warningMessage);
+                    }
+
+                    // Focus and highlight the field
+                    noteField.focus();
+                    noteField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                    // Add visual feedback (yellow for length requirement)
+                    noteField.classList.add('field-highlight-warning');
+                    setTimeout(() => {
+                        noteField.classList.remove('field-highlight-warning');
+                    }, 2000);
+
+                    return false;
+                }
+            }
+        });
+    } else {
+        console.log('History form not found!');
+    }
+
+    // Focus on first invalid field if form validation fails
+    const invalidFields = document.querySelectorAll('.is-invalid, .has-error');
+    if (invalidFields.length > 0) {
+        const firstInvalidField = invalidFields[0];
+
+        // Focus on the field
+        firstInvalidField.focus();
+
+        // Scroll to the field with some offset for better visibility
+        firstInvalidField.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest'
+        });
+
+        // Add a subtle highlight animation
+        firstInvalidField.classList.add('field-highlight-error');
+
+        // Remove the highlight after 2 seconds
+        setTimeout(() => {
+            firstInvalidField.classList.remove('field-highlight-error');
+        }, 2000);
+    }
+    const emailDropzone = document.getElementById('email-update-dropzone');
+    if (!emailDropzone) {
+        console.error('Email dropzone element not found');
+        return;
+    }
+
+    const dropzoneContent = emailDropzone.querySelector('.dropzone-content');
+    const dropzoneLoading = emailDropzone.querySelector('.dropzone-loading');
+
+    if (!dropzoneContent || !dropzoneLoading) {
+        console.error('Dropzone content elements not found');
+        return;
+    }
+
+    let currentEmailData = null;
+
+    // Dropzone event handlers
+    emailDropzone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        emailDropzone.classList.add('border-success', 'bg-light');
+    });
+
+    emailDropzone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        emailDropzone.classList.remove('border-success', 'bg-light');
+    });
+
+    emailDropzone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        emailDropzone.classList.remove('border-success', 'bg-light');
+
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            processEmailFile(files[0]);
+        }
+    });
+
+    function processEmailFile(file) {
+        // Check file type
+        const allowedTypes = ['.msg', '.eml'];
+        const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+
+        if (!allowedTypes.includes(fileExtension)) {
+            showError('Please upload only .msg or .eml files.');
+            return;
+        }
+
+        // Show loading state
+        dropzoneContent.classList.add('d-none');
+        dropzoneLoading.classList.remove('d-none');
+
+        // Create FormData and upload
+        const formData = new FormData();
+        formData.append('email_file', file);
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+        fetch('{% url "application:api_parse_email_update" %}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayEmailPreview(data.email_data);
+            } else {
+                showError('Error processing email: ' + (data.error || 'Unknown error'));
+                resetDropzone();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showError('Error processing email file.');
+            resetDropzone();
+        });
+    }
+
+    function displayEmailPreview(emailData) {
+        currentEmailData = emailData;
+
+        // Populate the history form with email content
+        populateHistoryFormWithEmail(emailData);
+
+        // Show success toast using existing system
+        showSuccess('Email processed successfully - content loaded into note form');
+
+        resetDropzone();
+    }
+
+    // Populate history form with email content
+    function populateHistoryFormWithEmail(emailData) {
+        // Auto-set note type based on email direction (user can change this)
+        const noteTypeSelect = document.querySelector('#id_note_type');
+        if (noteTypeSelect) {
+            const direction = emailData.direction || 'UNKNOWN';
+            if (direction === 'INCOMING') {
+                noteTypeSelect.value = 'email_incoming';
+            } else if (direction === 'OUTGOING') {
+                noteTypeSelect.value = 'email_outgoing';
+            } else {
+                noteTypeSelect.value = 'general';
+            }
+        }
+
+        // Create formatted note content (without direction prefix - user controls this via note type)
+        let noteContent = `Subject: ${emailData.subject || 'No subject'}\n\nFrom: ${emailData.from || 'Unknown sender'}`;
+
+        if (emailData.to && emailData.to.trim()) {
+            noteContent += `\nTo: ${emailData.to}`;
+        }
+
+        if (emailData.cc && emailData.cc.trim()) {
+            noteContent += `\nCc: ${emailData.cc}`;
+        }
+
+        noteContent += `\nDate: ${emailData.date || 'Unknown date'}\n\n`;
+
+        // Use the email body exactly as processed by the server - don't modify it further
+        noteContent += emailData.body || '';
+
+        // Populate the note textarea
+        const noteTextarea = document.querySelector('#id_note');
+        if (noteTextarea) {
+            noteTextarea.value = noteContent;
+
+            // Focus on the textarea and scroll to it
+            noteTextarea.focus();
+            noteTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // Store email data for reference
+        window.currentEmailDirection = emailData.direction;
+    }
+
+    // Using existing global toast system from main.js
+
+    function resetDropzone() {
+        dropzoneContent.classList.remove('d-none');
+        dropzoneLoading.classList.add('d-none');
+    }
+
+    // Email processing now populates the history form directly
+    // Users submit via the regular history form
+
+    // Full conversation toggle removed since we now use the unified history form
+
+    // Initialize attachment dropzone
+    function initializeAttachmentDropzone() {
+        if (typeof Dropzone === 'undefined') {
+            console.error('Dropzone library not loaded');
+            return;
+        }
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (!csrfToken) {
+            console.error('CSRF token not found');
+            return;
+        }
+
+        // Disable auto-discovery for this specific element to prevent conflicts
+        Dropzone.autoDiscover = false;
+
+        const attachmentDropzone = new Dropzone("#attachment-dropzone", {
+            url: "{% url 'application:api_upload_photos' %}",
+            paramName: "file",
+            maxFiles: 10,
+            acceptedFiles: "image/*,.pdf,.doc,.docx",
+            addRemoveLinks: false,
+            autoProcessQueue: true,
+            dictDefaultMessage: "Drop files here or click to browse",
+            createImageThumbnails: false,
+            headers: {
+                "X-CSRFToken": csrfToken.value
+            },
+            init: function() {
+                this.on("sending", function(file, xhr, formData) {
+                    // Add enquiry_id to the form data
+                    formData.append('enquiry_id', '{{ enquiry.id }}');
+
+                    // Show upload status
+                    document.getElementById('attachment-upload-status').style.display = 'block';
+                });
+
+                this.on("success", function(file, response) {
+                    console.log('File uploaded successfully:', response);
+
+                    // Hide upload status
+                    document.getElementById('attachment-upload-status').style.display = 'none';
+
+                    // Show success message
+                    if (response.data && response.data.message) {
+                        showSuccess(response.data.message + ': ' + response.data.original_name);
+                    } else {
+                        showSuccess('File attached successfully: ' + (response.data ? response.data.original_name : file.name));
+                    }
+
+                    // Reload the page to show the new attachment
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                });
+
+                this.on("error", function(file, errorMessage, xhr) {
+                    console.error('Upload error:', errorMessage);
+
+                    // Hide upload status
+                    document.getElementById('attachment-upload-status').style.display = 'none';
+
+                    // Show error message
+                    let errorText = 'Error uploading file';
+                    if (typeof errorMessage === 'string') {
+                        errorText += ': ' + errorMessage;
+                    } else if (errorMessage && errorMessage.error) {
+                        errorText += ': ' + errorMessage.error;
+                    }
+                    showError(errorText);
+
+                    // Remove the file from dropzone
+                    this.removeFile(file);
+                });
+
+                this.on("complete", function(file) {
+                    // Remove the file from dropzone after processing
+                    setTimeout(() => {
+                        this.removeFile(file);
+                    }, 2000);
+                });
+            }
+        });
+    }
+
+    // Initialize the attachment dropzone
+    initializeAttachmentDropzone();
+
+    // Modal handlers are now included in the enquiry_action_modals.html partial
+});
+
+// Job Type Edit for Closed Miscellaneous Enquiries
+{% if enquiry.status == 'closed' and enquiry.job_type and enquiry.job_type.name == 'Miscellaneous' %}
+(function() {
+    const editBtn = document.getElementById('edit-job-type-btn');
+    const saveBtn = document.getElementById('save-job-type-btn');
+    const cancelBtn = document.getElementById('cancel-job-type-btn');
+    const displayDiv = document.getElementById('job-type-display');
+    const editFormDiv = document.getElementById('job-type-edit-form');
+    const jobTypeSelect = document.getElementById('job-type-select');
+
+    const enquiryId = {{ enquiry.id }};
+    const contactId = {{ enquiry.contact.id|default:"null" }};
+    const currentJobTypeId = {{ enquiry.job_type.id|default:"null" }};
+
+    if (!editBtn || !contactId) {
+        console.error('Job type edit UI not properly initialized');
+        return;
+    }
+
+    // Edit button - load job types
+    editBtn.addEventListener('click', function() {
+        displayDiv.classList.add('d-none');
+        editFormDiv.classList.remove('d-none');
+
+        fetch(`/api/get-job-types-by-contact/?contact_id=${contactId}`)
+            .then(response => response.json())
+            .then(jobTypes => {
+                jobTypeSelect.innerHTML = '<option value="">Select job type...</option>';
+                jobTypes.forEach(jt => {
+                    if (jt.id !== currentJobTypeId) {
+                        const option = document.createElement('option');
+                        option.value = jt.id;
+                        option.textContent = jt.name;
+                        jobTypeSelect.appendChild(option);
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error loading job types:', error);
+                showError('Failed to load job types');
+                cancelEdit();
+            });
+    });
+
+    // Save button - update job type
+    saveBtn.addEventListener('click', function() {
+        const newJobTypeId = jobTypeSelect.value;
+        if (!newJobTypeId) {
+            showWarning('Please select a job type');
+            return;
+        }
+
+        saveBtn.disabled = true;
+        cancelBtn.disabled = true;
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch('/api/update-closed-enquiry-job-type/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                enquiry_id: enquiryId,
+                job_type_id: parseInt(newJobTypeId)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSuccess(data.message);
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showError(data.error);
+                saveBtn.disabled = false;
+                cancelBtn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error updating job type:', error);
+            showError('An error occurred while updating job type');
+            saveBtn.disabled = false;
+            cancelBtn.disabled = false;
+        });
+    });
+
+    // Cancel button
+    cancelBtn.addEventListener('click', () => {
+        editFormDiv.classList.add('d-none');
+        displayDiv.classList.remove('d-none');
+    });
+})();
+{% endif %}
+</script>
+{% endblock %}

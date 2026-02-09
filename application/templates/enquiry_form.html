@@ -1,0 +1,1172 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %}{{ title }} - Members Enquiries System{% endblock %}
+
+{% block extra_css %}
+<!-- TinyMCE CSS loaded automatically by django-tinymce -->
+<!-- CSS moved to static/css/custom.css -->
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+          <a href="{% url 'application:index' %}">Home</a>
+        </li>
+        <li class="breadcrumb-item">
+          <a href="{% url 'application:enquiry_list' %}">Enquiries</a>
+        </li>
+        {% if enquiry %}
+        <li class="breadcrumb-item">
+          <a href="{% url 'application:enquiry_detail' enquiry.id %}"
+            >{{ enquiry.reference|default:"Enquiry" }}</a
+          >
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">Edit</li>
+        {% else %}
+        <li class="breadcrumb-item active" aria-current="page">Create</li>
+        {% endif %}
+      </ol>
+    </nav>
+    <h1>{{ title }}</h1>
+  </div>
+  <div class="btn-group" role="group">
+    {% if enquiry %}
+    <a
+      href="{% url 'application:enquiry_detail' enquiry.id %}"
+      class="btn btn-outline-secondary"
+      >Cancel</a
+    >
+    {% else %}
+    <a
+      href="{% url 'application:enquiry_list' %}"
+      class="btn btn-outline-secondary"
+      >Cancel</a
+    >
+    {% endif %}
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <form method="post" id="enquiryForm" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          <!-- Hidden field to store extracted image attachment data -->
+          <input type="hidden" id="extracted_images" name="extracted_images" value="" />
+
+          <!-- File Upload Section - Only visible in create mode -->
+          {% if not enquiry %}
+          <div class="row mb-4">
+            <!-- Email Upload Dropzone - Smaller -->
+            <div class="col-md-4">
+              <div class="card email-dropzone-card">
+                <div class="card-header bg-primary text-white">
+                  <h6 class="mb-0"><i class="bi bi-envelope-plus"></i> Email Upload</h6>
+                  <small class="text-white-50">Auto-fill form from email</small>
+                </div>
+                <div class="card-body p-3">
+                  <div id="email-dropzone" class="dropzone-custom-small">
+                    <div class="dz-message text-center">
+                      <i class="bi bi-cloud-upload fs-3 text-muted"></i>
+                      <p class="mt-1 mb-1 small">Drop Email here</p>
+                    </div>
+                  </div>
+                  <div class="mt-2">
+                    <small id="email-status" class="text-muted">No email uploaded</small>
+                    <button type="button" id="clearEmailBtn" class="btn btn-sm btn-outline-secondary ms-2">
+                      <i class="bi bi-x-circle"></i> Clear
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Photo Upload Dropzone -->
+            <div class="col-md-8">
+              <div class="card photo-dropzone-card">
+                <div class="card-header bg-success text-white">
+                  <h6 class="mb-0"><i class="bi bi-paperclip"></i> Attachments</h6>
+                  <small class="text-white-50">Photos and documents from email + manual uploads</small>
+                </div>
+                <div class="card-body p-3">
+                  <div id="photo-dropzone" class="dropzone-custom-small">
+                    <div class="dz-message text-center">
+                      <i class="bi bi-file-earmark fs-3 text-muted"></i>
+                      <p class="mt-1 mb-1 small">Drop images or attachments here</p>
+                      <small class="text-muted">Images, PDFs, Word documents</small>
+                    </div>
+                  </div>
+                  <div class="mt-2">
+                    <small id="photo-status" class="text-muted">No files uploaded</small>
+                    <button type="button" id="clearPhotosBtn" class="btn btn-sm btn-outline-secondary ms-2">
+                      <i class="bi bi-x-circle"></i> Clear
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Existing Attachments and Photo Upload for Edit Mode -->
+          {% if enquiry %}
+          <div class="row mb-4">
+            <!-- Existing Attachments -->
+            {% if attachments %}
+            {% load file_utils %}
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header bg-secondary text-white">
+                  <h6 class="mb-0"><i class="bi bi-paperclip"></i> Current Attachments ({{ attachments.count }})</h6>
+                </div>
+                <div class="card-body p-2 attachment-list-container">
+                  {% for attachment in attachments %}
+                  <div class="existing-attachment-item mb-2 p-2 border rounded d-flex align-items-center {% if not attachment.file_path|file_exists %}border-danger bg-light{% endif %}">
+                    <div class="me-3">
+                      {% if attachment.filename|slice:"-4:"|lower == ".pdf" %}
+                        {% if attachment.file_path|file_exists %}
+                          <img src="{% static 'img/pdf-icon.svg' %}" alt="PDF Document" class="doc-icon-100">
+                        {% else %}
+                          <img src="{% static 'img/pdf-icon.svg' %}" alt="Missing PDF" class="doc-icon-100 opacity-50">
+                        {% endif %}
+                      {% elif attachment.filename|slice:"-4:"|lower == ".doc" or attachment.filename|slice:"-5:"|lower == ".docx" %}
+                        {% if attachment.file_path|file_exists %}
+                          <img src="{% static 'img/word-icon.svg' %}" alt="Word Document" class="doc-icon-100">
+                        {% else %}
+                          <img src="{% static 'img/word-icon.svg' %}" alt="Missing Document" class="doc-icon-100 opacity-50">
+                        {% endif %}
+                      {% else %}
+                        {% if attachment.file_path|file_exists %}
+                          <img src="{{ attachment.file_url }}" alt="{{ attachment.filename }}" class="img-thumbnail attachment-thumb-small">
+                        {% else %}
+                          <img src="{% static 'img/missing-image.svg' %}" alt="Missing Image" class="attachment-thumb-small opacity-50">
+                        {% endif %}
+                      {% endif %}
+                    </div>
+                    <div class="flex-grow-1">
+                      <div class="fw-bold small attachment-filename" title="{{ attachment.filename }}">{{ attachment.filename }}</div>
+                      <div class="text-muted small">{{ attachment.file_size|filesizeformat }}</div>
+                      <div class="text-muted small">{{ attachment.uploaded_at|date:"M d, Y" }}</div>
+                      {% if not attachment.file_path|file_exists %}
+                        <div class="text-danger small">
+                          <i class="bi bi-exclamation-triangle"></i>
+                          File not found
+                        </div>
+                      {% endif %}
+                    </div>
+                    <div>
+                      <button type="button" class="btn btn-sm btn-outline-danger delete-attachment-btn"
+                              data-attachment-id="{{ attachment.id }}"
+                              data-attachment-name="{{ attachment.filename }}"
+                              title="Delete this attachment">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- File Upload for Edit Mode -->
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header bg-success text-white">
+                  <h6 class="mb-0"><i class="bi bi-paperclip"></i> Add New Attachments</h6>
+                </div>
+                <div class="card-body p-3">
+                  <div id="photo-dropzone" class="dropzone-custom-small">
+                    <div class="dz-message text-center">
+                      <i class="bi bi-file-earmark fs-3 text-muted"></i>
+                      <p class="mt-1 mb-1 small">Drop files here</p>
+                      <small class="text-muted">Images, PDFs, Word documents</small>
+                    </div>
+                  </div>
+                  <div class="mt-2">
+                    <small id="photo-status" class="text-muted">No new files uploaded</small>
+                    <button type="button" id="clearPhotosBtn" class="btn btn-sm btn-outline-secondary ms-2">
+                      <i class="bi bi-x-circle"></i> Clear
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="{{ form.title.id_for_label }}" class="form-label">{{ form.title.label }}</label>
+                {{ form.title }}
+                {% if form.title.errors %}
+                  <div class="text-danger">{{ form.title.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label for="{{ form.member.id_for_label }}" class="form-label">{{ form.member.label }}</label>
+                {{ form.member }}
+                {% if form.member.errors %}
+                  <div class="invalid-feedback d-block">{{ form.member.errors.0 }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="{{ form.description.id_for_label }}" class="form-label">{{ form.description.label }}</label>
+            {{ form.description }}
+            {% if form.description.errors %}
+              <div class="text-danger">{{ form.description.errors }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Search, Job Type, Contact, Section in one row -->
+          <div class="row">
+            <div class="col-md-3">
+              <div class="mb-3">
+                <label for="job_type_search" class="form-label">Search Job Type</label>
+                <input type="text" class="form-control" id="job_type_search" placeholder="Type to search job types (e.g., 'grass', 'roads')..." autocomplete="off">
+                <div id="job_type_results" class="list-group mt-2 d-none"></div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-3">
+                <label for="{{ form.job_type.id_for_label }}" class="form-label">{{ form.job_type.label }} <span class="text-danger">*</span></label>
+                {{ form.job_type }}
+                {% if form.job_type.errors %}
+                  <div class="invalid-feedback d-block">{{ form.job_type.errors.0 }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-3">
+                <label for="{{ form.contact.id_for_label }}" class="form-label">{{ form.contact.label }} <span class="text-danger">*</span></label>
+                {{ form.contact }}
+                {% if form.contact.errors %}
+                  <div class="invalid-feedback d-block">{{ form.contact.errors.0 }}</div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-3">
+                <label for="{{ form.section.id_for_label }}" class="form-label">
+                  {{ form.section.label }}
+                  <small class="text-muted">(auto-populated from contact)</small>
+                </label>
+                <div class="input-group">
+                  {{ form.section }}
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="resetSelectionsBtn" title="Reset job type and contact selections">
+                    <i class="bi bi-arrow-clockwise"></i> Reset
+                  </button>
+                </div>
+                {% if form.section.errors %}
+                  <div class="text-danger">{{ form.section.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Admin assignment and status are now handled automatically -->
+
+          <div class="d-flex justify-content-between">
+            {% if enquiry %}
+            <a href="{% url 'application:enquiry_detail' enquiry.id %}" class="btn btn-outline-secondary">Cancel</a>
+            {% else %}
+            <a href="{% url 'application:enquiry_list' %}" class="btn btn-outline-secondary">Cancel</a>
+            {% endif %}
+            <button type="submit" class="btn btn-primary">
+              {% if enquiry %}Update Enquiry{% else %}Create Enquiry{% endif %}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Attachment Confirmation Modal -->
+{% if enquiry %}
+<div class="modal fade" id="deleteAttachmentModal" tabindex="-1" aria-labelledby="deleteAttachmentModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteAttachmentModalLabel">
+          <i class="bi bi-exclamation-triangle text-warning me-2"></i>Delete Attachment
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete this attachment?</p>
+        <div class="alert alert-warning">
+          <strong id="attachmentNameToDelete"></strong>
+        </div>
+        <p class="text-muted mb-0">This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmDeleteAttachment">
+          <i class="bi bi-trash me-1"></i>Delete Attachment
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script nonce="{{ request.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+    // Detect if we're in edit mode
+    const isEditMode = {% if enquiry %}true{% else %}false{% endif %};
+
+    const jobTypeSearch = document.getElementById('job_type_search');
+    const jobTypeResults = document.getElementById('job_type_results');
+    const jobTypeSelect = document.getElementById('{{ form.job_type.id_for_label }}');
+    const sectionSelect = document.getElementById('{{ form.section.id_for_label }}');
+    const contactSelect = document.getElementById('{{ form.contact.id_for_label }}');
+    const titleField = document.getElementById('{{ form.title.id_for_label }}');
+    const descriptionField = document.getElementById('{{ form.description.id_for_label }}');
+    const memberSelect = document.getElementById('{{ form.member.id_for_label }}');
+
+    // Make form fields global so custom.js can access them
+    window.titleField = titleField;
+    window.descriptionField = descriptionField;
+    window.memberSelect = memberSelect;
+
+    let searchTimeout;
+    let emailDropzone = null;
+    let photoDropzone = null;
+
+    // Bootstrap validation functions
+    function addValidationClass(field, isValid) {
+        if (!field) return;
+
+        field.classList.remove('is-valid', 'is-invalid');
+        if (isValid === true) {
+            field.classList.add('is-valid');
+        } else if (isValid === false) {
+            field.classList.add('is-invalid');
+        }
+    }
+
+    function validateRequiredField(field) {
+        if (!field) return null;
+        const value = field.value.trim();
+        return value !== '' && value !== '0' && value !== 'Select Member...' && value !== 'Select Contact...' && value !== 'Select Job Type...';
+    }
+
+    // Add real-time validation to required fields
+    function setupFieldValidation() {
+        [titleField, memberSelect, jobTypeSelect, contactSelect].forEach(field => {
+            if (field) {
+                field.addEventListener('change', function() {
+                    const isValid = validateRequiredField(this);
+                    addValidationClass(this, isValid);
+                });
+
+                field.addEventListener('blur', function() {
+                    const isValid = validateRequiredField(this);
+                    addValidationClass(this, isValid);
+                });
+            }
+        });
+    }
+
+    // Form submission validation
+    function validateForm() {
+        let isFormValid = true;
+
+        // Validate title
+        const titleValid = validateRequiredField(titleField);
+        addValidationClass(titleField, titleValid);
+        if (!titleValid) isFormValid = false;
+
+        // Validate member
+        const memberValid = validateRequiredField(memberSelect);
+        addValidationClass(memberSelect, memberValid);
+        if (!memberValid) isFormValid = false;
+
+        // Validate job type
+        const jobTypeValid = validateRequiredField(jobTypeSelect);
+        addValidationClass(jobTypeSelect, jobTypeValid);
+        if (!jobTypeValid) isFormValid = false;
+
+        // Validate contact
+        const contactValid = validateRequiredField(contactSelect);
+        addValidationClass(contactSelect, contactValid);
+        if (!contactValid) isFormValid = false;
+
+        return isFormValid;
+    }
+
+    // Setup validation
+    setupFieldValidation();
+
+    // Disable autocomplete on job type search
+    jobTypeSearch.setAttribute('autocomplete', 'off');
+
+    // Initialize the selection manager
+    window.EnquirySelectionManager.init({
+        jobTypeSelect: jobTypeSelect,
+        jobTypeSearch: jobTypeSearch,
+        sectionSelect: sectionSelect,
+        contactSelect: contactSelect,
+        isEditMode: isEditMode
+    });
+
+
+
+
+
+    // API functions that need Django URL access - Simplified
+    window.loadAllContactsAPI = function() {
+        return fetch(`{% url 'application:api_get_all_contacts' %}`)
+            .then(response => response.json())
+            .catch(error => {
+                console.error('Error loading all contacts:', error);
+                return [];
+            });
+    };
+
+    window.loadAllJobTypesAPI = function() {
+        return fetch(`{% url 'application:api_get_all_job_types' %}`)
+            .then(response => response.json())
+            .catch(error => {
+                console.error('Error loading all job types:', error);
+                return [];
+            });
+    };
+
+    window.loadContactsByJobTypeAPI = function(jobTypeId) {
+        return fetch(`{% url 'application:api_get_contacts_by_job_type' %}?job_type_id=${jobTypeId}`)
+            .then(response => response.json())
+            .catch(error => {
+                console.error('Error loading contacts:', error);
+                return [];
+            });
+    };
+
+    window.loadJobTypesByContactAPI = function(contactId) {
+        return fetch(`{% url 'application:api_get_job_types_by_contact' %}?contact_id=${contactId}`)
+            .then(response => response.json())
+            .catch(error => {
+                console.error('Error loading job types:', error);
+                return [];
+            });
+    };
+
+    window.loadContactSectionAPI = function(contactId) {
+        return fetch(`{% url 'application:api_get_contact_section' %}?contact_id=${contactId}`)
+            .then(response => response.json())
+            .catch(error => {
+                console.error('Error loading contact section:', error);
+                return { success: false, error: error.toString() };
+            });
+    };
+
+    // Job type search functionality
+    jobTypeSearch.addEventListener('input', function() {
+        const query = this.value.trim();
+
+        clearTimeout(searchTimeout);
+
+        if (query.length < 2) {
+            jobTypeResults.classList.add('d-none');
+            return;
+        }
+
+        searchTimeout = setTimeout(() => {
+            fetch(`{% url 'application:api_search_job_types' %}?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    jobTypeResults.innerHTML = '';
+
+                    if (data.length === 0) {
+                        jobTypeResults.innerHTML = '<div class="list-group-item text-muted">No job types found</div>';
+                    } else {
+                        data.forEach(jobType => {
+                            const item = document.createElement('a');
+                            item.className = 'list-group-item list-group-item-action';
+                            item.href = '#';
+                            item.textContent = jobType.name;
+                            item.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                selectJobTypeFromSearch(jobType.id, jobType.name);
+                            });
+                            jobTypeResults.appendChild(item);
+                        });
+                    }
+
+                    jobTypeResults.classList.remove('d-none');
+                })
+                .catch(error => {
+                    console.error('Error searching job types:', error);
+                });
+        }, 300);
+    });
+
+    // Hide results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!jobTypeSearch.contains(e.target) && !jobTypeResults.contains(e.target)) {
+            jobTypeResults.classList.add('d-none');
+        }
+    });
+
+    // Select job type from search results
+    function selectJobTypeFromSearch(jobTypeId, jobTypeName) {
+        jobTypeResults.classList.add('d-none');
+        window.EnquirySelectionManager.onJobTypeSearchSelect(jobTypeId, jobTypeName);
+    }
+
+    // Initialize Dropzone for email uploads - Always visible
+    function initializeDropzone() {
+        console.log('Initializing dropzone...');
+        console.log('Dropzone available:', typeof Dropzone !== 'undefined');
+        console.log('emailDropzone exists:', !!emailDropzone);
+
+        if (typeof Dropzone !== 'undefined' && !emailDropzone) {
+            console.log('Creating new Dropzone instance...');
+            console.log('API URL:', "{% url 'application:api_parse_email' %}");
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            // CSRF token validation for API calls
+
+            emailDropzone = new Dropzone("#email-dropzone", {
+                url: "{% url 'application:api_parse_email' %}",
+                paramName: "email_file",
+                maxFiles: 1,
+                acceptedFiles: ".msg,.eml",
+                addRemoveLinks: true,
+                dictDefaultMessage: "Drop email files here or click to browse",
+                headers: {
+                    "X-CSRFToken": csrfToken ? csrfToken.value : ''
+                },
+                init: function() {
+                    console.log('Dropzone initialized successfully');
+
+                    this.on("addedfile", function(file) {
+                        console.log('File added:', file.name, file.type, file.size);
+                        updateEmailStatus('Processing email...', 'processing');
+                        showLoadingOverlay('Parsing Email', 'Please wait while we extract email content and attachments...');
+                    });
+
+                    this.on("sending", function(file, xhr, formData) {
+                        console.log('Sending file to server:', file.name);
+                    });
+
+                    this.on("success", function(file, response) {
+                        // Server response received
+                        hideLoadingOverlay();
+
+                        if (response.success) {
+                            window.populateFormFromEmail(response.data);
+                            updateEmailStatus('Email parsed successfully!', 'success');
+                        } else {
+                            updateEmailStatus('Error parsing email: ' + response.error, 'error');
+                        }
+                    });
+
+                    this.on("error", function(file, errorMessage) {
+                        console.log('Dropzone error:', errorMessage);
+                        hideLoadingOverlay();
+                        updateEmailStatus('Upload error: ' + errorMessage, 'error');
+                    });
+
+                    this.on("removedfile", function(file) {
+                        console.log('File removed:', file.name);
+                        clearEmailData();
+                        updateEmailStatus('No email uploaded', 'default');
+                    });
+                }
+            });
+            console.log('Dropzone instance created:', !!emailDropzone);
+        } else {
+            console.log('Dropzone not initialized - Dropzone library missing or already exists');
+        }
+    }
+
+    // Update email status indicator
+    function updateEmailStatus(message, type) {
+        const statusElement = document.getElementById('email-status');
+        if (!statusElement) {
+            console.error('Email status element not found');
+            return;
+        }
+        statusElement.textContent = message;
+
+        // Remove existing classes
+        statusElement.classList.remove('text-success', 'text-danger', 'text-warning', 'text-muted');
+
+        // Add appropriate class based on type
+        switch(type) {
+            case 'success':
+                statusElement.classList.add('text-success');
+                break;
+            case 'error':
+                statusElement.classList.add('text-danger');
+                break;
+            case 'processing':
+                statusElement.classList.add('text-warning');
+                break;
+            default:
+                statusElement.classList.add('text-muted');
+        }
+    }
+
+    // Initialize Photo Dropzone
+    function initializePhotoDropzone() {
+        console.log('Initializing photo dropzone...');
+
+        if (typeof Dropzone !== 'undefined' && !photoDropzone) {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+
+            photoDropzone = new Dropzone("#photo-dropzone", {
+                url: "{% url 'application:api_upload_photos' %}",
+                paramName: "photo_file",
+                maxFiles: 20,
+                acceptedFiles: "image/*,.pdf,.doc,.docx",
+                addRemoveLinks: false, // We'll handle removal ourselves
+                autoProcessQueue: true,
+                dictDefaultMessage: "Drop files here or click to browse (photos, PDFs, Word docs)",
+                createImageThumbnails: false, // Disable thumbnail creation to prevent broken image placeholders
+                headers: {
+                    "X-CSRFToken": csrfToken ? csrfToken.value : ''
+                },
+                init: function() {
+                    console.log('Photo dropzone initialized successfully');
+
+                    this.on("addedfile", function(file) {
+                        console.log('Manual file added:', file.name);
+
+                        // Show appropriate loading message based on file type
+                        if (file.type && file.type.startsWith('image/')) {
+                            showLoadingOverlay('Uploading Images', 'Please wait while we upload and resize your images...');
+                        } else {
+                            showLoadingOverlay('Uploading Documents', 'Please wait while we upload your documents...');
+                        }
+                        updatePhotoStatus('Uploading file...', 'processing');
+                        // Hide the file preview that Dropzone creates since we handle display ourselves
+                        file.previewElement.classList.add('dropzone-preview-hidden');
+                    });
+
+                    this.on("success", function(file, response) {
+                        // File upload response received
+                        hideLoadingOverlay();
+
+                        if (response.success) {
+                            {% if enquiry %}
+                            // In edit mode: immediately attach to enquiry to avoid orphaned files
+                            const attachmentData = [{
+                                original_filename: response.data.original_name,
+                                saved_filename: response.data.filename,
+                                file_path: response.data.filename,
+                                file_size: response.data.size,
+                                file_url: response.data.url,
+                                was_resized: response.data.was_resized,
+                                original_size: response.data.original_size,
+                                upload_type: 'manual',
+                                file_type: response.data.file_type || 'image'
+                            }];
+
+                            // Send to server to link to enquiry immediately
+                            fetch('{% url "application:enquiry_edit" enquiry.id %}', {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                },
+                                body: new URLSearchParams({
+                                    'extracted_images': JSON.stringify(attachmentData),
+                                    'attach_only': 'true'  // Special flag to only attach images without updating enquiry
+                                })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    console.log('Image attached to enquiry successfully');
+                                    updatePhotoStatus('File attached successfully', 'success');
+                                    // Optionally refresh the page to show the new attachment
+                                    setTimeout(() => {
+                                        window.location.reload();
+                                    }, 1000);
+                                } else {
+                                    console.error('Failed to attach image to enquiry:', data.error);
+                                    updatePhotoStatus('File uploaded but not attached to enquiry', 'warning');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error attaching image to enquiry:', error);
+                                updatePhotoStatus('Photo uploaded but not attached to enquiry', 'warning');
+                            });
+                            {% else %}
+                            // In create mode: add to attachments array as before
+                            const manualAttachment = {
+                                original_filename: response.data.original_name,
+                                saved_filename: response.data.filename,
+                                file_path: response.data.filename, // API returns relative path
+                                file_size: response.data.size,
+                                file_url: response.data.url,
+                                was_resized: response.data.was_resized,
+                                original_size: response.data.original_size,
+                                upload_type: 'manual',
+                                file_type: response.data.file_type || 'image'
+                            };
+                            window.manualImageAttachments.push(manualAttachment);
+
+                            // Refresh the display
+                            window.displayAllImages();
+                            window.updateAllImagesField();
+                            updatePhotoStatus(`${window.extractedImageAttachments.length + window.manualImageAttachments.length} image(s) ready`, 'success');
+                            {% endif %}
+                        } else {
+                            updatePhotoStatus('Error uploading photo: ' + response.error, 'error');
+                        }
+                    });
+
+                    this.on("error", function(file, errorMessage) {
+                        console.log('Photo dropzone error:', errorMessage);
+                        hideLoadingOverlay();
+                        updatePhotoStatus('Upload error: ' + errorMessage, 'error');
+                    });
+
+                    this.on("removedfile", function(file) {
+                        console.log('Photo removed:', file.name);
+                        if (this.files.length === 0) {
+                            updatePhotoStatus('No files uploaded', 'default');
+                        }
+                    });
+                }
+            });
+            console.log('Photo dropzone instance created:', !!photoDropzone);
+        }
+    }
+
+    // updatePhotoStatus function is now in custom.js
+
+    // Image management functions are now in enquiry_form.js
+
+    // Find member by email address (make global for enquiry_form.js access)
+    window.findMemberByEmail = function(email) {
+        // Member lookup initiated
+
+        fetch(`{% url 'application:api_find_member_by_email' %}?email=${encodeURIComponent(email)}`)
+            .then(response => {
+                // Member lookup response received
+                return response.json();
+            })
+            .then(data => {
+                // Processing member lookup response
+                if (data.success && data.member) {
+                    // Member found and set
+                    memberSelect.value = data.member.id;
+                    updateEmailStatus(`Member found: ${data.member.name}`, 'default');
+                } else {
+                    // Member not found - that's okay, admin will select manually
+                    // Member not found in database
+                    updateEmailStatus(`Email processed. Please select member manually (${email})`, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error finding member:', error);
+                updateEmailStatus('Email processed. Please select member manually', 'error');
+            });
+    }
+
+    // Update job type dropdown based on contact's job types
+    function updateJobTypesFromContact(jobTypes) {
+        console.log('Updating job types from contact:', jobTypes);
+
+        // Clear current job type selection
+        jobTypeSelect.innerHTML = '<option value="">---------</option>';
+        jobTypeSearch.value = '';
+
+        if (jobTypes && jobTypes.length > 0) {
+            // Populate job type dropdown with contact's job types
+            jobTypes.forEach(jobType => {
+                const option = document.createElement('option');
+                option.value = jobType.id;
+                option.textContent = jobType.name;
+                jobTypeSelect.appendChild(option);
+            });
+
+            // If only one job type, auto-select it
+            if (jobTypes.length === 1) {
+                jobTypeSelect.value = jobTypes[0].id;
+                jobTypeSearch.value = jobTypes[0].name;
+
+                // Trigger change event to update sections and contacts
+                const changeEvent = new Event('change', { bubbles: true });
+                jobTypeSelect.dispatchEvent(changeEvent);
+
+                console.log('Auto-selected single job type:', jobTypes[0].name);
+            } else {
+                // Multiple job types - show helpful message
+                updateJobTypeSearchPlaceholder(`Select from ${jobTypes.length} job types for this contact`);
+                console.log(`Contact has ${jobTypes.length} job types available`);
+            }
+        } else {
+            // No job types for this contact
+            updateJobTypeSearchPlaceholder('No job types assigned to this contact');
+            console.log('Contact has no job types assigned');
+        }
+    }
+
+    // Validate that the currently selected job type is compatible with the contact
+    function validateJobTypeWithContact(contactJobTypes, currentJobTypeId) {
+        if (!currentJobTypeId || !contactJobTypes) {
+            return;
+        }
+
+        // Check if current job type is in the contact's job types
+        const isCompatible = contactJobTypes.some(jobType => jobType.id == currentJobTypeId);
+
+        if (!isCompatible) {
+            // Show warning that job type doesn't match contact
+            const currentJobTypeName = jobTypeSearch.value || 'selected job type';
+            const contactName = contactSelect.options[contactSelect.selectedIndex].text;
+
+            console.warn(`Job type "${currentJobTypeName}" is not handled by contact "${contactName}"`);
+
+            // Optionally show a visual warning (you can uncomment this if you want user feedback)
+            // updateJobTypeSearchPlaceholder(`⚠️ "${currentJobTypeName}" may not be handled by this contact`);
+        } else {
+            console.log('Job type is compatible with selected contact');
+        }
+    }
+
+    // Clear job type selection
+    function clearJobTypeSelection() {
+        jobTypeSelect.innerHTML = '<option value="">---------</option>';
+        jobTypeSearch.value = '';
+        updateJobTypeSearchPlaceholder('Type to search job types (e.g., \'grass\', \'roads\')...');
+    }
+
+    // Update job type search placeholder
+    function updateJobTypeSearchPlaceholder(text) {
+        if (jobTypeSearch) {
+            jobTypeSearch.placeholder = text;
+        }
+    }
+
+    // Reload job types and contacts after clearing form
+    function reloadJobTypesAndContacts() {
+        // Reload all job types
+        loadAllJobTypesAPI()
+            .then(data => {
+                if (data && data.length > 0) {
+                    // Clear and repopulate job type select
+                    jobTypeSelect.innerHTML = '<option value="">---------</option>';
+                    data.forEach(jobType => {
+                        const option = document.createElement('option');
+                        option.value = jobType.id;
+                        option.textContent = jobType.name;
+                        jobTypeSelect.appendChild(option);
+                    });
+                    console.log('Job types reloaded successfully');
+                } else {
+                    console.warn('No job types received from API');
+                }
+            })
+            .catch(error => {
+                console.error('Error reloading job types:', error);
+            });
+
+        // Reload all contacts
+        loadAllContactsAPI()
+            .then(data => {
+                if (data && data.length > 0) {
+                    // Clear and repopulate contact select
+                    contactSelect.innerHTML = '<option value="">---------</option>';
+                    data.forEach(contact => {
+                        const option = document.createElement('option');
+                        option.value = contact.id;
+                        option.textContent = contact.name;
+                        contactSelect.appendChild(option);
+                    });
+                    console.log('Contacts reloaded successfully');
+                } else {
+                    console.warn('No contacts received from API');
+                }
+            })
+            .catch(error => {
+                console.error('Error reloading contacts:', error);
+            });
+    }
+
+    // Clear email data from form
+    function clearEmailData() {
+        titleField.value = '';
+
+        // Clear TinyMCE content
+        const editorId = descriptionField.id;
+        const editor = tinymce.get(editorId);
+        if (editor) {
+            editor.setContent('');
+            editor.fire('change');
+        } else {
+            descriptionField.value = '';
+        }
+
+        memberSelect.value = '';
+
+        // Only clear job type if it wasn't manually searched/selected by user
+        // This preserves user's job type selection when clearing email data
+        const hasUserJobTypeSelection = jobTypeSearch.value.trim() !== '';
+        if (!hasUserJobTypeSelection) {
+            jobTypeSelect.value = '';
+            clearJobTypeSelection();
+        }
+
+        sectionSelect.innerHTML = '<option value="">---------</option>';
+        contactSelect.innerHTML = '<option value="">---------</option>';
+
+        // Reload job types and contacts after clearing
+        reloadJobTypesAndContacts();
+
+        // Clear extracted images but preserve manual uploads
+        window.extractedImageAttachments = [];
+        window.displayAllImages();
+        const totalImages = window.extractedImageAttachments.length + window.manualImageAttachments.length;
+        if (totalImages > 0) {
+            updatePhotoStatus(`${totalImages} image(s) ready`, 'success');
+        } else {
+            updatePhotoStatus('No files uploaded', 'muted');
+        }
+        window.updateAllImagesField();
+    }
+
+    // Initialize dropzones only if they exist
+    const emailDropzoneElement = document.getElementById('email-dropzone');
+    if (emailDropzoneElement) {
+        initializeDropzone();
+    }
+
+    const photoDropzoneElement = document.getElementById('photo-dropzone');
+    if (photoDropzoneElement) {
+        initializePhotoDropzone();
+    }
+
+    // Clear email data button (only in create mode)
+    const clearEmailBtn = document.getElementById('clearEmailBtn');
+    if (clearEmailBtn) {
+        clearEmailBtn.addEventListener('click', function() {
+            if (emailDropzone) {
+                emailDropzone.removeAllFiles();
+            }
+            clearEmailData();
+            updateEmailStatus('Form cleared', 'success');
+            setTimeout(() => {
+                updateEmailStatus('No email uploaded', 'default');
+            }, 2000);
+        });
+    }
+
+    // Clear photos button
+    const clearPhotosBtn = document.getElementById('clearPhotosBtn');
+    if (clearPhotosBtn) {
+        clearPhotosBtn.addEventListener('click', function() {
+            // Clear all images (both extracted and manual)
+            window.extractedImageAttachments = [];
+            window.manualImageAttachments = [];
+
+            if (photoDropzone) {
+                photoDropzone.removeAllFiles();
+            }
+
+            clearPhotoDropzone();
+            window.updateAllImagesField();
+            updatePhotoStatus('All photos cleared', 'success');
+            setTimeout(() => {
+                updatePhotoStatus('No files uploaded', 'default');
+            }, 2000);
+        });
+    }
+
+    // Reset selections button
+    document.getElementById('resetSelectionsBtn').addEventListener('click', function() {
+        window.EnquirySelectionManager.resetSelections();
+    });
+
+    // Delete attachment buttons (only in edit mode)
+    {% if enquiry %}
+    let currentDeleteButton = null;
+    let currentAttachmentId = null;
+
+    // Handle delete button clicks - show modal
+    document.addEventListener('click', function(e) {
+        const deleteButton = e.target.closest('.delete-attachment-btn');
+
+        if (deleteButton) {
+            console.log('Delete button clicked:', deleteButton);
+
+            const attachmentId = deleteButton.getAttribute('data-attachment-id');
+            const attachmentName = deleteButton.getAttribute('data-attachment-name');
+
+            console.log('Attachment ID:', attachmentId, 'Name:', attachmentName);
+
+            if (!attachmentId) {
+                showError('No attachment ID found');
+                return;
+            }
+
+            // Store for modal confirmation
+            currentDeleteButton = deleteButton;
+            currentAttachmentId = attachmentId;
+
+            // Update modal content
+            document.getElementById('attachmentNameToDelete').textContent = attachmentName;
+
+            // Show modal
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteAttachmentModal'));
+            deleteModal.show();
+        }
+    });
+
+    // Handle modal confirmation
+    document.getElementById('confirmDeleteAttachment').addEventListener('click', function() {
+        if (!currentDeleteButton || !currentAttachmentId) {
+            console.error('No attachment to delete');
+            return;
+        }
+
+        console.log('User confirmed deletion');
+
+        // Hide modal
+        const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteAttachmentModal'));
+        deleteModal.hide();
+
+        // Disable button to prevent double-clicking
+        currentDeleteButton.disabled = true;
+        currentDeleteButton.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+
+        const deleteUrl = `{% url 'application:api_delete_attachment' 0 %}`.replace('0', currentAttachmentId);
+        console.log('Delete URL:', deleteUrl);
+
+        fetch(deleteUrl, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            // Processing response
+            return response.json();
+        })
+        .then(data => {
+            // Response data processed
+
+            if (data.success) {
+                // Remove the attachment item from the UI
+                const attachmentItem = currentDeleteButton.closest('.existing-attachment-item');
+                if (attachmentItem) {
+                    attachmentItem.remove();
+                    console.log('Attachment item removed from UI');
+                }
+
+                // Update attachment count in header
+                const header = document.querySelector('.card-header h6');
+                if (header) {
+                    const currentCount = document.querySelectorAll('.existing-attachment-item').length;
+                    header.textContent = header.textContent.replace(/\(\d+\)/, `(${currentCount})`);
+                    console.log('Updated count to:', currentCount);
+                }
+
+                // Hide the attachments section if no more attachments
+                if (document.querySelectorAll('.existing-attachment-item').length === 0) {
+                    const attachmentsCard = document.querySelector('.col-md-6');
+                    if (attachmentsCard && attachmentsCard.querySelector('.card-header h6')) {
+                        attachmentsCard.classList.add('attachment-section-hidden');
+                        console.log('Hidden attachments section');
+                    }
+                }
+
+                // Show success message using the standardized alert system
+                showSuccess('Attachment deleted successfully.', { dismissTime: 3000 });
+            } else {
+                console.error('Delete failed:', data.error);
+                showError('Error deleting attachment: ' + (data.error || 'Unknown error'));
+                // Re-enable button
+                currentDeleteButton.disabled = false;
+                currentDeleteButton.innerHTML = '<i class="bi bi-trash"></i>';
+            }
+        })
+        .catch(error => {
+            console.error('Fetch error:', error);
+            showError('Error deleting attachment: ' + error.message);
+            // Re-enable button
+            currentDeleteButton.disabled = false;
+            currentDeleteButton.innerHTML = '<i class="bi bi-trash"></i>';
+        })
+        .finally(() => {
+            // Clear current state
+            currentDeleteButton = null;
+            currentAttachmentId = null;
+        });
+    });
+
+    // Clear state when modal is hidden
+    document.getElementById('deleteAttachmentModal').addEventListener('hidden.bs.modal', function() {
+        if (currentDeleteButton && currentDeleteButton.disabled) {
+            // Re-enable button if modal was closed without confirming
+            currentDeleteButton.disabled = false;
+            currentDeleteButton.innerHTML = '<i class="bi bi-trash"></i>';
+        }
+        currentDeleteButton = null;
+        currentAttachmentId = null;
+    });
+    {% endif %}
+
+    // Add form submission validation
+    const enquiryForm = document.getElementById('enquiryForm');
+    if (enquiryForm) {
+        enquiryForm.addEventListener('submit', function(e) {
+            if (!validateForm()) {
+                e.preventDefault();
+                showError('Please fill in all required fields (Title, Member, Job Type, and Contact).');
+
+                // Scroll to first invalid field
+                const firstInvalid = enquiryForm.querySelector('.is-invalid');
+                if (firstInvalid) {
+                    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    firstInvalid.focus();
+                }
+
+                return false;
+            } else {
+                // Form is valid, show loading overlay with specific messages
+                const hasEmailContent = document.getElementById('id_email_content') &&
+                                       document.getElementById('id_email_content').value.trim();
+                const hasExtractedAttachments = window.extractedAttachments && window.extractedAttachments.length > 0;
+                const hasManualAttachments = window.manualImageAttachments && window.manualImageAttachments.length > 0;
+
+                if (hasEmailContent && (hasExtractedAttachments || hasManualAttachments)) {
+                    showLoadingForSubmission("Processing Enquiry", "Please wait while we save your enquiry with email content, images, and attachments...");
+                } else if (hasEmailContent) {
+                    showLoadingForSubmission("Processing Email Content", "Please wait while we save your enquiry with email content...");
+                } else if (hasManualAttachments || hasExtractedAttachments) {
+                    showLoadingForSubmission("Processing Attachments", "Please wait while we save your enquiry with images and documents...");
+                } else {
+                    showLoadingForSubmission("Creating Enquiry", "Please wait while we save your enquiry...");
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<!-- TinyMCE JS loaded automatically by django-tinymce -->
+{{ form.media }}
+{% endblock %}

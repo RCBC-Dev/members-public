@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}Enquiries per Member - Members Enquiries{% endblock %}
+
+{% block container_class %}container-fluid{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'application:index' %}">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Enquiries per Member</li>
+            </ol>
+        </nav>
+        <h1>👤 Enquiries per Member</h1>
+        <p class="text-muted">Showing enquiry counts for the last 12 months (from {{ date_from|date:"d/m/Y" }})</p>
+    </div>
+</div>
+
+<!-- Service Type Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3" id="filterForm">
+            <div class="col-md-4">
+                <label for="service_type" class="form-label">Filter by Service Type</label>
+                <select name="service_type" id="service_type" class="form-select">
+                    <option value="">All Service Types</option>
+                    <option value="failed_service" {% if service_type == 'failed_service' %}selected{% endif %}>Failed service</option>
+                    <option value="new_addition" {% if service_type == 'new_addition' %}selected{% endif %}>New/addition requests</option>
+                    <option value="pre_programmed" {% if service_type == 'pre_programmed' %}selected{% endif %}>Pre-programmed work</option>
+                    <option value="not_rcbc" {% if service_type == 'not_rcbc' %}selected{% endif %}>Not RCBC</option>
+                </select>
+            </div>
+        </form>
+        <script type="text/javascript" nonce="{{ request.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+  // Auto-submit form when any filter changes
+  const filterForm = document.getElementById('filterForm');
+  if (filterForm) {
+    const filterInputs = filterForm.querySelectorAll('select, input[type="date"]');
+    filterInputs.forEach(input => {
+      input.addEventListener('change', function() {
+        filterForm.submit();
+      });
+    });
+  }
+});
+</script>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h5 class="card-title">Active Members</h5>
+                <h2>{{ total_members }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h5 class="card-title">Total Enquiries</h5>
+                <h2>{{ total_enquiries }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <h5 class="card-title">Average per Member</h5>
+                <h2>{{ average_per_member|floatformat:1 }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enquiries per Member Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Member Enquiry Counts</h5>
+    </div>
+    <div class="card-body">
+        {% if members %}
+        <div>
+            <table class="table table-striped table-hover" id="memberEnquiriesTable">
+                <thead>
+                    <tr>
+                        <th>Member</th>
+                        <th>Ward</th>
+                        <th>Enquiry Count</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member in members %}
+                    <tr>
+                        <td>{{ member.full_name }}</td>
+                        <td>{{ member.ward.name|default:"No Ward" }}</td>
+                        <td>
+                            <a href="{% url 'application:enquiry_list' %}?member={{ member.id }}&date_from={{ date_from|date:'Y-m-d' }}{% if service_type %}&service_type={{ service_type }}{% endif %}"
+                               class="btn btn-sm btn-outline-primary">
+                                {{ member.enquiry_count }}
+                            </a>
+                        </td>
+                        <td>
+                            <a href="{% url 'application:enquiry_list' %}?member={{ member.id }}&date_from={{ date_from|date:'Y-m-d' }}{% if service_type %}&service_type={{ service_type }}{% endif %}"
+                               class="btn btn-sm btn-outline-secondary">View Enquiries</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <h5 class="text-muted">No Data Available</h5>
+            <p class="text-muted">No enquiries found for the selected time period.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script nonce="{{ request.csp_nonce }}">
+$(document).ready(function() {
+    $('#memberEnquiriesTable').DataTable({
+        "pageLength": 10,
+        "lengthMenu": [[10, 25, 50, 100], [10, 25, 50, 100]],
+        "order": [[ 2, "desc" ]], // Sort by Enquiry Count descending
+        "columnDefs": [
+            { "orderable": false, "targets": 3 }, // Disable sorting on Actions column
+            { "targets": 2, "className": "text-center" } // Center align count column
+        ],
+        "dom": '<"row"<"col-sm-12 col-md-6"B><"col-sm-12 col-md-3"f><"col-sm-12 col-md-3"l>>' +
+               '<"row"<"col-sm-12"tr>>' +
+               '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+        "buttons": [
+            {
+                extend: 'copy',
+                text: '<i class="bi bi-clipboard"></i> Copy',
+                className: 'btn btn-primary btn-sm',
+                exportOptions: {
+                    columns: [0, 1, 2], // Exclude Actions column
+                    format: {
+                        body: formatDataTableExport
+                    }
+                }
+            },
+            {
+                extend: 'csv',
+                text: '<i class="bi bi-file-earmark-text"></i> CSV',
+                className: 'btn btn-success btn-sm',
+                title: 'Enquiries_Per_Member_' + new Date().toISOString().slice(0,10),
+                exportOptions: {
+                    columns: [0, 1, 2], // Exclude Actions column
+                    format: {
+                        body: formatDataTableExport
+                    }
+                }
+            },
+            {
+                extend: 'excel',
+                text: '<i class="bi bi-file-earmark-excel"></i> Excel',
+                className: 'btn btn-success btn-sm',
+                title: 'Enquiries_Per_Member_' + new Date().toISOString().slice(0,10),
+                exportOptions: {
+                    columns: [0, 1, 2], // Exclude Actions column
+                    format: {
+                        body: formatDataTableExport
+                    }
+                }
+            },
+            {
+                extend: 'pdf',
+                text: '<i class="bi bi-file-earmark-pdf"></i> PDF',
+                className: 'btn btn-danger btn-sm',
+                title: 'Enquiries Per Member Report',
+                orientation: 'landscape',
+                pageSize: 'A4',
+                exportOptions: {
+                    columns: [0, 1, 2], // Exclude Actions column
+                    format: {
+                        body: formatDataTableExport
+                    }
+                }
+            }
+        ],
+        "stateSave": true,
+        "language": {
+            "search": "Filter results:",
+            "lengthMenu": "Show _MENU_ enquiries per page"
+        }
+    });
+});
+</script>
+{% endblock %}

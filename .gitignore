@@ -1,0 +1,55 @@
+/venv/
+*/__pycache__/*
+
+.windsurfrules
+.windsurf/*
+# Django database files (should not be committed - each environment has its own)
+db.sqlite3
+
+# Django media files
+/media/
+# Exclude only attachments (allow media/ itself to exist)
+/media/attachments/
+
+# File management backup directories
+/media/backups/
+/media/orphaned_files_backup_*/
+orphaned_files_backup_*/
+*_backup_*/
+CLAUDE.md
+/tasks/
+/scripts/
+
+*.pyc
+
+*.log
+
+/htmlcov/*
+
+/htmlcov/
+
+/logs/*
+!/logs/.gitkeep
+
+/staticfiles/*
+
+/logs/security.log
+
+.env
+
+*.log
+
+/venvLinux/
+
+web.config
+
+# File management and cleanup backups
+*.backup
+backup_*/
+*_backup/
+orphaned_*
+cleanup_backup_*
+/orphaned_files_backup/
+orphaned_files_backup_*/
+
+.claude/

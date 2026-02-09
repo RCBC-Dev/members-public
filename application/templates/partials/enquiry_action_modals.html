@@ -1,0 +1,122 @@
+<!-- Close Enquiry Modal with Service Type Selection -->
+{% if enquiry.status != 'closed' %}
+<div class="modal fade" id="closeEnquiryModal{{ enquiry.id }}" tabindex="-1" aria-labelledby="closeEnquiryModalLabel{{ enquiry.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="closeEnquiryModalLabel{{ enquiry.id }}">
+          <i class="bi bi-exclamation-triangle text-warning me-2"></i>Close Enquiry
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Please classify this enquiry before closing:</p>
+        <div class="alert alert-info">
+          <strong>{{ enquiry.reference|default:"Enquiry" }}</strong> - {{ enquiry.title }}
+        </div>
+
+        <div class="mb-3">
+          <label for="serviceType{{ enquiry.id }}" class="form-label">Service Type: <span class="text-danger">*</span></label>
+          <select class="form-select" id="serviceType{{ enquiry.id }}" required>
+            <option value="">Select service type...</option>
+            <option value="failed_service">Failed service</option>
+            <option value="new_addition">New/addition requests</option>
+            <option value="pre_programmed">Pre-programmed work</option>
+            <option value="not_rcbc">Not RCBC</option>
+          </select>
+        </div>
+
+        <p class="text-muted mb-0"><small>Service type cannot be changed after closure. This will mark the enquiry as resolved.</small></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger close-enquiry-btn" id="confirmCloseEnquiry{{ enquiry.id }}" data-enquiry-id="{{ enquiry.id }}" disabled>
+          <i class="bi bi-x-circle me-1"></i>Close Enquiry
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden form for closing enquiry -->
+<form id="closeEnquiryForm{{ enquiry.id }}" method="post" action="{% url 'application:enquiry_close' enquiry.id %}" class="d-none">
+  {% csrf_token %}
+  <input type="hidden" id="hiddenServiceType{{ enquiry.id }}" name="service_type" value="">
+</form>
+
+<script type="text/javascript" nonce="{{ request.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+  const serviceTypeSelect = document.getElementById('serviceType{{ enquiry.id }}');
+  const closeBtn = document.getElementById('confirmCloseEnquiry{{ enquiry.id }}');
+  const hiddenInput = document.getElementById('hiddenServiceType{{ enquiry.id }}');
+
+  if (serviceTypeSelect) {
+    // Enable close button when service type is selected
+    serviceTypeSelect.addEventListener('change', function() {
+      closeBtn.disabled = !this.value;
+    });
+
+    // On close button click, transfer service_type to hidden form and submit
+    closeBtn.addEventListener('click', function() {
+      const selectedValue = serviceTypeSelect.value;
+      if (selectedValue) {
+        hiddenInput.value = selectedValue;
+        document.getElementById('closeEnquiryForm{{ enquiry.id }}').submit();
+      }
+    });
+  }
+});
+</script>
+{% endif %}
+
+<!-- Re-Open Enquiry Modal -->
+{% if enquiry.status == 'closed' %}
+<div class="modal fade" id="reopenEnquiryModal{{ enquiry.id }}" tabindex="-1" aria-labelledby="reopenEnquiryModalLabel{{ enquiry.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="reopenEnquiryModalLabel{{ enquiry.id }}">
+          <i class="bi bi-arrow-clockwise text-success me-2"></i>Re-Open Enquiry
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Please select a reason for re-opening this enquiry:</p>
+        <div class="alert alert-info">
+          <strong>{{ enquiry.reference|default:"Enquiry" }}</strong> - {{ enquiry.title }}
+        </div>
+        
+        <div class="mb-3">
+          <label for="reopenReason{{ enquiry.id }}" class="form-label">Reason for re-opening:</label>
+          <select class="form-select" id="reopenReason{{ enquiry.id }}" required>
+            <option value="">Select a reason...</option>
+            <option value="Closed in Error">Closed in Error</option>
+            <option value="Enquiry not completed">Enquiry not completed</option>
+            <option value="Enquiry re-occurred">Enquiry re-occurred</option>
+          </select>
+        </div>
+        
+        <div class="mb-3">
+          <label for="reopenNote{{ enquiry.id }}" class="form-label">Additional notes (optional):</label>
+          <textarea class="form-control" id="reopenNote{{ enquiry.id }}" rows="3" placeholder="Add any additional details about why this enquiry is being re-opened..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success reopen-enquiry-btn" id="confirmReopenEnquiry{{ enquiry.id }}" data-enquiry-id="{{ enquiry.id }}" disabled>
+          <i class="bi bi-arrow-clockwise me-1"></i>Re-Open Enquiry
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden form for re-opening enquiry -->
+<form id="reopenEnquiryForm{{ enquiry.id }}" method="post" action="{% url 'application:enquiry_reopen' enquiry.id %}" class="d-none">
+  {% csrf_token %}
+  <input type="hidden" id="hiddenReopenReason{{ enquiry.id }}" name="reason" value="">
+  <input type="hidden" id="hiddenReopenNote{{ enquiry.id }}" name="note" value="">
+</form>
+{% endif %}
+
+

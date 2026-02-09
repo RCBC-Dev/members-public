@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Performance Dashboard - Members Enquiries{% endblock %}
+
+{% block container_class %}container-fluid{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/reports.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'application:index' %}">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Performance Dashboard</li>
+            </ol>
+        </nav>
+        <h1>📈 {{ page_title|default:"Performance Dashboard" }}</h1>
+        <p class="text-muted">{{ page_subtitle }} - visual performance metrics</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Date Range</h5>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-3" id="filterForm">
+            <div class="col-md-2">
+                <label for="date_range" class="form-label">Date Range</label>
+                <select name="date_range" id="date_range" class="form-select">
+                    <option value="3months" {% if date_range == '3months' %}selected{% endif %}>Last 3 Months</option>
+                    <option value="6months" {% if date_range == '6months' %}selected{% endif %}>Last 6 Months</option>
+                    <option value="12months" {% if date_range == '12months' %}selected{% endif %}>Last 12 Months</option>
+                    <option value="all" {% if date_range == 'all' %}selected{% endif %}>All Time</option>
+                    <option value="custom" {% if date_range == 'custom' %}selected{% endif %}>Custom Range</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="date_from" class="form-label">From Date</label>
+                <input type="date" name="date_from" id="date_from" class="form-control" value="{{ filters.date_from }}">
+            </div>
+            <div class="col-md-2">
+                <label for="date_to" class="form-label">To Date</label>
+                <input type="date" name="date_to" id="date_to" class="form-control" value="{{ filters.date_to }}">
+            </div>
+            <div class="col-md-2">
+                <label for="service_type" class="form-label">Service Type</label>
+                <select name="service_type" id="service_type" class="form-select">
+                    <option value="">All Service Types</option>
+                    <option value="failed_service" {% if service_type == 'failed_service' %}selected{% endif %}>Failed service</option>
+                    <option value="new_addition" {% if service_type == 'new_addition' %}selected{% endif %}>New/addition requests</option>
+                    <option value="pre_programmed" {% if service_type == 'pre_programmed' %}selected{% endif %}>Pre-programmed work</option>
+                    <option value="not_rcbc" {% if service_type == 'not_rcbc' %}selected{% endif %}>Not RCBC</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <a href="{% url 'application:performance_dashboard_report' %}" class="btn btn-outline-secondary">Clear Filters</a>
+            </div>
+        </form>
+        <script type="text/javascript" nonce="{{ request.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+  // Auto-submit form when any filter changes
+  const filterForm = document.getElementById('filterForm');
+  if (filterForm) {
+    const filterInputs = filterForm.querySelectorAll('select, input[type="date"]');
+    filterInputs.forEach(input => {
+      input.addEventListener('change', function() {
+        filterForm.submit();
+      });
+    });
+  }
+});
+</script>
+    </div>
+</div>
+
+<!-- Main Performance Chart -->
+<div class="card chart-card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Monthly Enquiry Performance</h5>
+        <small class="text-muted">Created vs Closed (Within/Outside SLA) vs Still Open</small>
+    </div>
+    <div class="card-body">
+        <div class="chart-container">
+            <canvas id="performanceChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card performance-card-created">
+            <div class="card-body text-center">
+                <h5 class="card-title">Total Created</h5>
+                <h2 id="totalCreated">-</h2>
+                <small>{% if date_range == 'all' %}All time{% elif date_range == '3months' %}Last 3 months{% elif date_range == '6months' %}Last 6 months{% elif date_range == 'custom' %}Custom range{% else %}Last 12 months{% endif %}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card performance-card-within-sla">
+            <div class="card-body text-center">
+                <h5 class="card-title">Closed Within SLA</h5>
+                <h2 id="totalWithinSLA">-</h2>
+                <small>≤ 5 days</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card performance-card-outside-sla">
+            <div class="card-body text-center">
+                <h5 class="card-title">Closed Outside SLA</h5>
+                <h2 id="totalOutsideSLA">-</h2>
+                <small>> 5 days</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card performance-card-still-open">
+            <div class="card-body text-center">
+                <h5 class="card-title">Still Open</h5>
+                <h2 id="totalStillOpen">-</h2>
+                <small>From created</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SLA Performance Chart -->
+<div class="card chart-card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">SLA Performance Rate</h5>
+        <small class="text-muted">Percentage of enquiries closed within 5 business days</small>
+    </div>
+    <div class="card-body">
+        <div class="chart-container">
+            <canvas id="slaChart"></canvas>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script nonce="{{ request.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize shared date range functionality with server-provided dates for consistency
+    if (window.initializeDateRangeFilters) {
+        window.initializeDateRangeFilters({
+            serverDates: {{ js_date_constants|safe }}
+        });
+    }
+
+    // Data from Django
+    const monthsData = {{ months_data|safe }};
+
+    // Extract data for charts
+    const labels = monthsData.map(item => item.month);
+    const createdData = monthsData.map(item => item.created);
+    const closedWithinSLAData = monthsData.map(item => item.closed_within_sla);
+    const closedOutsideSLAData = monthsData.map(item => item.closed_outside_sla);
+    const stillOpenData = monthsData.map(item => item.created_still_open);
+    
+    // Calculate totals for summary cards
+    const totalCreated = createdData.reduce((a, b) => a + b, 0);
+    const totalWithinSLA = closedWithinSLAData.reduce((a, b) => a + b, 0);
+    const totalOutsideSLA = closedOutsideSLAData.reduce((a, b) => a + b, 0);
+    const totalStillOpen = stillOpenData.reduce((a, b) => a + b, 0);
+    
+    // Update summary cards
+    document.getElementById('totalCreated').textContent = totalCreated.toLocaleString();
+    document.getElementById('totalWithinSLA').textContent = totalWithinSLA.toLocaleString();
+    document.getElementById('totalOutsideSLA').textContent = totalOutsideSLA.toLocaleString();
+    document.getElementById('totalStillOpen').textContent = totalStillOpen.toLocaleString();
+    
+    // Main Performance Chart
+    const ctx1 = document.getElementById('performanceChart').getContext('2d');
+    new Chart(ctx1, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Created',
+                data: createdData,
+                borderColor: 'rgb(54, 162, 235)',
+                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                tension: 0.1
+            }, {
+                label: 'Closed Within SLA',
+                data: closedWithinSLAData,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                tension: 0.1
+            }, {
+                label: 'Closed Outside SLA',
+                data: closedOutsideSLAData,
+                borderColor: 'rgb(255, 205, 86)',
+                backgroundColor: 'rgba(255, 205, 86, 0.1)',
+                tension: 0.1
+            }, {
+                label: 'Still Open',
+                data: stillOpenData,
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Monthly Enquiry Performance Trends'
+                },
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Enquiries'
+                    }
+                }
+            }
+        }
+    });
+    
+    // SLA Performance Chart
+    const slaPercentages = monthsData.map(item => {
+        const total = item.closed_within_sla + item.closed_outside_sla;
+        return total > 0 ? (item.closed_within_sla / total * 100) : 0;
+    });
+    
+    const ctx2 = document.getElementById('slaChart').getContext('2d');
+    new Chart(ctx2, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'SLA Performance (%)',
+                data: slaPercentages,
+                backgroundColor: slaPercentages.map(pct => 
+                    pct >= 80 ? 'rgba(75, 192, 192, 0.8)' : 
+                    pct >= 60 ? 'rgba(255, 205, 86, 0.8)' : 
+                    'rgba(255, 99, 132, 0.8)'
+                ),
+                borderColor: slaPercentages.map(pct => 
+                    pct >= 80 ? 'rgb(75, 192, 192)' : 
+                    pct >= 60 ? 'rgb(255, 205, 86)' : 
+                    'rgb(255, 99, 132)'
+                ),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'SLA Performance Rate by Month'
+                },
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: 'Percentage (%)'
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

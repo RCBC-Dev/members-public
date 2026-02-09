@@ -1,0 +1,8 @@
+{% if show_time %}
+    <span class="{{ color_class }}"
+          {% if show_tooltip %}title="{{ business_days }} business day{{ business_days|pluralize }}, {{ calendar_days }} calendar day{{ calendar_days|pluralize }}"{% endif %}>
+        {% if show_tooltip %}{{ business_days }} business day{{ business_days|pluralize }}{% else %}{{ business_days }}{% endif %}
+    </span>
+{% else %}
+    {% if show_tooltip %}<span class="text-muted">-</span>{% else %}-{% endif %}
+{% endif %}

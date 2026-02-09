@@ -1,0 +1,459 @@
+{% extends 'base.html' %}
+
+{% block title %}Overdue Enquiries Report - Members Enquiries System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'application:index' %}">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Overdue Enquiries Report</li>
+            </ol>
+        </nav>
+        <h1>⚠️ Overdue Enquiries Report</h1>
+        <p class="text-muted">Enquiries that are past the {{ overdue_threshold }} business day response target (excludes weekends)</p>
+    </div>
+    <div class="btn-group" role="group">
+        <a href="{% url 'application:average_response_time_report' %}" class="btn btn-outline-primary">Response Time Report</a>
+        <a href="{% url 'application:index' %}" class="btn btn-outline-secondary">Back to Dashboard</a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Filters</h5>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-3" id="filterForm">
+            <div class="col-md-3">
+                <label for="member" class="form-label">Member</label>
+                <select name="member" id="member" class="form-select">
+                    <option value="">All Members</option>
+                    {% for member in members %}
+                    <option value="{{ member.id }}" {% if filters.member_id == member.id|stringformat:"s" %}selected{% endif %}>
+                        {{ member.full_name }} ({{ member.ward.name }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="section" class="form-label">Section</label>
+                <select name="section" id="section" class="form-select">
+                    <option value="">All Sections</option>
+                    {% for section in sections %}
+                    <option value="{{ section.id }}" {% if filters.section_id == section.id|stringformat:"s" %}selected{% endif %}>
+                        {{ section.name }} ({{ section.department.name }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="job_type" class="form-label">Job Type</label>
+                <select name="job_type" id="job_type" class="form-select">
+                    <option value="">All Job Types</option>
+                    {% for job_type in job_types %}
+                    <option value="{{ job_type.id }}" {% if filters.job_type_id == job_type.id|stringformat:"s" %}selected{% endif %}>
+                        {{ job_type.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <a href="{% url 'application:overdue_enquiries_report' %}" class="btn btn-outline-secondary">Clear Filters</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Summary Statistics -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-danger" id="cardTotalOverdue">{{ total_overdue }}</h3>
+                <p class="card-text">Total Overdue Enquiries</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-info">{{ overdue_threshold }}</h3>
+                <p class="card-text">Response Target (Days)</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="text-warning" id="mostOverdueDays">
+                    {% if enquiry_list %}
+                        {{ enquiry_list.0.days_overdue }}
+                    {% else %}
+                        0
+                    {% endif %}
+                </h3>
+                <p class="card-text">Most Overdue (Days)</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Overdue Enquiries List -->
+{% if enquiry_list %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0" id="totalOverdueHeader">Overdue Enquiries (<span id="totalOverdueCount">{{ total_overdue }}</span>)</h5>
+    </div>
+    <div class="card-body">
+        <div>
+            <table class="table table-striped table-hover" id="overdueEnquiriesTable">
+                <thead>
+                    <tr>
+                        <th>Reference</th>
+                        <th>Title</th>
+                        <th>Member</th>
+                        <th>Section</th>
+                        <th>Job Type</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Business Days Since Created</th>
+                        <th>Business Days Overdue</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in enquiry_list %}
+                    <tr class="{% if item.days_overdue > 10 %}table-danger{% elif item.days_overdue > 5 %}table-warning{% endif %}" data-days-overdue="{{ item.days_overdue }}" data-enquiry-id="{{ item.enquiry.id }}">
+                        <td>
+                            <a href="{% url 'application:enquiry_detail' item.enquiry.id %}" class="text-decoration-none fw-bold">
+                                {{ item.enquiry.reference|default:"No Ref" }}
+                            </a>
+                        </td>
+                        <td>{{ item.enquiry.title|truncatechars:40 }}</td>
+                        <td>
+                            <a href="{% url 'application:overdue_enquiries_report' %}?member={{ item.enquiry.member.id }}{% if filters.section_id %}&section={{ filters.section_id }}{% endif %}{% if filters.job_type_id %}&job_type={{ filters.job_type_id }}{% endif %}"
+                               class="text-decoration-none" title="Filter overdue enquiries for this member">
+                                {{ item.enquiry.member.full_name }}
+                            </a><br>
+                            <small class="text-muted">{{ item.enquiry.member.ward.name }}</small>
+                        </td>
+                        <td>
+                            {% if item.enquiry.section %}
+                                <a href="{% url 'application:overdue_enquiries_report' %}?section={{ item.enquiry.section.id }}{% if filters.member_id %}&member={{ filters.member_id }}{% endif %}{% if filters.job_type_id %}&job_type={{ filters.job_type_id }}{% endif %}"
+                                   class="text-decoration-none" title="Filter overdue enquiries for this section">
+                                    {{ item.enquiry.section.name }}
+                                </a>
+                            {% else %}
+                                <span class="text-muted">Not assigned</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.enquiry.job_type %}
+                                <a href="{% url 'application:overdue_enquiries_report' %}?job_type={{ item.enquiry.job_type.id }}{% if filters.member_id %}&member={{ filters.member_id }}{% endif %}{% if filters.section_id %}&section={{ filters.section_id }}{% endif %}"
+                                   class="text-decoration-none" title="Filter overdue enquiries for this job type">
+                                    {{ item.enquiry.job_type.name }}
+                                </a>
+                            {% else %}
+                                <span class="text-muted">Not assigned</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {% if item.enquiry.status == 'new' %}bg-warning{% elif item.enquiry.status == 'open' %}bg-primary{% else %}bg-secondary{% endif %}">
+                                {{ item.enquiry.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ item.enquiry.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            <span class="text-muted" title="Calendar days: {{ item.days_since_created }}">
+                                {{ item.business_days_since_created }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="fw-bold {% if item.days_overdue > 7 %}text-danger{% elif item.days_overdue > 3 %}text-warning{% else %}text-primary{% endif %}"
+                                  title="Business days overdue (excludes weekends)">
+                                {{ item.days_overdue }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="{% url 'application:enquiry_detail' item.enquiry.id %}" class="btn btn-outline-primary" title="View enquiry details">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                                <a href="{% url 'application:enquiry_edit' item.enquiry.id %}" class="btn btn-outline-secondary" title="Edit this enquiry">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#closeEnquiryModal{{ item.enquiry.id }}" title="Close this enquiry">
+                                    <i class="bi bi-x-circle"></i> Close
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5">
+        <h5 class="text-success">No Overdue Enquiries</h5>
+        <p class="text-muted">All enquiries are within the {{ overdue_threshold }}-day response target.</p>
+        <a href="{% url 'application:index' %}" class="btn btn-success">Back to Dashboard</a>
+    </div>
+</div>
+{% endif %}
+
+<!-- CSRF Token for AJAX requests -->
+{% csrf_token %}
+
+<!-- Close Enquiry Modals -->
+{% for item in enquiry_list %}
+<!-- Close Enquiry Modal for {{ item.enquiry.id }} -->
+<div class="modal fade" id="closeEnquiryModal{{ item.enquiry.id }}" tabindex="-1" aria-labelledby="closeEnquiryModalLabel{{ item.enquiry.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="closeEnquiryModalLabel{{ item.enquiry.id }}">Close Enquiry</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p><strong>Reference:</strong> {{ item.enquiry.reference|default:"No Ref" }}</p>
+        <p><strong>Title:</strong> {{ item.enquiry.title }}</p>
+        <p><strong>Member:</strong> {{ item.enquiry.member.full_name }}</p>
+        <p><strong>Days Overdue:</strong> <span class="text-danger fw-bold">{{ item.days_overdue }} business days</span></p>
+        <hr>
+        <p class="text-muted mb-0">This will mark the enquiry as resolved. You can still view the enquiry details, but it will be considered complete.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger close-enquiry-btn" data-enquiry-id="{{ item.enquiry.id }}">
+          <i class="bi bi-x-circle me-1"></i>Close Enquiry
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script nonce="{{ request.csp_nonce }}">
+$(document).ready(function() {
+    // Auto-submit filters functionality
+    function submitForm() {
+        document.getElementById('filterForm').submit();
+    }
+
+    // Add event listeners for auto-submission
+    document.getElementById('member').addEventListener('change', submitForm);
+    document.getElementById('section').addEventListener('change', submitForm);
+    document.getElementById('job_type').addEventListener('change', submitForm);
+
+    {% if enquiry_list %}
+    $('#overdueEnquiriesTable').DataTable({
+        "pageLength": 25,
+        "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+        "order": [[ 8, "desc" ]], // Sort by Days Overdue descending (most overdue first)
+        "columnDefs": [
+            { "orderable": false, "targets": 9 }, // Disable sorting on Actions column
+            { "targets": 6, "className": "text-center" }, // Center align Created date
+            { "targets": 7, "className": "text-center" }, // Center align Days Since Created
+            { "targets": 8, "className": "text-center" }, // Center align Days Overdue
+            { "targets": 5, "className": "text-center" }  // Center align Status
+        ],
+        "dom": 'Blfrtip',
+        "buttons": [
+            {
+                extend: 'copy',
+                text: '<i class="bi bi-clipboard"></i> Copy',
+                className: 'btn btn-primary btn-sm',
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8], // Exclude Actions column
+                    format: {
+                        body: function(data, row, column, node) {
+                            // First apply standard HTML removal and trimming
+                            var textContent = formatDataTableExport(data, row, column, node);
+
+                            // Convert dates from "DD MMM, YYYY" to DD/MM/YYYY for export
+                            if (column === 5) { // Created Date column
+                                var dateMatch = textContent.match(/(\d{1,2})\s+(\w{3}),\s+(\d{4})/);
+                                if (dateMatch) {
+                                    var months = {'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+                                                  'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'};
+                                    return dateMatch[1].padStart(2, '0') + '/' + months[dateMatch[2]] + '/' + dateMatch[3];
+                                }
+                            }
+                            return textContent;
+                        }
+                    }
+                }
+            },
+            {
+                extend: 'csv',
+                text: '<i class="bi bi-file-earmark-text"></i> CSV',
+                className: 'btn btn-success btn-sm',
+                title: 'Overdue_Enquiries_' + new Date().toISOString().slice(0,10),
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8], // Exclude Actions column
+                    format: {
+                        body: function(data, row, column, node) {
+                            // First apply standard HTML removal and trimming
+                            var textContent = formatDataTableExport(data, row, column, node);
+
+                            // Convert dates from "DD MMM, YYYY" to DD/MM/YYYY for export
+                            if (column === 5) { // Created Date column
+                                var dateMatch = textContent.match(/(\d{1,2})\s+(\w{3}),\s+(\d{4})/);
+                                if (dateMatch) {
+                                    var months = {'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+                                                  'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'};
+                                    return dateMatch[1].padStart(2, '0') + '/' + months[dateMatch[2]] + '/' + dateMatch[3];
+                                }
+                            }
+                            return textContent;
+                        }
+                    }
+                }
+            },
+            {
+                extend: 'excel',
+                text: '<i class="bi bi-file-earmark-excel"></i> Excel',
+                className: 'btn btn-success btn-sm',
+                title: 'Overdue_Enquiries_' + new Date().toISOString().slice(0,10),
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8], // Exclude Actions column
+                    format: {
+                        body: function(data, row, column, node) {
+                            // First apply standard HTML removal and trimming
+                            var textContent = formatDataTableExport(data, row, column, node);
+
+                            // Convert dates from "DD MMM, YYYY" to DD/MM/YYYY for export
+                            if (column === 5) { // Created Date column
+                                var dateMatch = textContent.match(/(\d{1,2})\s+(\w{3}),\s+(\d{4})/);
+                                if (dateMatch) {
+                                    var months = {'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+                                                  'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'};
+                                    return dateMatch[1].padStart(2, '0') + '/' + months[dateMatch[2]] + '/' + dateMatch[3];
+                                }
+                            }
+                            return textContent;
+                        }
+                    }
+                }
+            },
+            {
+                extend: 'pdf',
+                text: '<i class="bi bi-file-earmark-pdf"></i> PDF',
+                className: 'btn btn-danger btn-sm',
+                title: 'Overdue Enquiries Report',
+                orientation: 'landscape',
+                pageSize: 'A4',
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8], // Exclude Actions column
+                    format: {
+                        body: function(data, row, column, node) {
+                            // First apply standard HTML removal and trimming
+                            var textContent = formatDataTableExport(data, row, column, node);
+
+                            // Convert dates from "DD MMM, YYYY" to DD/MM/YYYY for export
+                            if (column === 5) { // Created Date column
+                                var dateMatch = textContent.match(/(\d{1,2})\s+(\w{3}),\s+(\d{4})/);
+                                if (dateMatch) {
+                                    var months = {'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+                                                  'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'};
+                                    return dateMatch[1].padStart(2, '0') + '/' + months[dateMatch[2]] + '/' + dateMatch[3];
+                                }
+                            }
+                            return textContent;
+                        }
+                    }
+                }
+            }
+        ],
+        "stateSave": true
+    });
+    {% endif %}
+
+    // Function to update Most Overdue (Days) card
+    function updateMostOverdueCard(table) {
+        let maxOverdue = 0;
+
+        // Use clean data attributes - no HTML parsing needed!
+        table.rows().every(function() {
+            const rowNode = this.node();
+            if (rowNode) {
+                const daysOverdue = parseInt($(rowNode).data('days-overdue')) || 0;
+
+                if (daysOverdue > maxOverdue) {
+                    maxOverdue = daysOverdue;
+                }
+            }
+        });
+
+        // Update the Most Overdue card
+        $('#mostOverdueDays').text(maxOverdue);
+    }
+
+    // AJAX Close Enquiry Functionality
+    $('.close-enquiry-btn').on('click', function() {
+        const enquiryId = $(this).data('enquiry-id');
+        const modal = $(`#closeEnquiryModal${enquiryId}`);
+
+        // Close enquiry via AJAX
+        fetch(`/enquiries/${enquiryId}/close/`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Hide the modal
+                modal.modal('hide');
+
+                // Remove the row from DataTable using clean data attribute
+                const table = $('#overdueEnquiriesTable').DataTable();
+                const row = $(`tr[data-enquiry-id="${enquiryId}"]`);
+                table.row(row).remove().draw();
+
+                // Get the actual count from DataTable after removal
+                const newTotal = table.rows().count();
+
+                // Update the total count in cards and header using actual DataTable count
+                $('#totalOverdueCount').text(newTotal);
+                $('#cardTotalOverdue').text(newTotal);
+
+                // Update card header
+                $('.card-title:contains("Overdue Enquiries")').text(`Overdue Enquiries (${newTotal})`);
+
+                // Update Most Overdue (Days) card
+                updateMostOverdueCard(table);
+
+                // Show success message
+                showToast(data.message, 'success');
+
+                // If no more overdue enquiries, show the "no overdue" message
+                if (newTotal === 0) {
+                    setTimeout(() => {
+                        location.reload(); // Refresh to show "No Overdue Enquiries" card
+                    }, 1500);
+                }
+            } else {
+                showToast(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Close enquiry error:', error);
+            showToast('An error occurred while closing the enquiry.', 'error');
+        });
+    });
+});
+</script>
+{% endblock %}

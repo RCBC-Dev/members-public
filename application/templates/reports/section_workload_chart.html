@@ -1,0 +1,494 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Section Workload Distribution - Members Enquiries{% endblock %}
+
+{% block container_class %}container-fluid{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/reports.css' %}">
+<!-- CSS moved to static/css/custom.css -->
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'application:index' %}">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Section Workload</li>
+            </ol>
+        </nav>
+        <h1>📊 {{ page_title|default:"Section Workload Distribution" }}</h1>
+        <p class="text-muted">{{ page_subtitle }} - workload analysis for top 10 busiest sections</p>
+    </div>
+</div>
+
+<!-- Filter Controls -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Filters</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" id="filterForm">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label for="date_range" class="form-label">Date Range</label>
+                            <select name="date_range" id="date_range" class="form-select">
+                                <option value="all" {% if date_range == 'all' %}selected{% endif %}>All time</option>
+                                <option value="3months" {% if date_range == '3months' %}selected{% endif %}>Last 3 months</option>
+                                <option value="6months" {% if date_range == '6months' %}selected{% endif %}>Last 6 months</option>
+                                <option value="12months" {% if date_range == '12months' %}selected{% endif %}>Last 12 months</option>
+                                <option value="custom" {% if date_range == 'custom' %}selected{% endif %}>Custom Range</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="date_from" class="form-label">From Date</label>
+                            <input type="date" name="date_from" id="date_from" class="form-control"
+                                   value="{% if date_from_custom %}{{ date_from_custom }}{% elif date_from %}{{ date_from|date:'Y-m-d' }}{% endif %}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="date_to" class="form-label">To Date</label>
+                            <input type="date" name="date_to" id="date_to" class="form-control"
+                                   value="{% if date_to_custom %}{{ date_to_custom }}{% elif date_to %}{{ date_to|date:'Y-m-d' }}{% endif %}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="service_type" class="form-label">Service Type</label>
+                            <select name="service_type" id="service_type" class="form-select">
+                                <option value="">All Service Types</option>
+                                <option value="failed_service" {% if service_type == 'failed_service' %}selected{% endif %}>Failed service</option>
+                                <option value="new_addition" {% if service_type == 'new_addition' %}selected{% endif %}>New/addition requests</option>
+                                <option value="pre_programmed" {% if service_type == 'pre_programmed' %}selected{% endif %}>Pre-programmed work</option>
+                                <option value="not_rcbc" {% if service_type == 'not_rcbc' %}selected{% endif %}>Not RCBC</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+                <script type="text/javascript" nonce="{{ request.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+  // Auto-submit form when any filter changes
+  const filterForm = document.getElementById('filterForm');
+  if (filterForm) {
+    const filterInputs = filterForm.querySelectorAll('select, input[type="date"]');
+    filterInputs.forEach(input => {
+      input.addEventListener('change', function() {
+        filterForm.submit();
+      });
+    });
+  }
+});
+</script>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <a href="{% url 'application:enquiry_list' %}?date_range={{ date_range }}{% if date_range == 'custom' %}{% if date_from_str %}&date_from={{ date_from_str }}{% endif %}{% if date_to_str %}&date_to={{ date_to_str }}{% endif %}{% endif %}" class="text-decoration-none">
+            <div class="card workload-card workload-card-enquiries">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Total Enquiries</h5>
+                    <h2 id="totalEnquiries">{{ system_total_enquiries }}</h2>
+                    <small>{% if months == 'all' %}all time{% elif months == 'custom' %}custom period{% else %}{{ months }} months{% endif %}</small>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{% url 'application:enquiry_list' %}?status=open&date_range={{ date_range }}" class="text-decoration-none">
+            <div class="card workload-card workload-card-open">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Open Enquiries</h5>
+                    <h2 id="totalOpen">{{ system_open_enquiries }}</h2>
+                    <small>currently open</small>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{% url 'application:enquiry_list' %}?status=closed&date_range={{ date_range }}" class="text-decoration-none">
+            <div class="card workload-card workload-card-closed">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Closed Enquiries</h5>
+                    <h2 id="totalClosed">{{ system_closed_enquiries }}</h2>
+                    <small>resolved</small>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row">
+    <!-- Horizontal Bar Chart -->
+    <div class="col-12 mb-4">
+        <div class="card chart-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Total Enquiries by Section</h5>
+                <small class="text-muted">Top 20 busiest sections by total enquiry volume • Click bars to view job types for that section</small>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="sectionTotalChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Stacked Bar Chart -->
+    <div class="col-md-8">
+        <div class="card chart-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Open vs Closed Enquiries by Section</h5>
+                <small class="text-muted">Breakdown showing current workload vs completed work • Click bars to view job types for that section</small>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="sectionStackedChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Job Types Distribution Chart -->
+    <div class="col-md-4">
+        <div class="card chart-card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Top Job Types Distribution</h5>
+                <small class="text-muted">Most common enquiry types (last 12 months)</small>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="jobTypesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Section Details Table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Section Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Section</th>
+                                <th>Department</th>
+                                <th>Total Enquiries</th>
+                                <th>Open</th>
+                                <th>Closed</th>
+                                <th>Open Rate %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for section in sections %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'application:enquiry_list' %}?section={{ section.id }}" 
+                                       class="text-decoration-none">
+                                        {{ section.name }}
+                                    </a>
+                                </td>
+                                <td>{{ section.department.name }}</td>
+                                <td>
+                                    <a href="{% url 'application:enquiry_list' %}?section={{ section.id }}&date_range={{ date_range }}"
+                                       class="badge bg-primary text-decoration-none" title="View all {{ section.total_enquiries }} enquiries for {{ section.name }}{% if date_from %} since {{ date_from|date:'d/m/Y' }}{% endif %}">
+                                        {{ section.total_enquiries }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="{% url 'application:enquiry_list' %}?section={{ section.id }}&status=open&date_range={{ date_range }}"
+                                       class="badge bg-warning text-decoration-none" title="View {{ section.open_enquiries }} open enquiries for {{ section.name }}{% if date_from %} since {{ date_from|date:'d/m/Y' }}{% endif %}">
+                                        {{ section.open_enquiries }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="{% url 'application:enquiry_list' %}?section={{ section.id }}&status=closed&date_range={{ date_range }}"
+                                       class="badge bg-success text-decoration-none" title="View {{ section.closed_enquiries }} closed enquiries for {{ section.name }}{% if date_from %} since {{ date_from|date:'d/m/Y' }}{% endif %}">
+                                        {{ section.closed_enquiries }}
+                                    </a>
+                                </td>
+                                <td>
+                                    {% if section.total_enquiries > 0 %}
+                                        {% widthratio section.open_enquiries section.total_enquiries 100 %}%
+                                    {% else %}
+                                        0%
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script nonce="{{ request.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize shared date range functionality with server-provided dates for consistency
+    if (window.initializeDateRangeFilters) {
+        window.initializeDateRangeFilters({
+            serverDates: {{ js_date_constants|safe }}
+        });
+    }
+
+    // Data from Django
+    console.log('Section Workload Chart loading...');
+    const sections = [
+        {% for section in sections_for_chart %}
+        {
+            id: {{ section.id }},
+            name: "{{ section.name|escapejs }}",
+            department: "{{ section.department.name|escapejs }}",
+            total: {{ section.total_enquiries }},
+            open: {{ section.open_enquiries }},
+            closed: {{ section.closed_enquiries }}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    // Job Types data from Django
+    const jobTypes = [
+        {% for job_type in job_types %}
+        {
+            id: {{ job_type.id }},
+            name: "{{ job_type.name|escapejs }}",
+            total: {{ job_type.total_enquiries }}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    // Summary cards are now populated from backend
+    
+    // Extract data for charts
+    const sectionNames = sections.map(s => s.name);
+    const totalData = sections.map(s => s.total);
+    const openData = sections.map(s => s.open);
+    const closedData = sections.map(s => s.closed);
+    const workloadPercentages = sections.map(s => s.total > 0 ? (s.open / s.total * 100) : 0);
+    
+    // Total Enquiries Chart (Horizontal Bar)
+    const ctx1 = document.getElementById('sectionTotalChart').getContext('2d');
+
+    // Set dynamic height based on number of sections (30px per section, minimum 500px)
+    const chartHeight = Math.max(500, sections.length * 30);
+    ctx1.canvas.style.height = chartHeight + 'px';
+    ctx1.canvas.parentElement.style.height = chartHeight + 'px';
+
+    new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: sectionNames,
+            datasets: [{
+                label: 'Total Enquiries',
+                data: totalData,
+                backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                borderColor: 'rgb(54, 162, 235)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            onHover: function(event, elements) {
+                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Enquiries'
+                    },
+                    ticks: {
+                        stepSize: 1,
+                        precision: 0
+                    }
+                },
+                y: {
+                    ticks: {
+                        maxTicksLimit: 0,  // Show all ticks
+                        autoSkip: false,   // Don't skip any labels
+                        font: {
+                            size: 12  // Fixed readable font size
+                        },
+                        padding: 5
+                    },
+                    grid: {
+                        display: true,
+                        drawBorder: true
+                    }
+                }
+            },
+            onClick: function(event, elements) {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    const section = sections[index];
+                    // Navigate to Job Workload Chart for this section with current date range
+                    let dateRangeParam = "&date_range={{ date_range }}";
+                    const dateFrom = "{{ date_from_str }}";
+                    const dateTo = "{{ date_to_str }}";
+
+                    // Always include custom dates if present, regardless of date_range value
+                    if (dateFrom) dateRangeParam += "&date_from=" + dateFrom;
+                    if (dateTo) dateRangeParam += "&date_to=" + dateTo;
+                    {% if service_type %}const serviceTypeParam = "&service_type={{ service_type }}";{% else %}const serviceTypeParam = "";{% endif %}
+                    const url = '{% url "application:job_workload_chart_report" %}?section=' + section.id + dateRangeParam + serviceTypeParam;
+                    window.location.href = url;
+                }
+            }
+        }
+    });
+
+    // Stacked Bar Chart
+    const ctx2 = document.getElementById('sectionStackedChart').getContext('2d');
+    new Chart(ctx2, {
+        type: 'bar',
+        data: {
+            labels: sectionNames,
+            datasets: [{
+                label: 'Open',
+                data: openData,
+                backgroundColor: 'rgba(255, 205, 86, 0.8)',
+                borderColor: 'rgb(255, 205, 86)',
+                borderWidth: 1
+            }, {
+                label: 'Closed',
+                data: closedData,
+                backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                borderColor: 'rgb(75, 192, 192)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            onHover: function(event, elements) {
+                event.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Enquiries'
+                    },
+                    ticks: {
+                        stepSize: 1,
+                        precision: 0
+                    }
+                }
+            },
+            onClick: function(event, elements) {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    const section = sections[index];
+                    // Navigate to Job Workload Chart for this section with current date range
+                    let dateRangeParam = "&date_range={{ date_range }}";
+                    const dateFrom = "{{ date_from_str }}";
+                    const dateTo = "{{ date_to_str }}";
+
+                    // Always include custom dates if present, regardless of date_range value
+                    if (dateFrom) dateRangeParam += "&date_from=" + dateFrom;
+                    if (dateTo) dateRangeParam += "&date_to=" + dateTo;
+                    const url = '{% url "application:job_workload_chart_report" %}?section=' + section.id + dateRangeParam;
+                    window.location.href = url;
+                }
+            }
+        }
+    });
+    
+    // Job Types Distribution Chart (Doughnut)
+    const ctx3 = document.getElementById('jobTypesChart').getContext('2d');
+    
+    // Generate colors for job types
+    const jobTypeColors = jobTypes.map((_, index) => {
+        const hue = (index * 137.508) % 360; // Golden angle for nice color distribution
+        return `hsl(${hue}, 60%, 65%)`;
+    });
+    
+    const jobTypeBorderColors = jobTypes.map((_, index) => {
+        const hue = (index * 137.508) % 360;
+        return `hsl(${hue}, 60%, 50%)`;
+    });
+    
+    new Chart(ctx3, {
+        type: 'doughnut',
+        data: {
+            labels: jobTypes.map(jt => jt.name),
+            datasets: [{
+                data: jobTypes.map(jt => jt.total),
+                backgroundColor: jobTypeColors,
+                borderColor: jobTypeBorderColors,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: `${jobTypes.reduce((sum, jt) => sum + jt.total, 0)} Total Enquiries`
+                },
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 10,
+                        usePointStyle: true
+                    }
+                }
+            },
+            onClick: function(event, elements) {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    const jobType = jobTypes[index];
+                    // Navigate to enquiries list filtered by this job type with current date range
+                    let dateRangeParam = "&date_range={{ date_range }}";
+                    const dateFrom = "{{ date_from_str }}";
+                    const dateTo = "{{ date_to_str }}";
+
+                    // Always include custom dates if present, regardless of date_range value
+                    if (dateFrom) dateRangeParam += "&date_from=" + dateFrom;
+                    if (dateTo) dateRangeParam += "&date_to=" + dateTo;
+                    // Include section parameter if present in current URL
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const sectionParam = urlParams.get('section') ? '&section=' + urlParams.get('section') : '';
+                    {% if service_type %}const serviceTypeParam = "&service_type={{ service_type }}";{% else %}const serviceTypeParam = "";{% endif %}
+                    const url = '{% url "application:enquiry_list" %}?job_type=' + jobType.id + sectionParam + dateRangeParam + serviceTypeParam;
+                    window.location.href = url;
+                }
+            }
+        }
+    });
+
+    // Note: Date range functionality is now handled by the shared initializeDateRangeFilters function above
+});
+</script>
+{% endblock %}

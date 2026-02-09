@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+
+{% block title %}Monthly SLA Report - Members Enquiries System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'application:index' %}">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Monthly SLA Report</li>
+            </ol>
+        </nav>
+        <h1>📈 Monthly SLA Performance Report</h1>
+        <h2 class="h4 text-muted">{{ selected_month_name }}</h2>
+    </div>
+    <div class="btn-group" role="group">
+        <a href="{% url 'application:average_response_time_report' %}" class="btn btn-outline-primary">Response Times</a>
+        <a href="{% url 'application:index' %}" class="btn btn-outline-secondary">Back to Dashboard</a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Select Month</h5>
+    </div>
+    <div class="card-body">
+        <form method="get" action="" id="monthForm" class="row g-3">
+            <div class="col-md-4">
+                <label for="month" class="form-label">Select Month:</label>
+                <select name="month" id="monthSelect" class="form-select">
+                    {% for month in months %}
+                    <option value="{{ month|date:'Y-m' }}" {% if month|date:'Y-m' == selected_month %}selected{% endif %}>
+                        {{ month|date:'F Y' }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">Report updates automatically when month is changed</div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">SLA Performance by Section - {{ selected_month_name }} (Business Days)</h5>
+        <small class="text-muted">SLA calculations exclude weekends - only business days are counted</small>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover" id="sectionEnquiries">
+    <thead>
+        <tr>
+            <th>Section</th>
+            <th>Closed Within SLA (≤5 Business Days)</th>
+            <th>Closed Outside SLA (>5 Business Days)</th>
+            <th>Open Enquiries</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for section in sections %}
+        <tr>
+            <td>{{ section.name }}</td>
+            <td>
+                {% if section.id %}
+                    <a href="{% url 'application:enquiry_list' %}?section={{ section.id }}&date_from={{ month_start|date:'Y-m-d' }}&date_to={{ month_end_date|date:'Y-m-d' }}&status=closed"
+                       class="btn btn-sm btn-outline-success" title="View closed enquiries within SLA">
+                        {{ section.enquiries_within_sla }}
+                    </a>
+                {% else %}
+                    <span class="badge bg-success">{{ section.enquiries_within_sla }}</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if section.id %}
+                    <a href="{% url 'application:enquiry_list' %}?section={{ section.id }}&date_from={{ month_start|date:'Y-m-d' }}&date_to={{ month_end_date|date:'Y-m-d' }}&status=closed"
+                       class="btn btn-sm btn-outline-warning" title="View closed enquiries outside SLA">
+                        {{ section.enquiries_outside_sla }}
+                    </a>
+                {% else %}
+                    <span class="badge bg-warning">{{ section.enquiries_outside_sla }}</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if section.id %}
+                    <a href="{% url 'application:enquiry_list' %}?section={{ section.id }}&date_from={{ month_start|date:'Y-m-d' }}&date_to={{ month_end_date|date:'Y-m-d' }}&status=open"
+                       class="btn btn-sm btn-outline-primary" title="View open enquiries">
+                        {{ section.enquiries_open }}
+                    </a>
+                {% else %}
+                    <span class="badge bg-primary">{{ section.enquiries_open }}</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr class="no-data-row">
+            <td colspan="4" class="text-center">
+                <div class="alert alert-info mt-3 mb-3">
+                    <i class="fas fa-info-circle"></i> No enquiries found for this month.
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script nonce="{{ request.csp_nonce }}">
+    $(document).ready(function() {
+        // Get the text of the selected option
+        var selectedMonthText = $("#monthSelect option:selected").text();
+        $("#subtitle").text("Enquiries Per Section (SLA) - " + selectedMonthText);
+
+        // Check if there are any data rows (excluding the "No enquiries found" row)
+        var hasData = $('#sectionEnquiries tbody tr').length > 0 &&
+                      !$('#sectionEnquiries tbody tr.no-data-row').length;
+
+        if (hasData) {
+            // Initialize DataTables only if there's actual data
+            // Initialize DataTables with enhanced export buttons
+            var table = $('#sectionEnquiries').DataTable({
+                "pageLength": 10,
+                "lengthMenu": [[10, 25, 50, 100], [10, 25, 50, 100]],
+                "order": [[ 1, "desc" ]], // Sort by Within SLA descending
+                "columnDefs": [
+                    { "targets": [1, 2, 3], "className": "text-center" } // Center align count columns
+                ],
+                "dom": '<"row"<"col-sm-12 col-md-6"B><"col-sm-12 col-md-3"f><"col-sm-12 col-md-3"l>>' +
+                       '<"row"<"col-sm-12"tr>>' +
+                       '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+                "buttons": [
+                    {
+                        extend: 'copy',
+                        text: '<i class="bi bi-clipboard"></i> Copy',
+                        className: 'btn btn-primary btn-sm',
+                        exportOptions: {
+                            columns: [0, 1, 2, 3], // All columns
+                            format: {
+                                body: formatDataTableExport
+                            }
+                        }
+                    },
+                    {
+                        extend: 'csv',
+                        text: '<i class="bi bi-file-earmark-text"></i> CSV',
+                        className: 'btn btn-success btn-sm',
+                        title: 'Monthly_Enquiries_' + new Date().toISOString().slice(0,10),
+                        exportOptions: {
+                            columns: [0, 1, 2, 3], // All columns
+                            format: {
+                                body: formatDataTableExport
+                            }
+                        }
+                    },
+                    {
+                        extend: 'excel',
+                        text: '<i class="bi bi-file-earmark-excel"></i> Excel',
+                        className: 'btn btn-success btn-sm',
+                        title: 'Monthly_Enquiries_' + new Date().toISOString().slice(0,10),
+                        exportOptions: {
+                            columns: [0, 1, 2, 3], // All columns
+                            format: {
+                                body: formatDataTableExport
+                            }
+                        }
+                    },
+                    {
+                        extend: 'pdf',
+                        text: '<i class="bi bi-file-earmark-pdf"></i> PDF',
+                        className: 'btn btn-danger btn-sm',
+                        title: 'Monthly Enquiries Report',
+                        orientation: 'landscape',
+                        pageSize: 'A4',
+                        exportOptions: {
+                            columns: [0, 1, 2, 3], // All columns
+                            format: {
+                                body: formatDataTableExport
+                            }
+                        }
+                    }
+                ],
+                "stateSave": true,
+                "language": {
+                    "search": "Filter results:",
+                    "lengthMenu": "Show _MENU_ enquiries per page"
+                }
+            });
+        } else {
+            // For empty data, just show the table without DataTables
+            $("#sectionEnquiries").addClass('display');
+        }
+
+        // Show the table
+        $("#sectionEnquiries").fadeIn(400);
+
+        // Handle dropdown change
+        $('#monthSelect').on('change', function() {
+            var selectedMonthText = $("#monthSelect option:selected").text();
+            $("#subtitle").text("Enquiries Per Section (SLA) - " + selectedMonthText);
+            $('#monthForm').submit();
+        });
+    });
+</script>
+{% endblock %}

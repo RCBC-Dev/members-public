@@ -1,0 +1,806 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}File Management Dashboard{% endblock %}
+
+{% block extra_css %}
+<!-- File management styles are now in custom.css -->
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="bi bi-hdd-stack"></i> File Management Dashboard</h1>
+                <div>
+                    <button class="btn btn-outline-primary" id="refresh-dashboard-btn">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                    <a href="{% url 'application:file_browser' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-folder2-open"></i> File Browser
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Storage Overview -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card storage-card">
+                <div class="card-body text-center">
+                    <div class="metric-value">{{ total_files|floatformat:0 }}</div>
+                    <div class="metric-label">Total Files</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card storage-card">
+                <div class="card-body text-center">
+                    <div class="metric-value">{{ total_size_formatted }}</div>
+                    <div class="metric-label">Total Storage</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card storage-card success">
+                <div class="card-body text-center">
+                    <div class="metric-value">{{ db_attachments }}</div>
+                    <div class="metric-label">Database Records</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card storage-card warning">
+                <div class="card-body text-center">
+                    <div class="metric-value">{{ recent_attachments }}</div>
+                    <div class="metric-label">Recent Uploads (30d)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Directory Breakdown -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-folder"></i> Storage by Directory</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for dir_name, stats in directory_stats.items %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title">{{ dir_name|title }}</h6>
+                                    <p class="card-text">
+                                        <strong>{{ stats.files|floatformat:0 }}</strong> files<br>
+                                        <strong>{{ stats.size_formatted }}</strong>
+                                    </p>
+                                    <div class="progress progress-height-8">
+                                        <div class="progress-bar" role="progressbar"
+                                             data-width="{% widthratio stats.size total_size 100 %}"></div>
+                                    </div>
+                                    <small class="text-muted">
+                                        {% widthratio stats.size total_size 100 %}% of total storage
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Management Tools -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-search"></i> Storage Analysis</h5>
+                </div>
+                <div class="card-body">
+                    <p>Analyze file storage usage and identify optimization opportunities.</p>
+                    <button class="btn btn-primary action-button" id="run-analysis-btn">
+                        <i class="bi bi-graph-up"></i> Run Analysis
+                    </button>
+                    <div id="analysis-progress" class="progress-container hidden">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated w-100"
+                                 role="progressbar"></div>
+                        </div>
+                        <small class="text-muted">Analyzing storage...</small>
+                    </div>
+                    <div id="analysis-results" class="hidden">
+                        <h6 class="mt-3">Analysis Results:</h6>
+                        <div id="analysis-metrics" class="row mb-3"></div>
+                        <div id="analysis-output" class="log-output"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-trash"></i> Orphaned File Cleanup</h5>
+                </div>
+                <div class="card-body">
+                    <p>Remove files that are not linked to any enquiry records.</p>
+                    <div class="alert alert-warning" role="alert">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>Note:</strong> Summernote images are NOT checked as they are embedded in enquiry descriptions and cannot be safely detected as orphans.
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="backup-files" checked>
+                        <label class="form-check-label" for="backup-files">
+                            Create backup before deletion
+                        </label>
+                    </div>
+                    <button class="btn btn-outline-warning action-button" id="preview-cleanup-btn">
+                        <i class="bi bi-eye"></i> Preview Cleanup
+                    </button>
+                    <button class="btn btn-danger action-button" id="execute-cleanup-btn">
+                        <i class="bi bi-trash"></i> Execute Cleanup
+                    </button>
+                    <div id="cleanup-progress" class="progress-container hidden">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning w-100"
+                                 role="progressbar"></div>
+                        </div>
+                        <small class="text-muted">Cleaning up files...</small>
+                    </div>
+                    <div id="cleanup-results" class="hidden">
+                        <h6 class="mt-3">Cleanup Results:</h6>
+                        <div id="cleanup-metrics" class="row mb-3"></div>
+                        <div id="cleanup-output" class="log-output"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Check Missing Images -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-file-earmark-x"></i> Check Missing/Corrupted Images</h5>
+                </div>
+                <div class="card-body">
+                    <p>Verify all attachment records have corresponding files on disk and check for corrupted images.</p>
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Tip:</strong> If files are missing, they may exist in LIVE and need to be copied over.
+                    </div>
+                    <button class="btn btn-warning action-button" id="check-missing-btn">
+                        <i class="bi bi-search"></i> Check Missing/Corrupted Files
+                    </button>
+                    <div id="missing-progress" class="progress-container hidden">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning w-100"
+                                 role="progressbar"></div>
+                        </div>
+                        <small class="text-muted">Checking attachments...</small>
+                    </div>
+                    <div id="missing-results" class="hidden">
+                        <h6 class="mt-3">Check Results:</h6>
+                        <div id="missing-metrics" class="row mb-3"></div>
+                        <div id="missing-output" class="log-output"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Update Attachment Sizes -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-database-check"></i> Update Attachment File Sizes</h5>
+                </div>
+                <div class="card-body">
+                    <p>Synchronize database file sizes with actual file sizes on disk. Useful after image compression operations.</p>
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>When to use:</strong> After compressing images, the database may still show old file sizes. This tool updates the database to match actual file sizes.
+                    </div>
+                    <button class="btn btn-outline-primary action-button" id="preview-size-update-btn">
+                        <i class="bi bi-eye"></i> Preview Size Updates
+                    </button>
+                    <button class="btn btn-primary action-button" id="update-sizes-btn">
+                        <i class="bi bi-database-check"></i> Update All Sizes
+                    </button>
+                    <div id="size-update-progress" class="progress-container hidden">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary w-100"
+                                 role="progressbar"></div>
+                        </div>
+                        <small class="text-muted">Updating attachment sizes...</small>
+                    </div>
+                    <div id="size-update-results" class="hidden">
+                        <h6 class="mt-3">Update Results:</h6>
+                        <div id="size-update-metrics" class="row mb-3"></div>
+                        <div id="size-update-output" class="log-output"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summernote Optimization -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-image"></i> Image Optimization</h5>
+                </div>
+                <div class="card-body">
+                    <p>Optimize enquiry images (Summernote + uploaded photos) for better storage efficiency.</p>
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Enquiry Images:</strong> This tool processes both legacy Summernote images and uploaded enquiry photos. Use analysis tools to understand usage, but be cautious with cleanup operations.
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <button class="btn btn-info action-button" id="analyze-images-btn">
+                                <i class="bi bi-graph-up"></i> Analyze Images
+                            </button>
+                            <button class="btn btn-outline-primary action-button" id="preview-compression-btn">
+                                <i class="bi bi-eye"></i> Preview Compression
+                            </button>
+                            <button class="btn btn-primary action-button" id="compress-images-btn">
+                                <i class="bi bi-file-zip"></i> Compress Images
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="compression-quality">Compression Quality:</label>
+                                <input type="range" class="form-range" id="compression-quality"
+                                       min="60" max="95" value="85">
+                                <small class="text-muted">Quality: <span id="quality-value">85</span>%</small>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label for="min-file-size">Minimum File Size to Process:</label>
+                                <select class="form-select" id="min-file-size">
+                                    <option value="0.5">500 KB</option>
+                                    <option value="1" selected>1 MB</option>
+                                    <option value="2">2 MB</option>
+                                    <option value="5">5 MB</option>
+                                </select>
+                                <small class="text-muted">Only process files larger than this size</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="max-dimension">Maximum Image Dimension:</label>
+                                <select class="form-select" id="max-dimension">
+                                    <option value="800">800px</option>
+                                    <option value="1024">1024px</option>
+                                    <option value="1920" selected>1920px (Full HD)</option>
+                                </select>
+                                <small class="text-muted">Resize images larger than this (maintains aspect ratio)</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="summernote-progress" class="progress-container hidden">
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info w-100"
+                                 role="progressbar"></div>
+                        </div>
+                        <small class="text-muted">Optimizing images...</small>
+                    </div>
+                    <div id="summernote-results" class="hidden">
+                        <h6 class="mt-3">Optimization Results:</h6>
+                        <div id="summernote-output" class="log-output"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script nonce="{{ request.csp_nonce }}">
+// Initialize event listeners when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Add event listeners for all buttons
+    document.getElementById('refresh-dashboard-btn').addEventListener('click', refreshDashboard);
+    document.getElementById('run-analysis-btn').addEventListener('click', runStorageAnalysis);
+    document.getElementById('preview-cleanup-btn').addEventListener('click', function() { cleanupOrphanedFiles(true); });
+    document.getElementById('execute-cleanup-btn').addEventListener('click', function() { cleanupOrphanedFiles(false); });
+    document.getElementById('check-missing-btn').addEventListener('click', checkMissingImages);
+    document.getElementById('preview-size-update-btn').addEventListener('click', function() { updateAttachmentSizes(true); });
+    document.getElementById('update-sizes-btn').addEventListener('click', function() { updateAttachmentSizes(false); });
+    document.getElementById('analyze-images-btn').addEventListener('click', function() { optimizeSummernote('analyze'); });
+    document.getElementById('preview-compression-btn').addEventListener('click', function() { optimizeSummernote('compress', true); });
+    document.getElementById('compress-images-btn').addEventListener('click', function() { optimizeSummernote('compress', false); });
+
+    // Add event listener for quality slider
+    document.getElementById('compression-quality').addEventListener('input', function() {
+        document.getElementById('quality-value').textContent = this.value;
+    });
+
+    // Set progress bar widths from data attributes (CSP compliant)
+    document.querySelectorAll('.progress-bar[data-width]').forEach(function(bar) {
+        const width = parseInt(bar.getAttribute('data-width'), 10);
+        setProgressBarWidth(bar.id || 'bar-' + Math.random(), width);
+        // For bars without IDs, apply class directly
+        if (!bar.id) {
+            const roundedPercent = Math.round(width / 5) * 5;
+            bar.classList.add('progress-width-' + roundedPercent);
+        }
+    });
+});
+
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+function showProgress(elementId) {
+    document.getElementById(elementId).classList.remove('hidden');
+}
+
+function hideProgress(elementId) {
+    document.getElementById(elementId).classList.add('hidden');
+}
+
+function showResults(elementId) {
+    document.getElementById(elementId).classList.remove('hidden');
+}
+
+function setProgressBarWidth(elementId, percent) {
+    const bar = document.getElementById(elementId);
+    if (!bar) return;
+
+    // Round to nearest 5 for class-based widths
+    const roundedPercent = Math.round(percent / 5) * 5;
+
+    // Remove all existing progress width classes (0-100 in steps of 5)
+    for (let i = 0; i <= 100; i += 5) {
+        bar.classList.remove('progress-width-' + i);
+    }
+
+    // Add the new width class
+    bar.classList.add('progress-width-' + roundedPercent);
+}
+
+function refreshDashboard() {
+    location.reload();
+}
+
+function runStorageAnalysis() {
+    showProgress('analysis-progress');
+    document.getElementById('analysis-results').classList.add('hidden');
+    
+    fetch('{% url "application:run_storage_analysis" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideProgress('analysis-progress');
+        
+        if (data.success) {
+            // Display metrics
+            const metricsHtml = Object.entries(data.metrics).map(([key, value]) => 
+                `<div class="col-md-4">
+                    <div class="text-center">
+                        <div class="h5">${value}</div>
+                        <small class="text-muted">${key.replace('_', ' ')}</small>
+                    </div>
+                </div>`
+            ).join('');
+            
+            document.getElementById('analysis-metrics').innerHTML = metricsHtml;
+            document.getElementById('analysis-output').textContent = data.output;
+            showResults('analysis-results');
+        } else {
+            alert('Analysis failed: ' + data.error);
+        }
+    })
+    .catch(error => {
+        hideProgress('analysis-progress');
+        alert('Error running analysis: ' + error);
+    });
+}
+
+function cleanupOrphanedFiles(dryRun) {
+    const backup = document.getElementById('backup-files').checked;
+    
+    if (!dryRun && !confirm('This will permanently delete orphaned files. Are you sure?')) {
+        return;
+    }
+    
+    showProgress('cleanup-progress');
+    document.getElementById('cleanup-results').classList.add('hidden');
+    
+    const formData = new FormData();
+    formData.append('backup', backup);
+    formData.append('dry_run', dryRun);
+    formData.append('csrfmiddlewaretoken', getCsrfToken());
+    
+    fetch('{% url "application:cleanup_orphaned_files" %}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideProgress('cleanup-progress');
+        
+        if (data.success) {
+            // Display metrics
+            const metricsHtml = Object.entries(data.metrics).map(([key, value]) => 
+                `<div class="col-md-4">
+                    <div class="text-center">
+                        <div class="h5">${value}</div>
+                        <small class="text-muted">${key.replace('_', ' ')}</small>
+                    </div>
+                </div>`
+            ).join('');
+            
+            document.getElementById('cleanup-metrics').innerHTML = metricsHtml;
+            document.getElementById('cleanup-output').textContent = data.output;
+            showResults('cleanup-results');
+            
+            if (!data.dry_run && data.metrics.deleted_files && data.metrics.deleted_files !== '0') {
+                setTimeout(refreshDashboard, 2000);
+            }
+        } else {
+            alert('Cleanup failed: ' + data.error);
+        }
+    })
+    .catch(error => {
+        hideProgress('cleanup-progress');
+        alert('Error running cleanup: ' + error);
+    });
+}
+
+function checkMissingImages() {
+    showProgress('missing-progress');
+    document.getElementById('missing-results').classList.add('hidden');
+
+    fetch('{% url "application:check_missing_images" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideProgress('missing-progress');
+
+        if (data.success) {
+            // Display metrics
+            const metricsHtml = `
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="h5">${data.total_checked}</div>
+                        <small class="text-muted">Total Files Checked</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="h5 ${data.missing_count > 0 ? 'text-danger' : 'text-success'}">${data.missing_count}</div>
+                        <small class="text-muted">Missing Files</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="h5 ${data.corrupted_count > 0 ? 'text-warning' : 'text-success'}">${data.corrupted_count}</div>
+                        <small class="text-muted">Corrupted Files</small>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('missing-metrics').innerHTML = metricsHtml;
+
+            // Build output with detailed lists
+            let outputHtml = '';
+
+            if (data.missing_count === 0 && data.corrupted_count === 0) {
+                outputHtml = '<div class="alert alert-success"><i class="bi bi-check-circle"></i> All attachment files are present and valid!</div>';
+            } else {
+                if (data.missing_count > 0) {
+                    outputHtml += '<div class="alert alert-danger"><h6><i class="bi bi-x-circle"></i> Missing Files:</h6><ul class="mb-0">';
+                    data.missing_files.forEach(file => {
+                        outputHtml += `<li><strong>${file.enquiry_ref}</strong>: ${file.filename} (${file.file_path}) - Uploaded: ${file.uploaded_at}</li>`;
+                    });
+                    outputHtml += '</ul></div>';
+                }
+
+                if (data.corrupted_count > 0) {
+                    outputHtml += '<div class="alert alert-warning"><h6><i class="bi bi-exclamation-triangle"></i> Corrupted/Unreadable Files:</h6><ul class="mb-0">';
+                    data.corrupted_files.forEach(file => {
+                        outputHtml += `<li><strong>${file.enquiry_ref}</strong>: ${file.filename} - ${file.reason}<br><small class="text-muted">Path: ${file.file_path}</small></li>`;
+                    });
+                    outputHtml += '</ul></div>';
+                }
+            }
+
+            document.getElementById('missing-output').innerHTML = outputHtml;
+            showResults('missing-results');
+        } else {
+            alert('Check failed: ' + data.error);
+        }
+    })
+    .catch(error => {
+        hideProgress('missing-progress');
+        alert('Error checking files: ' + error);
+    });
+}
+
+function updateAttachmentSizes(dryRun) {
+    if (!dryRun && !confirm('This will update all attachment file sizes in the database. Continue?')) {
+        return;
+    }
+
+    showProgress('size-update-progress');
+    document.getElementById('size-update-results').classList.add('hidden');
+
+    const formData = new FormData();
+    formData.append('dry_run', dryRun);
+    formData.append('csrfmiddlewaretoken', getCsrfToken());
+
+    fetch('{% url "application:update_attachment_sizes" %}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideProgress('size-update-progress');
+
+        if (data.success) {
+            // Display metrics
+            const metricsHtml = `
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div class="h5">${data.total_checked}</div>
+                        <small class="text-muted">Files Checked</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div class="h5 ${data.files_updated > 0 ? 'text-primary' : 'text-success'}">${data.files_updated}</div>
+                        <small class="text-muted">Files Updated</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div class="h5 text-success">${data.files_matched}</div>
+                        <small class="text-muted">Already Correct</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <div class="h5 ${data.files_missing > 0 ? 'text-danger' : 'text-success'}">${data.files_missing}</div>
+                        <small class="text-muted">Missing Files</small>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('size-update-metrics').innerHTML = metricsHtml;
+
+            // Build output message
+            let outputHtml = '';
+
+            if (data.files_updated === 0 && data.files_missing === 0) {
+                outputHtml = '<div class="alert alert-success"><i class="bi bi-check-circle"></i> All attachment file sizes are already correct!</div>';
+            } else {
+                if (dryRun && data.files_updated > 0) {
+                    outputHtml += `<div class="alert alert-warning"><i class="bi bi-info-circle"></i> <strong>Dry Run:</strong> ${data.files_updated} files would be updated. Click "Update All Sizes" to apply changes.</div>`;
+                } else if (!dryRun && data.files_updated > 0) {
+                    outputHtml += `<div class="alert alert-success"><i class="bi bi-check-circle"></i> Successfully updated ${data.files_updated} attachment file sizes!`;
+                    if (data.total_size_reduction) {
+                        outputHtml += `<br><strong>Total size reduction:</strong> ${data.total_size_reduction}`;
+                    }
+                    outputHtml += '</div>';
+                }
+
+                if (data.files_missing > 0) {
+                    outputHtml += `<div class="alert alert-danger"><i class="bi bi-x-circle"></i> <strong>${data.files_missing} files are missing</strong> from disk but still in database. Check the "Check Missing Images" tool for details.</div>`;
+                }
+
+                if (data.details && data.details.length > 0) {
+                    outputHtml += '<div class="alert alert-info"><h6>Sample Updates:</h6><ul class="mb-0">';
+                    data.details.slice(0, 10).forEach(detail => {
+                        outputHtml += `<li><strong>${detail.enquiry_ref}:</strong> ${detail.filename} - ${detail.old_size} → ${detail.new_size}</li>`;
+                    });
+                    if (data.details.length > 10) {
+                        outputHtml += `<li><em>... and ${data.details.length - 10} more</em></li>`;
+                    }
+                    outputHtml += '</ul></div>';
+                }
+            }
+
+            document.getElementById('size-update-output').innerHTML = outputHtml;
+            showResults('size-update-results');
+
+            if (!dryRun && data.files_updated > 0) {
+                setTimeout(refreshDashboard, 2000);
+            }
+        } else {
+            alert('Update failed: ' + data.error);
+        }
+    })
+    .catch(error => {
+        hideProgress('size-update-progress');
+        alert('Error updating sizes: ' + error);
+    });
+}
+
+function optimizeSummernote(action, dryRun = false) {
+    const quality = document.getElementById('compression-quality').value;
+
+    if (action === 'analyze' || (action === 'compress' && dryRun)) {
+        // Use the regular method for analysis and dry run preview
+        showProgress('summernote-progress');
+        document.getElementById('summernote-results').classList.add('hidden');
+
+        const formData = new FormData();
+        formData.append('action', action);
+        formData.append('quality', quality);
+        formData.append('dry_run', dryRun);
+        formData.append('csrfmiddlewaretoken', getCsrfToken());
+
+        fetch('{% url "application:optimize_summernote_images" %}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideProgress('summernote-progress');
+
+            if (data.success) {
+                document.getElementById('summernote-output').innerHTML = '<pre>' + data.output + '</pre>';
+                showResults('summernote-results');
+            } else {
+                alert('Optimization failed: ' + data.error);
+            }
+        })
+        .catch(error => {
+            hideProgress('summernote-progress');
+            alert('Error running optimization: ' + error);
+        });
+    } else {
+        // Use streaming for compression with real-time progress
+        showProgress('summernote-progress');
+        document.getElementById('summernote-results').classList.add('hidden');
+
+        // Create enhanced progress display
+        const progressHtml = `
+            <div class="mb-3">
+                <div class="d-flex justify-content-between mb-1">
+                    <span id="summernote-progress-text">Preparing...</span>
+                    <span id="summernote-progress-percent">0%</span>
+                </div>
+                <div class="progress">
+                    <div id="summernote-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated progress-width-0" role="progressbar"></div>
+                </div>
+            </div>
+            <div id="summernote-file-details" class="small text-muted mb-3"></div>
+        `;
+        document.getElementById('summernote-output').innerHTML = progressHtml;
+        showResults('summernote-results');
+
+        const formData = new FormData();
+        formData.append('quality', quality);
+        formData.append('dry_run', dryRun);
+        formData.append('csrfmiddlewaretoken', getCsrfToken());
+
+        // Create EventSource for streaming (GET request)
+        const minFileSize = document.getElementById('min-file-size').value;
+        const maxDimension = document.getElementById('max-dimension').value;
+        const params = new URLSearchParams();
+        params.append('quality', quality);
+        params.append('dry_run', dryRun);
+        params.append('min_size_mb', minFileSize);
+        params.append('max_dimension', maxDimension);
+
+        const eventSource = new EventSource('{% url "application:optimize_summernote_images_stream" %}?' + params.toString());
+
+        eventSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+
+            if (data.status === 'scanning') {
+                document.getElementById('summernote-progress-text').textContent = data.message;
+                setProgressBarWidth('summernote-progress-bar', 10);
+            }
+            else if (data.status === 'starting') {
+                let message = `Found ${data.total_files} images that need optimization`;
+                if (data.skipped_files > 0) {
+                    message += ` (${data.skipped_files} images skipped - already optimized or < ${data.min_size_mb}MB)`;
+                }
+                if (data.dry_run) {
+                    message += ' (DRY RUN)';
+                }
+                document.getElementById('summernote-progress-text').textContent = message;
+                setProgressBarWidth('summernote-progress-bar', 15);
+            }
+            else if (data.status === 'processing') {
+                const percent = Math.round((data.progress / data.total) * 100);
+                document.getElementById('summernote-progress-text').textContent = `Processing: ${data.current_file}`;
+                document.getElementById('summernote-progress-percent').textContent = `${percent}%`;
+                setProgressBarWidth('summernote-progress-bar', percent);
+            }
+            else if (data.status === 'file_resized') {
+                document.getElementById('summernote-file-details').innerHTML =
+                    `<span class="text-info"><strong>${data.filename}:</strong> Resized from ${data.old_size} to ${data.new_size}</span>`;
+            }
+            else if (data.status === 'file_converted') {
+                document.getElementById('summernote-file-details').innerHTML =
+                    `<span class="text-warning"><strong>${data.filename}:</strong> Converted to ${data.new_format}</span>`;
+            }
+            else if (data.status === 'file_complete') {
+                const savingsText = data.savings > 0 ?
+                    `Saved ${data.savings_formatted} (${data.savings_percent}%)` :
+                    'No savings';
+                document.getElementById('summernote-file-details').innerHTML =
+                    `<strong>${data.filename}:</strong> ${data.original_formatted} → ${data.new_formatted} (${savingsText})`;
+            }
+            else if (data.status === 'file_error') {
+                document.getElementById('summernote-file-details').innerHTML =
+                    `<span class="text-danger"><strong>Error with ${data.filename}:</strong> ${data.error}</span>`;
+            }
+            else if (data.status === 'complete') {
+                hideProgress('summernote-progress');
+
+                const resultClass = data.errors > 0 ? 'alert-warning' : 'alert-success';
+                const resultTitle = data.dry_run ? 'Dry Run Complete' : 'Optimization Complete';
+
+                let resultHtml = `
+                    <div class="alert ${resultClass}">
+                        <h5>${resultTitle}</h5>
+                        <ul class="mb-0">
+                            <li><strong>Files processed:</strong> ${data.processed} of ${data.total_files}</li>
+                            <li><strong>Total savings:</strong> ${data.savings_formatted} (${data.savings_percent}%)</li>
+                            <li><strong>Before:</strong> ${data.total_size_before_formatted}</li>
+                            <li><strong>After:</strong> ${data.total_size_after_formatted}</li>
+                `;
+
+                if (data.errors > 0) {
+                    resultHtml += `<li><strong>Errors:</strong> ${data.errors} files failed</li>`;
+                }
+
+                resultHtml += '</ul></div>';
+
+                if (data.error_files && data.error_files.length > 0) {
+                    resultHtml += '<div class="alert alert-danger"><h6>Error Details:</h6><ul>';
+                    data.error_files.forEach(error => {
+                        resultHtml += `<li><strong>${error.filename}:</strong> ${error.error}</li>`;
+                    });
+                    resultHtml += '</ul></div>';
+                }
+
+                document.getElementById('summernote-output').innerHTML = resultHtml;
+                eventSource.close();
+            }
+            else if (data.status === 'error') {
+                hideProgress('summernote-progress');
+                document.getElementById('summernote-output').innerHTML =
+                    `<div class="alert alert-danger"><strong>Error:</strong> ${data.error}</div>`;
+                showResults('summernote-results');
+                eventSource.close();
+            }
+        };
+
+        eventSource.onerror = function(event) {
+            hideProgress('summernote-progress');
+            document.getElementById('summernote-output').innerHTML =
+                '<div class="alert alert-danger">Connection error. Please try again.</div>';
+            showResults('summernote-results');
+            eventSource.close();
+        };
+    }
+}
+</script>
+{% endblock %}

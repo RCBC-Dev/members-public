@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Enquiries per Member (Monthly) - Members Enquiries{% endblock %}
+{% load custom_filters %}
+
+{% block container_class %}container-fluid{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'application:index' %}">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Enquiries per Member (Monthly)</li>
+            </ol>
+        </nav>
+        <h1>📅 Enquiries per Member (Monthly)</h1>
+        <p class="text-muted">Showing enquiry counts for the last 12 months ({{ date_from|date:"d/m/Y" }} - {{ date_to|date:"d/m/Y" }}) by member</p>
+    </div>
+</div>
+
+<!-- Service Type Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3" id="filterForm">
+            <div class="col-md-4">
+                <label for="service_type" class="form-label">Filter by Service Type</label>
+                <select name="service_type" id="service_type" class="form-select">
+                    <option value="">All Service Types</option>
+                    <option value="failed_service" {% if service_type == 'failed_service' %}selected{% endif %}>Failed service</option>
+                    <option value="new_addition" {% if service_type == 'new_addition' %}selected{% endif %}>New/addition requests</option>
+                    <option value="pre_programmed" {% if service_type == 'pre_programmed' %}selected{% endif %}>Pre-programmed work</option>
+                    <option value="not_rcbc" {% if service_type == 'not_rcbc' %}selected{% endif %}>Not RCBC</option>
+                </select>
+            </div>
+        </form>
+        <script type="text/javascript" nonce="{{ request.csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function() {
+  // Auto-submit form when any filter changes
+  const filterForm = document.getElementById('filterForm');
+  if (filterForm) {
+    const filterInputs = filterForm.querySelectorAll('select, input[type="date"]');
+    filterInputs.forEach(input => {
+      input.addEventListener('change', function() {
+        filterForm.submit();
+      });
+    });
+  }
+});
+</script>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h5 class="card-title">Active Members</h5>
+                <h2>{{ total_members }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Monthly Enquiries per Member Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Member Enquiry Counts by Month</h5>
+    </div>
+    <div class="card-body">
+        {% if data %}
+        <div>
+            <table class="table table-striped table-hover table-sm" id="memberMonthlyTable">
+                <thead>
+                    <tr>
+                        <th class="sticky-col">Member</th>
+                        <th class="sticky-col-2">Ward</th>
+                        {% for month in months %}
+                            <th class="text-center">{{ month }}</th>
+                        {% endfor %}
+                        <th class="text-center">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data %}
+                    <tr>
+                        <td class="sticky-col bg-light fw-bold">{{ row.name }}</td>
+                        <td class="sticky-col-2 bg-light">{{ row.ward }}</td>
+                        {% for month in months %}
+                            <td class="text-center">
+                                {% with count=row|get_by_key:month %}
+                                    {% if count > 0 %}
+                                        {% with month_key=month_keys|list_index:forloop.counter0 %}
+                                        <a href="{% url 'application:enquiry_list' %}?member={{ row.id }}&date_from={{ month_key }}-01&date_to={{ month_key|month_last_day }}{% if service_type %}&service_type={{ service_type }}{% endif %}"
+                                           class="btn btn-sm btn-outline-primary">
+                                            {{ count }}
+                                        </a>
+                                        {% endwith %}
+                                    {% else %}
+                                        <span class="text-muted">0</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                        {% endfor %}
+                        <td class="text-center fw-bold">
+                            <a href="{% url 'application:enquiry_list' %}?member={{ row.id }}&date_from={{ date_from|date:'Y-m-d' }}&date_to={{ date_to|date:'Y-m-d' }}{% if service_type %}&service_type={{ service_type }}{% endif %}"
+                               class="btn btn-sm btn-primary">
+                                {{ row.total }}
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <h5 class="text-muted">No Data Available</h5>
+            <p class="text-muted">No enquiries found for the last 12 months.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<!-- CSS moved to static/css/custom.css -->
+{% endblock %}
+
+{% block extra_js %}
+<script nonce="{{ request.csp_nonce }}">
+$(document).ready(function() {
+    $('#memberMonthlyTable').DataTable({
+        "pageLength": 10,
+        "lengthMenu": [[10, 25, 50, 100], [10, 25, 50, 100]],
+        "order": [[ 0, "asc" ]], // Sort by Member name
+        "columnDefs": [
+            { "targets": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14], "className": "text-center" } // Center align month and total columns
+        ],
+        "dom": '<"row"<"col-sm-12 col-md-6"B><"col-sm-12 col-md-3"f><"col-sm-12 col-md-3"l>>' +
+               '<"row"<"col-sm-12"tr>>' +
+               '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+        "buttons": [
+            {
+                extend: 'copy',
+                text: '<i class="bi bi-clipboard"></i> Copy',
+                className: 'btn btn-primary btn-sm',
+                exportOptions: {
+                    columns: ':visible',
+                    format: {
+                        body: formatDataTableExport
+                    }
+                }
+            },
+            {
+                extend: 'csv',
+                text: '<i class="bi bi-file-earmark-text"></i> CSV',
+                className: 'btn btn-success btn-sm',
+                title: 'Enquiries_Per_Member_Monthly_' + new Date().toISOString().slice(0,10),
+                exportOptions: {
+                    columns: ':visible',
+                    format: {
+                        body: formatDataTableExport
+                    }
+                }
+            },
+            {
+                extend: 'excel',
+                text: '<i class="bi bi-file-earmark-excel"></i> Excel',
+                className: 'btn btn-success btn-sm',
+                title: 'Enquiries_Per_Member_Monthly_' + new Date().toISOString().slice(0,10),
+                exportOptions: {
+                    columns: ':visible',
+                    format: {
+                        body: formatDataTableExport
+                    }
+                }
+            },
+            {
+                extend: 'pdf',
+                text: '<i class="bi bi-file-earmark-pdf"></i> PDF',
+                className: 'btn btn-danger btn-sm',
+                title: 'Enquiries Per Member Monthly Report',
+                orientation: 'landscape',
+                pageSize: 'A3', // Larger page size for wide monthly table
+                exportOptions: {
+                    columns: ':visible',
+                    format: {
+                        body: formatDataTableExport
+                    }
+                }
+            }
+        ],
+        "stateSave": true,
+        "language": {
+            "search": "Filter results:",
+            "lengthMenu": "Show _MENU_ enquiries per page"
+        }
+    });
+});
+</script>
+{% endblock %}
