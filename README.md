@@ -99,8 +99,8 @@ A Django-based web application for managing council member enquiries with Azure 
 
 1. **Clone the repository**
    ```bash
-   git clone RCBC-Dev\members-public
-   cd members2
+   git clone https://github.com/RCBC-Dev/members-public.git
+   cd members-public
    ```
 
 2. **Create a virtual environment**
@@ -572,7 +572,7 @@ This application can be deployed to various hosting environments:
    ```
 
 2. **Update paths in web.config**:
-   - Replace `C:\Dev\members2` with your actual installation path
+   - Replace `C:\path\to\members-public` with your actual installation path
    - Update `processPath` to point to your virtual environment's `python.exe`
    - Update `arguments` to point to your `serve.py` file
    - Update `stdoutLogFile` path for logs
@@ -694,3 +694,5 @@ For issues or questions, please contact the development team or your organizatio
 ## Support
 
 For deployment support or questions about configuration, contact your internal IT department or the development team.
+
+**Repository**: https://github.com/RCBC-Dev/members-public

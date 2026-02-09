@@ -1,9 +1,13 @@
 import os
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "project.settings.development")
+
+os.environ.setdefault(
+    "DJANGO_SETTINGS_MODULE", "project.settings.test"
+)  # or production
 
 print("Starting serve.py")
 from waitress import serve
 from project.wsgi import application
+
 print("Imported application")
 
 if __name__ == "__main__":
