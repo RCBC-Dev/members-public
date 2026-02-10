@@ -1,12 +1,12 @@
 # Members Enquiries Application
 
-A Django-based web application for managing council member enquiries with Azure AD authentication, email parsing, and some of reporting tools.
+A Django-based web application for managing council member enquiries with Azure AD authentication, email parsing, and some reporting tools.
 
 ## Features
 
 ### Enquiry Management
 - **Create enquiries** - Manually create enquiries with member details, contacts, job types, and descriptions
-- **Email integration** - Automatically parse enquiry emails and create records with attachments
+- **Email integration** - Drag/Drop Emails from Outlook to automatically parse enquiry emails and create records with attachments
 - **Edit enquiries** - Update enquiry details, reassign to different contacts, or change status
 - **Reopen enquiries** - Reopen previously closed enquiries with updated information
 - **Status tracking** - Track enquiry lifecycle: open, closed.
@@ -60,7 +60,7 @@ A Django-based web application for managing council member enquiries with Azure 
 
 ## Screenshots
 
-### Welcome & Dashboard
+### Welcome Page
 ![Welcome Page](screenshots/welcome.jpeg)
 *Welcome page with Sign in with Microsoft*
 
@@ -679,17 +679,35 @@ AZURE_TENANT_ID=your-tenant-id
 
 ## License
 
-This software is provided "AS IS" without warranty of any kind. While the software is free to use, modify, and distribute, **the authors and contributors accept no responsibility for any issues, losses, or damages that may occur from its use**. This includes but is not limited to data loss, system failures, security breaches, or any other problems arising from the installation, operation, or modification of this software.
+This software is licensed under the GNU Affero General Public License v3.0.
+Copyright © 2026 Redcar & Cleveland Borough Council.
 
-Users are responsible for:
-- Reviewing the code before deployment
-- Testing thoroughly in development and test environments
-- Implementing appropriate security measures
-- Maintaining their own backups
-- Ensuring compliance with applicable laws and regulations
-- Validating the software meets their specific requirements
+For the full license terms, see [LICENSE.md](LICENSE.md).
 
-For issues or questions, please contact the development team or your organization's IT department.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, version 3.
+
+This program is distributed in the hope that it will be useful, but without any warranty; without even the implied warranty of merchantability or fitness for a particular purpose. See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+Should you need to contact the copyright holder, you can email [shawn.carter@redcar-cleveland.gov.uk](mailto:shawn.carter@redcar-cleveland.gov.uk).
+
+## Contributing
+
+We welcome contributions from councils, developers, and the open source community! Whether it's bug fixes, security improvements, documentation, or new features, your help is appreciated.
+
+**Before you start:** Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute, what we accept, and how to submit pull requests.
+
+**Discuss first:** For new features or major changes, please open an issue to discuss before coding.
+
+**Contact:** shawn.carter@redcar-cleveland.gov.uk
+
+## Security
+
+If you discover a security vulnerability, please **do not open a public issue**. Instead, email:
+**shawn.carter@redcar-cleveland.gov.uk**
+
+For full details, see [SECURITY.md](SECURITY.md).
 
 ## Support
 
