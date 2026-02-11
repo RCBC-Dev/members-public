@@ -66,7 +66,6 @@ def file_management_dashboard(request):
     for directory_name in [
         "enquiry_photos",
         "enquiry_attachments",
-        "django-summernote",
     ]:
         directory_path = media_root / directory_name
         if directory_path.exists():
@@ -217,9 +216,9 @@ def cleanup_orphaned_files(request):
 @admin_required()
 @require_http_methods(["POST"])
 @csrf_protect
-def optimize_summernote_images(request):
+def optimize_enquiry_images(request):
     """
-    Optimize enquiry images (Summernote + uploaded photos) for better storage efficiency.
+    Optimize enquiry images for better storage efficiency.
     """
     try:
         action = request.POST.get("action", "analyze")
@@ -243,7 +242,7 @@ def optimize_summernote_images(request):
                 args.append("--dry-run")
 
         # Run the optimization command
-        call_command("optimize_summernote_images", *args)
+        call_command("optimize_enquiry_images", *args)
 
         # Restore stdout
         sys.stdout = old_stdout
@@ -259,9 +258,10 @@ def optimize_summernote_images(request):
 
 @login_required
 @admin_required()
-def optimize_summernote_images_stream(request):
+@require_http_methods(["GET", "POST"])
+def optimize_enquiry_images_stream(request):
     """
-    Stream real-time progress for enquiry image optimization (Summernote + uploaded photos).
+    Stream real-time progress for enquiry image optimization.
     """
     # Support both GET and POST for EventSource compatibility
     if request.method == "GET":
@@ -286,18 +286,13 @@ def optimize_summernote_images_stream(request):
                 yield f"data: {json.dumps({'error': 'PIL (Pillow) is not installed. Please install it with: pip install Pillow'})}\n\n"
                 return
 
-            # Scan BOTH django-summernote and enquiry_photos directories
-            image_directories = [
-                Path(settings.MEDIA_ROOT) / "django-summernote",
-                Path(settings.MEDIA_ROOT) / "enquiry_photos",
-            ]
-            existing_dirs = [d for d in image_directories if d.exists()]
+            enquiry_photos_dir = Path(settings.MEDIA_ROOT) / "enquiry_photos"
 
-            print(f"DEBUG: Scanning directories: {[str(d) for d in existing_dirs]}")
-
-            if not existing_dirs:
-                yield f"data: {json.dumps({'error': 'No image directories found (django-summernote or enquiry_photos)'})}\n\n"
+            if not enquiry_photos_dir.exists():
+                yield f"data: {json.dumps({'error': 'No image directory found (enquiry_photos)'})}\n\n"
                 return
+
+            existing_dirs = [enquiry_photos_dir]
 
             # Count total files and filter for optimization candidates
             total_files = 0
@@ -712,7 +707,6 @@ def file_browser(request):
     directory = request.GET.get("dir", "enquiry_photos")
 
     # Security check - only allow specific directories
-    # Note: django-summernote excluded as it incorrectly shows all files as orphaned
     allowed_dirs = ["enquiry_photos", "enquiry_attachments"]
     if directory not in allowed_dirs:
         directory = "enquiry_photos"

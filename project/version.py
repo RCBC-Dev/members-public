@@ -19,21 +19,30 @@ Version information for the Members Enquiries System.
 # - MAJOR: Significant changes that may require data migration or affect compatibility
 # - MINOR: Incremented for each release with minor changes or bug fixes
 
-VERSION = "1.05"
+VERSION = "1.06"
 
 # Change log entries should be in the format:
 # (version, date, description)
 CHANGE_LOG = [
-    ("1.05", "2026-02-11", "Updated settings and templates to use .env variables for COUNCIL_NAME, DOMAIN, updated the model choices for Service Types to use 3rd Party, rather than 'Not RCBC' reflected in templates"),
+    ("1.06", "2026-02-11", "Renamed a function for image optimisation as the project no longer uses summernote"),
 
-    ("1.04", "2026-02-09", "Add db.sqlite3 to .gitignore - database files should not be committed"),
-
+    (
+        "1.05",
+        "2026-02-11",
+        "Updated settings and templates to use .env variables for COUNCIL_NAME, DOMAIN, updated the model choices for Service Types to use 3rd Party, rather than 'Not RCBC' reflected in templates",
+    ),
+    (
+        "1.04",
+        "2026-02-09",
+        "Add db.sqlite3 to .gitignore - database files should not be committed",
+    ),
     ("1.03", "2026-02-09", "Updated README.md with Deployment/DB Options"),
-
-    ("1.02", "2026-02-09", "Removed somre references to RCBC in places like footer, added some screenshots to the README.md added .gitkeep for the logs folder"),
-
+    (
+        "1.02",
+        "2026-02-09",
+        "Removed somre references to RCBC in places like footer, added some screenshots to the README.md added .gitkeep for the logs folder",
+    ),
     ("1.01", "2026-02-09", "Added management command to populate DB with 'test data'"),
-
     ("1.00", "2025-06-11", "Initial Public Release"),
 ]
 

@@ -33,7 +33,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-t_*mwg#l@5#1*1^p_mueq6te^s0=h2^sa*$lbq!^&kc+6*1-&r"
+SECRET_KEY = os.environ.get("SECRET_KEY", "not-secure-secret-key")
 
 # Session cookie age: 8 hours (28800 seconds)
 SESSION_COOKIE_AGE = 28800

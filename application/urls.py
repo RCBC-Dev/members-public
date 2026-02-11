@@ -19,7 +19,7 @@ from .datatables_views import enquiry_list_datatables
 from .export_views import export_enquiries_csv, export_enquiries_excel, get_export_info
 from .file_management_views import (
     file_management_dashboard, run_storage_analysis, cleanup_orphaned_files,
-    optimize_summernote_images, optimize_summernote_images_stream, file_browser, file_browser_data, storage_analytics_api,
+    optimize_enquiry_images, optimize_enquiry_images_stream, file_browser, file_browser_data, storage_analytics_api,
     check_missing_images, update_attachment_sizes
 )
 
@@ -94,8 +94,8 @@ urlpatterns = [
     path('file-management/cleanup/', cleanup_orphaned_files, name='cleanup_orphaned_files'),
     path('file-management/check-missing/', check_missing_images, name='check_missing_images'),
     path('file-management/update-sizes/', update_attachment_sizes, name='update_attachment_sizes'),
-    path('file-management/optimize/', optimize_summernote_images, name='optimize_summernote_images'),
-    path('file-management/optimize/stream/', optimize_summernote_images_stream, name='optimize_summernote_images_stream'),
+    path('file-management/optimize/', optimize_enquiry_images, name='optimize_enquiry_images'),
+    path('file-management/optimize/stream/', optimize_enquiry_images_stream, name='optimize_enquiry_images_stream'),
     path('file-browser/', file_browser, name='file_browser'),
     path('file-browser/data/', file_browser_data, name='file_browser_data'),
     path('api/storage-analytics/', storage_analytics_api, name='storage_analytics_api'),

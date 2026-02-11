@@ -1,16 +1,3 @@
-# Copyright (C) 2026 Redcar & Cleveland Borough Council
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, version 3.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 #!/usr/bin/env python
 """
 Script to set up Git hooks for automatic versioning.
@@ -21,6 +8,7 @@ import sys
 import shutil
 import platform
 import subprocess
+
 
 def main():
     """Set up Git hooks for automatic versioning."""
@@ -40,15 +28,47 @@ def main():
     # Create pre-commit hook files
     pre_commit_py = """#!/usr/bin/env python
 \"\"\"
-Pre-commit hook to run tests before committing.
+Pre-commit hook to run Black formatter and tests before committing.
 
-This hook only runs tests and does not modify any files.
+This hook first formats code with Black, then runs tests.
 Version updates are handled by the commit-msg hook.
 \"\"\"
 
 import os
 import sys
 import subprocess
+
+def run_black():
+    \"\"\"Run Black formatter on all Python files and return True if successful.\"\"\"
+    print("Running Black formatter...")
+
+    # Try to find the Python interpreter in the virtual environment
+    python_cmd = 'python'
+    if os.path.exists('venv/Scripts/python.exe'):
+        python_cmd = 'venv/Scripts/python.exe'
+    elif os.path.exists('venv/bin/python'):
+        python_cmd = 'venv/bin/python'
+
+    try:
+        # Run Black on the entire project
+        result = subprocess.run([python_cmd, '-m', 'black', '.'],
+                               capture_output=True,
+                               text=True)
+
+        if result.returncode == 0:
+            print("Black formatting completed successfully!")
+            # If Black made changes, we need to stage them
+            if result.stdout and "reformatted" in result.stdout:
+                print("Black made formatting changes - staging them...")
+                subprocess.run(['git', 'add', '.'], capture_output=True)
+            return True
+        else:
+            print(f"Black formatting failed: {result.stderr}")
+            return False
+    except Exception as e:
+        print(f"Error running Black: {e}")
+        print("Continuing without Black formatting...")
+        return True  # Continue even if Black fails
 
 def run_tests():
     \"\"\"Run all tests and return True if all tests pass, False otherwise.\"\"\"
@@ -69,7 +89,7 @@ def run_tests():
         # Run tests in the project root directory
         cwd = os.getcwd()
 
-        print("Running tests for the MembersEnquiries 2.0 project...")
+        print("Running tests for the XXXXX project... [change this in setup_git_hooks.py]")
 
         # Run pytest with verbose output directly to the console (no capture)
         # Add --no-cov to disable coverage reporting and avoid the "No data to report" warning
@@ -92,13 +112,18 @@ def run_tests():
         return True  # Continue with commit despite test error
 
 def main():
-    \"\"\"Main function to run tests before commit.\"\"\"
-    # Always run tests
+    \"\"\"Main function to run Black formatter and tests before commit.\"\"\"
+    # First run Black formatter
+    if not run_black():
+        print("Black formatting failed! Please fix any issues and try again.")
+        return 1
+
+    # Then run tests
     if not run_tests():
         # If tests fail, abort the commit
         return 1
 
-    # If tests pass, allow the commit to proceed
+    # If both Black and tests pass, allow the commit to proceed
     return 0
 
 if __name__ == "__main__":
@@ -140,8 +165,6 @@ python .git/hooks/pre-commit.py
 # Exit with the same status as the Python script
 exit $LASTEXITCODE
 """
-
-
 
     # Create commit-msg hook files
     # Read the commit-msg.py file from disk
@@ -232,27 +255,36 @@ exit $LASTEXITCODE
         print("Removed existing post-commit hook")
 
     print("\nHook workflow:")
-    print("1. pre-commit hook: Runs tests before allowing the commit")
+    print(
+        "1. pre-commit hook: Runs Black formatter, then tests before allowing the commit"
+    )
     print("2. commit-msg hook: Updates version.py with the correct commit message")
     print("\nTo use the streamlined commit process:")
     print("1. Make some changes to the code")
     print("2. Stage the changes with 'git add .'")
-    print("3. Use the commit.bat script: commit.bat \"Your commit message\"")
-    print("   This will run tests, commit your changes, update version.py, and amend the commit")
+    print('3. Use the commit.bat script: commit.bat "Your commit message"')
+    print(
+        "   This will run tests, commit your changes, update version.py, and amend the commit"
+    )
     print("   The amend commit uses --no-verify to avoid running tests twice")
     print("\nAlternatively, you can use the manual process:")
     print("1. Make some changes to the code")
     print("2. Stage the changes with 'git add .'")
     print("3. Commit with 'git commit -m \"Your commit message\"'")
-    print("4. The pre-commit hook will run tests")
-    print("5. If tests pass, the commit-msg hook will update the version.py file and stage it")
-    print("6. To include the updated version.py in your commit, run: git commit --amend --no-edit")
+    print("4. The pre-commit hook will run Black formatter, then tests")
+    print(
+        "5. If tests pass, the commit-msg hook will update the version.py file and stage it"
+    )
+    print(
+        "6. To include the updated version.py in your commit, run: git commit --amend --no-edit"
+    )
     print("\nTo skip version update: Include [skip version] in your commit message")
     print("\nTo update the version manually:")
     print("1. Run 'python increment_version.py \"Your commit message\"'")
     print("2. This will increment the version number in project/version.py")
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -1,0 +1,6 @@
+projectKey=members-public
+serverUrl=http://localhost:9000
+serverVersion=25.10.0.114319
+dashboardUrl=http://localhost:9000/dashboard?id=members-public
+ceTaskId=9106faa8-dd29-49b9-829c-9e0b88965deb
+ceTaskUrl=http://localhost:9000/api/ce/task?id=9106faa8-dd29-49b9-829c-9e0b88965deb

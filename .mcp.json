@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "sonarqube": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["sonarqube-mcp-server@latest"],
+      "env": {
+        "SONARQUBE_URL": "http://localhost:9000",
+        "SONARQUBE_TOKEN": "sqp_48a519d2b773077e553296221aac7177781f8d85"
+      }
+    }
+  }
+}

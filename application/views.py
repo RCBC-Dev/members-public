@@ -80,6 +80,7 @@ User = get_user_model()
 ## DO NOT DELETE THE VIEWS IN THIS SECTION -----------------------------------------------
 
 
+@require_http_methods(["GET"])
 def welcome(request):
     """Landing page for unauthenticated users."""
     if request.user.is_authenticated:
@@ -88,6 +89,7 @@ def welcome(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def index(request):
     """Home page view - Members Enquiries Dashboard."""
 
@@ -131,6 +133,7 @@ def index(request):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
 def logout_view(request):
     """Custom logout view."""
     logout(request)
@@ -145,6 +148,7 @@ def logout_view(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def api_find_member_by_email(request):
     """API endpoint to find a member by email address."""
     email = request.GET.get("email", "").strip()
@@ -178,6 +182,7 @@ def api_find_member_by_email(request):
 
 @login_required
 @admin_required()
+@require_http_methods(["GET", "POST"])
 def enquiry_create(request):
     """Create a new enquiry."""
 
@@ -204,6 +209,7 @@ def enquiry_create(request):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
 def enquiry_edit(request, pk):
     """Edit an existing enquiry."""
     try:
@@ -310,6 +316,7 @@ def enquiry_edit(request, pk):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
 def enquiry_reopen(request, pk):
     """Re-open a closed enquiry with reason."""
     try:
@@ -421,11 +428,9 @@ def enquiry_reopen(request, pk):
 
 @login_required
 @csrf_protect
+@require_http_methods(["POST"])
 def api_parse_email(request):
     """API endpoint to parse uploaded email files."""
-    if request.method != "POST":
-        return JsonResponse({"success": False, "error": "POST method required"})
-
     uploaded_file = request.FILES.get("email_file")
     if not uploaded_file:
         return JsonResponse({"success": False, "error": "No file provided"})
@@ -436,11 +441,9 @@ def api_parse_email(request):
 
 @login_required
 @csrf_protect
+@require_http_methods(["POST"])
 def api_parse_email_update(request):
     """API endpoint to parse email files for enquiry updates."""
-    if request.method != "POST":
-        return JsonResponse({"success": False, "error": "POST method required"})
-
     if "email_file" not in request.FILES:
         return JsonResponse({"success": False, "error": "No email file provided"})
 
@@ -452,11 +455,9 @@ def api_parse_email_update(request):
 
 @login_required
 @csrf_protect
+@require_http_methods(["POST"])
 def api_upload_photos(request):
     """API endpoint to handle file uploads (images and documents) from email attachments or manual uploads."""
-    if request.method != "POST":
-        return JsonResponse({"success": False, "error": "POST method required"})
-
     # Support both 'photo_file' (existing) and 'file' (new dropzone) parameter names
     uploaded_file = request.FILES.get("photo_file") or request.FILES.get("file")
     if not uploaded_file:
@@ -590,18 +591,16 @@ def api_upload_photos(request):
 
 @login_required
 @csrf_protect
+@require_http_methods(["POST"])
 def upload_image(request):
     """Handle image uploads for Summernote editor with enhanced security."""
-    if request.method != "POST":
-        return JsonResponse({"error": "POST method required"}, status=405)
-
     uploaded_file = request.FILES.get("file")
     if not uploaded_file:
         return JsonResponse({"error": "No file provided"}, status=400)
 
     try:
         # Use secure file upload service
-        result = FileUploadService.handle_image_upload(uploaded_file, "summernote")
+        result = FileUploadService.handle_image_upload(uploaded_file, "editor_uploads")
 
         if result["success"]:
             # Return URL in format expected by Summernote
@@ -625,11 +624,9 @@ def upload_image(request):
 
 @login_required
 @csrf_protect
+@require_http_methods(["POST"])
 def api_add_email_note(request, pk):
     """API endpoint to add email note to enquiry history."""
-    if request.method != "POST":
-        return JsonResponse({"success": False, "error": "POST method required"})
-
     try:
         enquiry = Enquiry.objects.get(pk=pk)
     except Enquiry.DoesNotExist:
@@ -675,12 +672,9 @@ def api_add_email_note(request, pk):
 
 @login_required
 @csrf_protect
+@require_http_methods(["DELETE"])
 def api_delete_attachment(request, attachment_id):
     """API endpoint to delete an enquiry attachment."""
-    if request.method != "DELETE":
-        return JsonResponse(
-            {"success": False, "error": "DELETE method required"}, status=405
-        )
 
     # Add debugging information
     logger.info(f"Attempting to delete attachment with ID: {attachment_id}")
@@ -746,6 +740,7 @@ def api_delete_attachment(request, attachment_id):
 
 
 @login_required
+@require_http_methods(["GET"])
 def api_get_all_contacts(request):
     """API endpoint to get all contacts with their areas."""
     try:
@@ -765,6 +760,7 @@ def api_get_all_contacts(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def api_get_contacts_by_job_type(request):
     """Get contacts who handle a specific job type."""
     job_type_id = request.GET.get("job_type_id")
@@ -791,6 +787,7 @@ def api_get_contacts_by_job_type(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def api_get_all_job_types(request):
     """API endpoint to get all job types."""
     job_types = JobType.objects.all().values("id", "name").order_by("name")
@@ -798,6 +795,7 @@ def api_get_all_job_types(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def api_search_job_types(request):
     """API endpoint to search job types by name."""
     query = request.GET.get("q", "").strip()
@@ -812,6 +810,7 @@ def api_search_job_types(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def api_get_job_types_by_contact(request):
     """Get job types handled by a specific contact."""
     contact_id = request.GET.get("contact_id")
@@ -962,6 +961,7 @@ def api_update_closed_enquiry_job_type(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def api_get_contact_section(request):
     """Get section for a specific contact."""
     contact_id = request.GET.get("contact_id")
@@ -989,6 +989,7 @@ def api_get_contact_section(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def performance_dashboard_report(request):
     """Performance dashboard with Chart.js visualizations."""
     from .date_utils import (
@@ -1129,6 +1130,7 @@ def performance_dashboard_report(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def average_response_time_report(request):
     """Report showing average days taken for responses."""
     from .date_utils import (
@@ -1245,6 +1247,7 @@ def average_response_time_report(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def overdue_enquiries_report(request):
     """Report showing enquiries that are overdue (past the 5-day deadline)."""
 
@@ -1323,6 +1326,7 @@ def overdue_enquiries_report(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def section_workload_chart_report(request):
     """Chart showing workload distribution across sections."""
     from .date_utils import (
@@ -1472,6 +1476,7 @@ def section_workload_chart_report(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def job_workload_chart_report(request):
     """Chart showing workload distribution of job types within a selected section."""
     from .date_utils import (
@@ -1662,6 +1667,7 @@ def job_workload_chart_report(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def enquiries_per_member_report(request):
     """Report showing enquiry counts per member."""
 
@@ -1709,6 +1715,7 @@ def enquiries_per_member_report(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def enquiries_per_member_monthly_report(request):
     """Report showing enquiry counts per member across the last 12 months."""
     # Get filter parameters
@@ -1806,6 +1813,7 @@ def enquiries_per_member_monthly_report(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def enquiries_per_section_report(request):
     """Report showing enquiry counts per section."""
 
@@ -1854,6 +1862,7 @@ def enquiries_per_section_report(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def enquiries_per_section_monthly_report(request):
     """Report showing enquiry counts per section across the last 12 months."""
     # Get filter parameters
@@ -1955,6 +1964,7 @@ def enquiries_per_section_monthly_report(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def enquiries_per_job_report(request):
     """Report showing enquiry counts per job type."""
 
@@ -2004,6 +2014,7 @@ def enquiries_per_job_report(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def enquiries_per_job_monthly_report(request):
     """Report showing enquiry counts per job type across the last 12 months."""
     # Get filter parameters
@@ -2101,6 +2112,7 @@ def enquiries_per_job_monthly_report(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def enquiries_per_ward_report(request):
     """Report showing enquiry counts per ward."""
 
@@ -2149,6 +2161,7 @@ def enquiries_per_ward_report(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def enquiries_per_ward_monthly_report(request):
     """Report showing enquiry counts per ward across the last 12 months."""
     # Get filter parameters
@@ -2260,6 +2273,7 @@ def enquiries_per_ward_monthly_report(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def monthly_enquiries_report(request):
     """Report showing enquiry SLA performance by month and section."""
 
@@ -2364,6 +2378,7 @@ def monthly_enquiries_report(request):
 
 
 @login_required
+@require_http_methods(["GET"])
 def enquiries_by_section(request, section_id):
     """Redirect to main enquiries list with section filter."""
 
@@ -2374,6 +2389,7 @@ def enquiries_by_section(request, section_id):
 
 
 @login_required
+@require_http_methods(["GET"])
 def enquiries_by_contact(request, contact_id):
     """Redirect to main enquiries list with contact filter."""
 
@@ -2384,6 +2400,7 @@ def enquiries_by_contact(request, contact_id):
 
 
 @login_required
+@require_http_methods(["GET"])
 def enquiries_by_jobtype(request, jobtype_id):
     """Redirect to main enquiries list with job type filter."""
 

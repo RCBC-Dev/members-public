@@ -232,15 +232,12 @@ class AttachmentUploadTestCase(TestCase):
         self.assertIn('Enquiry with ID 99999 does not exist', data['error'])
 
     def test_attach_file_wrong_method(self):
-        """Test API endpoint with wrong HTTP method."""
+        """Test API endpoint rejects wrong HTTP method."""
         url = reverse('application:api_upload_photos')
 
         response = self.client.get(url)
 
-        self.assertEqual(response.status_code, 200)  # api_upload_photos returns 200 with success: false
-        data = response.json()
-        self.assertFalse(data['success'])
-        self.assertIn('POST method required', data['error'])
+        self.assertEqual(response.status_code, 405)
 
     def test_enquiry_detail_page_contains_dropzone(self):
         """Test that the enquiry detail page contains the attachment dropzone."""

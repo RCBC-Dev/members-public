@@ -667,7 +667,7 @@ function optimizeSummernote(action, dryRun = false) {
         formData.append('dry_run', dryRun);
         formData.append('csrfmiddlewaretoken', getCsrfToken());
 
-        fetch('{% url "application:optimize_summernote_images" %}', {
+        fetch('{% url "application:optimize_enquiry_images" %}', {
             method: 'POST',
             body: formData
         })
@@ -721,7 +721,7 @@ function optimizeSummernote(action, dryRun = false) {
         params.append('min_size_mb', minFileSize);
         params.append('max_dimension', maxDimension);
 
-        const eventSource = new EventSource('{% url "application:optimize_summernote_images_stream" %}?' + params.toString());
+        const eventSource = new EventSource('{% url "application:optimize_enquiry_images_stream" %}?' + params.toString());
 
         eventSource.onmessage = function(event) {
             const data = JSON.parse(event.data);
