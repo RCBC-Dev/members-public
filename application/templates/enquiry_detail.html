@@ -118,7 +118,7 @@
                 <!-- Action Buttons Row -->
                 <div class="row align-items-center mb-3">
                     <div class="col-md-12 text-end">
-                        <div class="btn-group btn-group-sm" role="group">
+                        <div class="btn-group btn-group-sm">
                             {% if enquiry.status != 'closed' %}
                             <a href="{% url 'application:enquiry_edit' enquiry.id %}" class="btn btn-outline-primary">
                                 <i class="bi bi-pencil me-1"></i>Edit
@@ -294,7 +294,7 @@
                                              class="img-thumbnail img-attachment-120">
                                     {% else %}
                                         <div class="missing-file-container text-center p-3 border border-danger rounded">
-                                            <img src="{% static 'img/missing-image.svg' %}" alt="Missing Image" class="doc-icon-100 opacity-50">
+                                            <img src="{% static 'img/missing-image.svg' %}" alt="Missing file" class="doc-icon-100 opacity-50">
                                             <div class="text-danger small mt-2">
                                                 <i class="bi bi-exclamation-triangle"></i>
                                                 File not found

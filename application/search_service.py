@@ -67,7 +67,7 @@ class EnquirySearchService:
         use_fulltext = False
 
         # Check for SQL Server FULLTEXT index availability
-        if connection.vendor == 'microsoft' and len(search_value) >= 3:
+        if connection.vendor == "microsoft" and len(search_value) >= 3:
             with connection.cursor() as cursor:
                 cursor.execute("""
                     SELECT COUNT(*) FROM sys.fulltext_indexes
@@ -80,7 +80,7 @@ class EnquirySearchService:
             # SQL Server FULLTEXT search with smart wildcard handling
             # For phrases (multiple words): don't use wildcard as it breaks phrase matching
             # For single words: use wildcard for prefix matching (e.g., "build*" finds "building")
-            if ' ' in search_value:
+            if " " in search_value:
                 # Multi-word phrase search - use exact phrase without wildcard
                 search_param = f'"{search_value}"'
             else:
@@ -88,14 +88,16 @@ class EnquirySearchService:
                 search_param = f'"{search_value}*"'
 
             return queryset.extra(
-                where=["CONTAINS((members_app_enquiry.reference, members_app_enquiry.title, members_app_enquiry.description), %s)"],
-                params=[search_param]
+                where=[
+                    "CONTAINS((members_app_enquiry.reference, members_app_enquiry.title, members_app_enquiry.description), %s)"
+                ],
+                params=[search_param],
             )
         else:
             # Fallback to LIKE search (SQLite, short terms, or no FULLTEXT index)
             # This works across all database backends
             return queryset.filter(
-                Q(reference__icontains=search_value) |
-                Q(title__icontains=search_value) |
-                Q(description__icontains=search_value)
+                Q(reference__icontains=search_value)
+                | Q(title__icontains=search_value)
+                | Q(description__icontains=search_value)
             )

@@ -26,9 +26,9 @@
             {% elif is_doc %}
                 <img src="{% static 'img/word-icon.svg' %}" alt="Word Document" class="doc-icon-100">
             {% elif is_image %}
-                <img src="{{ attachment.file_url }}" alt="{{ attachment.filename }}" 
+                <img src="{{ attachment.file_url }}" alt="{{ attachment.filename }}"
                      class="img-thumbnail img-attachment-120"
-                     onerror="this.src='{% static 'img/missing-image.svg' %}'; this.onerror=null;">
+                     data-fallback-src="{% static 'img/missing-image.svg' %}">
             {% else %}
                 <img src="{% static 'img/file-icon.svg' %}" alt="File" class="doc-icon-100">
             {% endif %}
@@ -36,7 +36,7 @@
             <!-- File missing - show placeholder -->
             <div class="missing-file-container text-center p-3 border border-danger rounded">
                 {% if is_image %}
-                    <img src="{% static 'img/missing-image.svg' %}" alt="Missing Image" class="doc-icon-100 opacity-50">
+                    <img src="{% static 'img/missing-image.svg' %}" alt="Missing attachment" class="doc-icon-100 opacity-50">
                 {% elif is_pdf %}
                     <img src="{% static 'img/pdf-icon.svg' %}" alt="Missing PDF" class="doc-icon-100 opacity-50">
                 {% elif is_doc %}

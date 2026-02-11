@@ -11,6 +11,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+
 def add_cors_headers(headers, path, url):
     """
     Add CORS headers to static files for allowed origins only.
@@ -19,11 +20,11 @@ def add_cors_headers(headers, path, url):
     import os
 
     # Get domain from environment variable
-    domain = os.environ.get('DOMAIN', 'localhost')
+    domain = os.environ.get("DOMAIN", "localhost")
 
     # Determine protocol based on environment
-    environment = os.environ.get('ENVIRONMENT', '').strip().lower()
-    protocol = 'https' if environment in ('production', 'test') else 'http'
+    environment = os.environ.get("ENVIRONMENT", "").strip().lower()
+    protocol = "https" if environment in ("production", "test") else "http"
 
-    headers['Access-Control-Allow-Origin'] = f'{protocol}://{domain}'
-    headers['Vary'] = 'Origin'
+    headers["Access-Control-Allow-Origin"] = f"{protocol}://{domain}"
+    headers["Vary"] = "Origin"

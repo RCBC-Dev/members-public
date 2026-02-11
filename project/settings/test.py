@@ -30,9 +30,7 @@ ALLOWED_HOSTS = [DOMAIN, "localhost"]
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 
 # CSRF Trusted Origins - domains that are allowed to make POST requests
-CSRF_TRUSTED_ORIGINS = [
-    f"https://{DOMAIN}"
-]
+CSRF_TRUSTED_ORIGINS = [f"https://{DOMAIN}"]
 
 # CORS settings for test environment
 # Only allow specific origins in test environment

@@ -12,18 +12,22 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from django import template
+
 register = template.Library()
+
 
 @register.filter
 def get_item(dictionary, key):
-    return dictionary.get(key, '')
+    return dictionary.get(key, "")
+
 
 @register.filter
 def index(sequence, position):
     try:
         return sequence[int(position)]
     except (IndexError, ValueError, TypeError):
-        return ''
+        return ""
+
 
 @register.filter
 def sum_list(value_list):
@@ -34,6 +38,7 @@ def sum_list(value_list):
             if isinstance(item, (int, float)):
                 total += item
     return total
+
 
 @register.filter
 def column_sum(data_dict, column_index):
@@ -48,8 +53,9 @@ def column_sum(data_dict, column_index):
                     if isinstance(item, (int, float)):
                         total += item
     except (ValueError, TypeError):
-        pass # Ignore if column_index is not a valid int or other type errors
+        pass  # Ignore if column_index is not a valid int or other type errors
     return total
+
 
 @register.filter
 def grand_total_sum(data_dict):

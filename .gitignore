@@ -53,3 +53,5 @@ cleanup_backup_*
 orphaned_files_backup_*/
 
 .claude/
+
+/sonar/

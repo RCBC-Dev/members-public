@@ -18,4 +18,3 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 # CSP is now fully strict, so no nonce is needed for static assets
-

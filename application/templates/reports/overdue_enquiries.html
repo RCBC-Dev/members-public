@@ -29,7 +29,7 @@
         <h1>⚠️ Overdue Enquiries Report</h1>
         <p class="text-muted">Enquiries that are past the {{ overdue_threshold }} business day response target (excludes weekends)</p>
     </div>
-    <div class="btn-group" role="group">
+    <div class="btn-group">
         <a href="{% url 'application:average_response_time_report' %}" class="btn btn-outline-primary">Response Time Report</a>
         <a href="{% url 'application:index' %}" class="btn btn-outline-secondary">Back to Dashboard</a>
     </div>
@@ -193,7 +193,7 @@
                             </span>
                         </td>
                         <td>
-                            <div class="btn-group btn-group-sm" role="group">
+                            <div class="btn-group btn-group-sm">
                                 <a href="{% url 'application:enquiry_detail' item.enquiry.id %}" class="btn btn-outline-primary" title="View enquiry details">
                                     <i class="bi bi-eye"></i> View
                                 </a>

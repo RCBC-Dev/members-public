@@ -16,297 +16,665 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Area',
+            name="Area",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(db_index=True, max_length=100, unique=True)),
-                ('description', models.CharField(blank=True, max_length=120)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(db_index=True, max_length=100, unique=True)),
+                ("description", models.CharField(blank=True, max_length=120)),
             ],
             options={
-                'db_table': 'members_app_area',
+                "db_table": "members_app_area",
             },
         ),
         migrations.CreateModel(
-            name='Department',
+            name="Department",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(db_index=True, max_length=100, unique=True)),
-                ('description', models.TextField(blank=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(db_index=True, max_length=100, unique=True)),
+                ("description", models.TextField(blank=True)),
             ],
             options={
-                'db_table': 'members_app_department',
+                "db_table": "members_app_department",
             },
         ),
         migrations.CreateModel(
-            name='JobType',
+            name="JobType",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(db_index=True, max_length=100, unique=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(db_index=True, max_length=100, unique=True)),
             ],
             options={
-                'db_table': 'members_app_jobtype',
-                'ordering': ['name'],
+                "db_table": "members_app_jobtype",
+                "ordering": ["name"],
             },
         ),
         migrations.CreateModel(
-            name='Member',
+            name="Member",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('first_name', models.CharField(max_length=150)),
-                ('last_name', models.CharField(max_length=150)),
-                ('email', models.EmailField(max_length=254, unique=True)),
-                ('is_active', models.BooleanField(default=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("first_name", models.CharField(max_length=150)),
+                ("last_name", models.CharField(max_length=150)),
+                ("email", models.EmailField(max_length=254, unique=True)),
+                ("is_active", models.BooleanField(default=True)),
             ],
             options={
-                'db_table': 'members_app_member',
-                'ordering': ['-is_active', 'first_name', 'last_name'],
+                "db_table": "members_app_member",
+                "ordering": ["-is_active", "first_name", "last_name"],
             },
         ),
         migrations.CreateModel(
-            name='ReferenceSequence',
+            name="ReferenceSequence",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('year', models.IntegerField(db_index=True, unique=True)),
-                ('next_number', models.IntegerField(default=1)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("year", models.IntegerField(db_index=True, unique=True)),
+                ("next_number", models.IntegerField(default=1)),
             ],
             options={
-                'db_table': 'members_app_reference_sequence',
+                "db_table": "members_app_reference_sequence",
             },
         ),
         migrations.CreateModel(
-            name='Ward',
+            name="Ward",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(db_index=True, max_length=100, unique=True)),
-                ('description', models.TextField(blank=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(db_index=True, max_length=100, unique=True)),
+                ("description", models.TextField(blank=True)),
             ],
             options={
-                'db_table': 'members_app_ward',
-                'ordering': ['name'],
+                "db_table": "members_app_ward",
+                "ordering": ["name"],
             },
         ),
         migrations.CreateModel(
-            name='Admin',
+            name="Admin",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'db_table': 'members_app_admin',
-                'ordering': ['user__first_name', 'user__last_name'],
+                "db_table": "members_app_admin",
+                "ordering": ["user__first_name", "user__last_name"],
             },
         ),
         migrations.CreateModel(
-            name='Contact',
+            name="Contact",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(db_index=True, max_length=100, unique=True)),
-                ('description', models.TextField(blank=True)),
-                ('telephone_number', models.CharField(max_length=20)),
-                ('email', models.EmailField(blank=True, help_text="Contact's email address for enquiry correspondence", max_length=254)),
-                ('areas', models.ManyToManyField(related_name='contacts', to='application.area')),
-                ('job_types', models.ManyToManyField(related_name='contacts', to='application.jobtype')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(db_index=True, max_length=100, unique=True)),
+                ("description", models.TextField(blank=True)),
+                ("telephone_number", models.CharField(max_length=20)),
+                (
+                    "email",
+                    models.EmailField(
+                        blank=True,
+                        help_text="Contact's email address for enquiry correspondence",
+                        max_length=254,
+                    ),
+                ),
+                (
+                    "areas",
+                    models.ManyToManyField(
+                        related_name="contacts", to="application.area"
+                    ),
+                ),
+                (
+                    "job_types",
+                    models.ManyToManyField(
+                        related_name="contacts", to="application.jobtype"
+                    ),
+                ),
             ],
             options={
-                'db_table': 'members_app_contact',
-                'ordering': ['name'],
+                "db_table": "members_app_contact",
+                "ordering": ["name"],
             },
         ),
         migrations.CreateModel(
-            name='Section',
+            name="Section",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(db_index=True, max_length=100, unique=True)),
-                ('department', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='sections', to='application.department')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(db_index=True, max_length=100, unique=True)),
+                (
+                    "department",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="sections",
+                        to="application.department",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'members_app_section',
-                'ordering': ['name'],
+                "db_table": "members_app_section",
+                "ordering": ["name"],
             },
         ),
         migrations.CreateModel(
-            name='Enquiry',
+            name="Enquiry",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(max_length=255)),
-                ('reference', models.CharField(blank=True, max_length=12, null=True, unique=True)),
-                ('description', models.TextField()),
-                ('status', models.CharField(choices=[('new', 'New'), ('open', 'Open'), ('closed', 'Closed')], db_index=True, default='open', max_length=10)),
-                ('created_at', models.DateTimeField(default=django.utils.timezone.now)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('closed_at', models.DateTimeField(blank=True, null=True)),
-                ('service_type', models.CharField(blank=True, choices=[('failed_service', 'Failed service'), ('new_addition', 'New/addition requests'), ('pre_programmed', 'Pre-programmed work'), ('3rd_party', '3rd Party')], db_index=True, max_length=20, null=True)),
-                ('admin', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='assigned_enquiries', to='application.admin')),
-                ('contact', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='enquiries', to='application.contact')),
-                ('job_type', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='enquiries', to='application.jobtype')),
-                ('member', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='enquiries', to='application.member')),
-                ('section', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='enquiries', to='application.section')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("title", models.CharField(max_length=255)),
+                (
+                    "reference",
+                    models.CharField(blank=True, max_length=12, null=True, unique=True),
+                ),
+                ("description", models.TextField()),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("new", "New"),
+                            ("open", "Open"),
+                            ("closed", "Closed"),
+                        ],
+                        db_index=True,
+                        default="open",
+                        max_length=10,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(default=django.utils.timezone.now)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("closed_at", models.DateTimeField(blank=True, null=True)),
+                (
+                    "service_type",
+                    models.CharField(
+                        blank=True,
+                        choices=[
+                            ("failed_service", "Failed service"),
+                            ("new_addition", "New/addition requests"),
+                            ("pre_programmed", "Pre-programmed work"),
+                            ("3rd_party", "3rd Party"),
+                        ],
+                        db_index=True,
+                        max_length=20,
+                        null=True,
+                    ),
+                ),
+                (
+                    "admin",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="assigned_enquiries",
+                        to="application.admin",
+                    ),
+                ),
+                (
+                    "contact",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="enquiries",
+                        to="application.contact",
+                    ),
+                ),
+                (
+                    "job_type",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="enquiries",
+                        to="application.jobtype",
+                    ),
+                ),
+                (
+                    "member",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="enquiries",
+                        to="application.member",
+                    ),
+                ),
+                (
+                    "section",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="enquiries",
+                        to="application.section",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'members_app_enquiry',
+                "db_table": "members_app_enquiry",
             },
         ),
         migrations.AddField(
-            model_name='contact',
-            name='section',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='contacts', to='application.section'),
+            model_name="contact",
+            name="section",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="contacts",
+                to="application.section",
+            ),
         ),
         migrations.CreateModel(
-            name='UserMapping',
+            name="UserMapping",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_primary_mapping', models.BooleanField(default=True, help_text='Primary mapping for this legacy user')),
-                ('notes', models.TextField(blank=True, help_text="Migration notes or comments (e.g., 'User left company')")),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('applied_at', models.DateTimeField(blank=True, help_text='When this mapping was applied to historical data', null=True)),
-                ('legacy_user', models.ForeignKey(help_text='Original user (e.g., Kerry who left)', on_delete=django.db.models.deletion.CASCADE, related_name='legacy_mappings_from', to=settings.AUTH_USER_MODEL)),
-                ('sso_user', models.ForeignKey(help_text="New MS SSO user (e.g., 'KM1655')", on_delete=django.db.models.deletion.CASCADE, related_name='legacy_mappings_to', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_primary_mapping",
+                    models.BooleanField(
+                        default=True, help_text="Primary mapping for this legacy user"
+                    ),
+                ),
+                (
+                    "notes",
+                    models.TextField(
+                        blank=True,
+                        help_text="Migration notes or comments (e.g., 'User left company')",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "applied_at",
+                    models.DateTimeField(
+                        blank=True,
+                        help_text="When this mapping was applied to historical data",
+                        null=True,
+                    ),
+                ),
+                (
+                    "legacy_user",
+                    models.ForeignKey(
+                        help_text="Original user (e.g., Kerry who left)",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="legacy_mappings_from",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "sso_user",
+                    models.ForeignKey(
+                        help_text="New MS SSO user (e.g., 'KM1655')",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="legacy_mappings_to",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'db_table': 'members_app_user_mapping',
+                "db_table": "members_app_user_mapping",
             },
         ),
         migrations.AddField(
-            model_name='member',
-            name='ward',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='members', to='application.ward'),
+            model_name="member",
+            name="ward",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="members",
+                to="application.ward",
+            ),
         ),
         migrations.CreateModel(
-            name='Audit',
+            name="Audit",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('action_datetime', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('action_details', models.CharField(max_length=255)),
-                ('ip_address', models.CharField(blank=True, max_length=100, null=True)),
-                ('user', models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL)),
-                ('enquiry', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='application.enquiry')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "action_datetime",
+                    models.DateTimeField(auto_now_add=True, db_index=True),
+                ),
+                ("action_details", models.CharField(max_length=255)),
+                ("ip_address", models.CharField(blank=True, max_length=100, null=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "enquiry",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to="application.enquiry",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'members_app_audit',
-                'indexes': [models.Index(fields=['user', '-action_datetime'], name='audit_user_datetime_idx'), models.Index(fields=['enquiry', '-action_datetime'], name='audit_enquiry_datetime_idx')],
+                "db_table": "members_app_audit",
+                "indexes": [
+                    models.Index(
+                        fields=["user", "-action_datetime"],
+                        name="audit_user_datetime_idx",
+                    ),
+                    models.Index(
+                        fields=["enquiry", "-action_datetime"],
+                        name="audit_enquiry_datetime_idx",
+                    ),
+                ],
             },
         ),
         migrations.CreateModel(
-            name='EnquiryAttachment',
+            name="EnquiryAttachment",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('filename', models.CharField(max_length=255)),
-                ('file_path', models.CharField(max_length=500)),
-                ('file_size', models.PositiveIntegerField()),
-                ('uploaded_at', models.DateTimeField(auto_now_add=True)),
-                ('enquiry', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='attachments', to='application.enquiry')),
-                ('uploaded_by', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("filename", models.CharField(max_length=255)),
+                ("file_path", models.CharField(max_length=500)),
+                ("file_size", models.PositiveIntegerField()),
+                ("uploaded_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "enquiry",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="attachments",
+                        to="application.enquiry",
+                    ),
+                ),
+                (
+                    "uploaded_by",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'db_table': 'members_app_enquiryattachment',
-                'indexes': [models.Index(fields=['enquiry', '-uploaded_at'], name='attachment_idx')],
+                "db_table": "members_app_enquiryattachment",
+                "indexes": [
+                    models.Index(
+                        fields=["enquiry", "-uploaded_at"], name="attachment_idx"
+                    )
+                ],
             },
         ),
         migrations.CreateModel(
-            name='EnquiryHistory',
+            name="EnquiryHistory",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('note', models.TextField()),
-                ('note_type', models.CharField(choices=[('general', 'General Note'), ('emailed_member', 'Emailed Member'), ('emailed_contact', 'Emailed Contact'), ('phoned_contact', 'Phoned Contact'), ('chased_contact', 'Chased Contact'), ('enquiry_created', 'Enquiry Created'), ('enquiry_edited', 'Enquiry Edited'), ('attachment_added', 'Attachment Added'), ('attachment_deleted', 'Attachment Deleted'), ('enquiry_closed', 'Enquiry Closed'), ('enquiry_reopened', 'Enquiry Reopened'), ('email_update', 'Email Update'), ('email_incoming', 'Incoming Email'), ('email_outgoing', 'Outgoing Email')], db_index=True, default='general', max_length=20)),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('created_by', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to=settings.AUTH_USER_MODEL)),
-                ('enquiry', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='history', to='application.enquiry')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("note", models.TextField()),
+                (
+                    "note_type",
+                    models.CharField(
+                        choices=[
+                            ("general", "General Note"),
+                            ("emailed_member", "Emailed Member"),
+                            ("emailed_contact", "Emailed Contact"),
+                            ("phoned_contact", "Phoned Contact"),
+                            ("chased_contact", "Chased Contact"),
+                            ("enquiry_created", "Enquiry Created"),
+                            ("enquiry_edited", "Enquiry Edited"),
+                            ("attachment_added", "Attachment Added"),
+                            ("attachment_deleted", "Attachment Deleted"),
+                            ("enquiry_closed", "Enquiry Closed"),
+                            ("enquiry_reopened", "Enquiry Reopened"),
+                            ("email_update", "Email Update"),
+                            ("email_incoming", "Incoming Email"),
+                            ("email_outgoing", "Outgoing Email"),
+                        ],
+                        db_index=True,
+                        default="general",
+                        max_length=20,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "enquiry",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="history",
+                        to="application.enquiry",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'members_app_enquiryhistory',
-                'indexes': [models.Index(fields=['enquiry', '-created_at'], name='history_enquiry_created_idx')],
+                "db_table": "members_app_enquiryhistory",
+                "indexes": [
+                    models.Index(
+                        fields=["enquiry", "-created_at"],
+                        name="history_enquiry_created_idx",
+                    )
+                ],
             },
         ),
         migrations.AddIndex(
-            model_name='enquiry',
-            index=models.Index(fields=['-created_at'], name='enquiry_created_desc_idx'),
+            model_name="enquiry",
+            index=models.Index(fields=["-created_at"], name="enquiry_created_desc_idx"),
         ),
         migrations.AddIndex(
-            model_name='enquiry',
-            index=models.Index(fields=['status', 'created_at'], name='enquiry_status_created_idx'),
+            model_name="enquiry",
+            index=models.Index(
+                fields=["status", "created_at"], name="enquiry_status_created_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='enquiry',
-            index=models.Index(fields=['reference'], name='enquiry_reference_idx'),
+            model_name="enquiry",
+            index=models.Index(fields=["reference"], name="enquiry_reference_idx"),
         ),
         migrations.AddIndex(
-            model_name='enquiry',
-            index=models.Index(fields=['member', '-created_at'], name='enquiry_member_created_idx'),
+            model_name="enquiry",
+            index=models.Index(
+                fields=["member", "-created_at"], name="enquiry_member_created_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='enquiry',
-            index=models.Index(fields=['section', '-created_at'], name='enquiry_section_created_idx'),
+            model_name="enquiry",
+            index=models.Index(
+                fields=["section", "-created_at"], name="enquiry_section_created_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='enquiry',
-            index=models.Index(fields=['admin', '-created_at'], name='enquiry_admin_created_idx'),
+            model_name="enquiry",
+            index=models.Index(
+                fields=["admin", "-created_at"], name="enquiry_admin_created_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='enquiry',
-            index=models.Index(fields=['contact', '-created_at'], name='enquiry_contact_created_idx'),
+            model_name="enquiry",
+            index=models.Index(
+                fields=["contact", "-created_at"], name="enquiry_contact_created_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='enquiry',
-            index=models.Index(fields=['-updated_at'], name='enquiry_updated_desc_idx'),
+            model_name="enquiry",
+            index=models.Index(fields=["-updated_at"], name="enquiry_updated_desc_idx"),
         ),
         migrations.AddIndex(
-            model_name='enquiry',
-            index=models.Index(fields=['title'], name='enquiry_title_idx'),
+            model_name="enquiry",
+            index=models.Index(fields=["title"], name="enquiry_title_idx"),
         ),
         migrations.AddIndex(
-            model_name='enquiry',
-            index=models.Index(fields=['job_type', '-created_at'], name='enquiry_jobtype_created_idx'),
+            model_name="enquiry",
+            index=models.Index(
+                fields=["job_type", "-created_at"], name="enquiry_jobtype_created_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='enquiry',
-            index=models.Index(fields=['created_at'], name='enquiry_created_asc_idx'),
+            model_name="enquiry",
+            index=models.Index(fields=["created_at"], name="enquiry_created_asc_idx"),
         ),
         migrations.AddIndex(
-            model_name='enquiry',
-            index=models.Index(fields=['status', 'member', '-created_at'], name='enq_status_member_created_idx'),
+            model_name="enquiry",
+            index=models.Index(
+                fields=["status", "member", "-created_at"],
+                name="enq_status_member_created_idx",
+            ),
         ),
         migrations.AddIndex(
-            model_name='enquiry',
-            index=models.Index(fields=['status', 'section', '-created_at'], name='enq_status_section_created_idx'),
+            model_name="enquiry",
+            index=models.Index(
+                fields=["status", "section", "-created_at"],
+                name="enq_status_section_created_idx",
+            ),
         ),
         migrations.AddIndex(
-            model_name='enquiry',
-            index=models.Index(fields=['title', '-created_at'], name='enq_title_created_idx'),
+            model_name="enquiry",
+            index=models.Index(
+                fields=["title", "-created_at"], name="enq_title_created_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='enquiry',
-            index=models.Index(fields=['reference', '-created_at'], name='enq_ref_created_idx'),
+            model_name="enquiry",
+            index=models.Index(
+                fields=["reference", "-created_at"], name="enq_ref_created_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='enquiry',
-            index=models.Index(fields=['service_type', '-created_at'], name='enq_service_type_idx'),
+            model_name="enquiry",
+            index=models.Index(
+                fields=["service_type", "-created_at"], name="enq_service_type_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='contact',
-            index=models.Index(fields=['section'], name='contact_section_idx'),
+            model_name="contact",
+            index=models.Index(fields=["section"], name="contact_section_idx"),
         ),
         migrations.AddIndex(
-            model_name='usermapping',
-            index=models.Index(fields=['legacy_user'], name='usermapping_legacy_idx'),
+            model_name="usermapping",
+            index=models.Index(fields=["legacy_user"], name="usermapping_legacy_idx"),
         ),
         migrations.AddIndex(
-            model_name='usermapping',
-            index=models.Index(fields=['sso_user'], name='usermapping_sso_idx'),
+            model_name="usermapping",
+            index=models.Index(fields=["sso_user"], name="usermapping_sso_idx"),
         ),
         migrations.AlterUniqueTogether(
-            name='usermapping',
-            unique_together={('legacy_user', 'sso_user')},
+            name="usermapping",
+            unique_together={("legacy_user", "sso_user")},
         ),
         migrations.AddIndex(
-            model_name='member',
-            index=models.Index(fields=['ward', 'is_active'], name='member_ward_active_idx'),
+            model_name="member",
+            index=models.Index(
+                fields=["ward", "is_active"], name="member_ward_active_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='member',
-            index=models.Index(fields=['email'], name='member_email_idx'),
+            model_name="member",
+            index=models.Index(fields=["email"], name="member_email_idx"),
         ),
         migrations.AddIndex(
-            model_name='member',
-            index=models.Index(fields=['first_name', 'last_name'], name='member_name_idx'),
+            model_name="member",
+            index=models.Index(
+                fields=["first_name", "last_name"], name="member_name_idx"
+            ),
         ),
     ]

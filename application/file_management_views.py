@@ -51,6 +51,7 @@ from application.file_logger import file_logger
 
 @login_required
 @admin_required()
+@require_http_methods(["GET"])
 def file_management_dashboard(request):
     """
     Main file management dashboard showing storage analytics and tools.
@@ -256,6 +257,543 @@ def optimize_enquiry_images(request):
         return JsonResponse({"success": False, "error": str(e)})
 
 
+# ---------------------------------------------------------------------------
+# Image optimization streaming - refactored into a class to reduce complexity
+# ---------------------------------------------------------------------------
+
+
+class ImageOptimizationStreamer:
+    """Handles streaming image optimization with progress updates via SSE."""
+
+    def __init__(self, quality, dry_run, min_size_mb, max_dimension):
+        self.quality = quality
+        self.dry_run = dry_run
+        self.min_size_mb = min_size_mb
+        self.min_size_bytes = min_size_mb * 1024 * 1024
+        self.max_dimension = max_dimension
+        self.results = {
+            "processed": 0,
+            "errors": 0,
+            "total_size_before": 0,
+            "total_size_after": 0,
+            "error_files": [],
+        }
+
+    @staticmethod
+    def _sse_event(data):
+        """Format a dict as a Server-Sent Event data line."""
+        return f"data: {json.dumps(data)}\n\n"
+
+    # -- Scanning / analysis helpers ----------------------------------------
+
+    def _check_png_needs_optimization(self, width, height, file_size, bytes_per_pixel):
+        """Determine whether a PNG file needs optimization."""
+        if width > self.max_dimension or height > self.max_dimension:
+            return (
+                True,
+                f"Large PNG dimensions ({width}x{height}) need resizing/conversion",
+            )
+
+        if file_size > 1024 * 1024:
+            return (
+                True,
+                f"Large PNG file ({format_file_size(file_size)}) needs optimization",
+            )
+
+        if bytes_per_pixel < 0.5 and file_size < 500 * 1024:
+            return False, "PNG already very efficient and small"
+
+        return True, "PNG will be analyzed for optimization"
+
+    def _check_jpeg_needs_optimization(self, width, height, file_size, bytes_per_pixel):
+        """Determine whether a JPEG file needs optimization."""
+        if width > self.max_dimension or height > self.max_dimension:
+            return True, f"Large dimensions ({width}x{height}) need resizing"
+
+        if file_size > 2 * 1024 * 1024:
+            return (
+                True,
+                f"Large file size ({format_file_size(file_size)}) needs compression",
+            )
+
+        if bytes_per_pixel < 0.15 and file_size < 1024 * 1024:
+            return False, "JPEG already very well-compressed and reasonably sized"
+
+        return True, "Will attempt optimization"
+
+    def _analyze_file_for_optimization(self, file_path, filename, file_size):
+        """Analyze a single image file to decide if it needs optimization.
+
+        Returns (needs_optimization: bool, skip_reason: str).
+        """
+        try:
+            with Image.open(file_path) as img:
+                width, height = img.size
+                pixels = width * height
+                bytes_per_pixel = file_size / pixels if pixels > 0 else 0
+
+                if filename.lower().endswith(".png"):
+                    needs, reason = self._check_png_needs_optimization(
+                        width, height, file_size, bytes_per_pixel
+                    )
+                else:
+                    needs, reason = self._check_jpeg_needs_optimization(
+                        width, height, file_size, bytes_per_pixel
+                    )
+
+                self._log_analysis(
+                    filename, needs, reason, width, height, file_size, bytes_per_pixel
+                )
+                return needs, reason
+
+        except Exception as e:
+            print(f"DEBUG: Cannot analyze {filename}: {e}")
+            return True, ""
+
+    @staticmethod
+    def _log_analysis(filename, needs, reason, width, height, file_size, bpp):
+        """Print debug log for optimization analysis."""
+        action = "WILL OPTIMIZE" if needs else "SKIPPING"
+        print(
+            f"DEBUG: {action} {filename}: {reason} "
+            f"({width}x{height}, {format_file_size(file_size)}, {bpp:.2f} bytes/pixel)"
+        )
+
+    def _scan_image_files(self, image_dir):
+        """Walk the image directory and classify files into candidates and skipped.
+
+        Returns (image_files, total_files, skipped_files).
+        """
+        image_files = []
+        total_files = 0
+        skipped_files = 0
+
+        for root, dirs, files in os.walk(image_dir):
+            for filename in files:
+                if not filename.lower().endswith((".jpg", ".jpeg", ".png")):
+                    continue
+
+                file_path = Path(root) / filename
+                try:
+                    file_size = file_path.stat().st_size
+                except OSError:
+                    continue
+
+                if file_size <= self.min_size_bytes:
+                    skipped_files += 1
+                    continue
+
+                needs_optimization, _ = self._analyze_file_for_optimization(
+                    file_path, filename, file_size
+                )
+
+                if not needs_optimization:
+                    skipped_files += 1
+                    continue
+
+                image_files.append(file_path)
+                total_files += 1
+
+        return image_files, total_files, skipped_files
+
+    # -- Image processing helpers -------------------------------------------
+
+    def _calculate_resize_dimensions(self, original_width, original_height):
+        """Calculate new dimensions maintaining aspect ratio."""
+        if original_width > original_height:
+            new_width = self.max_dimension
+            new_height = int((original_height * self.max_dimension) / original_width)
+        else:
+            new_height = self.max_dimension
+            new_width = int((original_width * self.max_dimension) / original_height)
+        return new_width, new_height
+
+    def _resize_if_needed(self, img, filename):
+        """Resize image if it exceeds max_dimension. Returns (img, resized, old_dims, new_dims, events)."""
+        original_width, original_height = img.size
+        events = []
+
+        if (
+            original_width <= self.max_dimension
+            and original_height <= self.max_dimension
+        ):
+            return img, False, None, None, events
+
+        new_width, new_height = self._calculate_resize_dimensions(
+            original_width, original_height
+        )
+        old_dimensions = f"{original_width}x{original_height}"
+        new_dimensions = f"{new_width}x{new_height}"
+
+        img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        events.append(
+            self._sse_event(
+                {
+                    "status": "file_resized",
+                    "filename": filename,
+                    "old_size": old_dimensions,
+                    "new_size": new_dimensions,
+                }
+            )
+        )
+
+        return img, True, old_dimensions, new_dimensions, events
+
+    def _convert_png_to_jpeg(self, img, file_path, filename):
+        """Convert a PNG image to JPEG, updating the database. Returns (new_file_path, events)."""
+        events = []
+        old_relative_path = str(file_path.relative_to(settings.MEDIA_ROOT)).replace(
+            "\\", "/"
+        )
+        attachment_to_update = EnquiryAttachment.objects.filter(
+            file_path=old_relative_path
+        ).first()
+
+        if img.mode in ("RGBA", "LA", "P"):
+            img = img.convert("RGB")
+
+        new_path = file_path.with_suffix(".jpg")
+        img.save(new_path, "JPEG", optimize=True, quality=self.quality)
+
+        if attachment_to_update:
+            self._update_db_for_png_conversion(
+                attachment_to_update, new_path, old_relative_path
+            )
+            file_path.unlink()
+            events.append(
+                self._sse_event(
+                    {
+                        "status": "file_converted",
+                        "filename": filename,
+                        "new_format": "JPEG",
+                    }
+                )
+            )
+        else:
+            file_path.unlink()
+            events.append(
+                self._sse_event(
+                    {
+                        "status": "file_converted",
+                        "filename": filename,
+                        "new_format": "JPEG",
+                        "warning": "No database record found",
+                    }
+                )
+            )
+
+        return new_path, events
+
+    @staticmethod
+    def _update_db_for_png_conversion(attachment, new_path, old_relative_path):
+        """Update the database record when converting PNG to JPEG."""
+        new_relative_path = str(new_path.relative_to(settings.MEDIA_ROOT)).replace(
+            "\\", "/"
+        )
+        new_filename = new_path.name
+
+        attachment.file_path = new_relative_path
+        attachment.filename = new_filename
+        attachment.save(update_fields=["file_path", "filename"])
+
+        try:
+            file_logger.log_move(
+                old_path=old_relative_path,
+                new_path=new_relative_path,
+                reason="PNG->JPEG conversion for compression",
+            )
+        except Exception:
+            pass  # Don't let logging errors prevent file cleanup
+
+    def _optimize_png_image(self, img, file_path, filename, original_size):
+        """Optimize a PNG image - convert to JPEG if beneficial, else optimize in-place.
+
+        Returns (updated_file_path, events).
+        """
+        has_transparency = img.mode in ("RGBA", "LA") or "transparency" in img.info
+
+        if not has_transparency and original_size > 1024 * 1024:
+            return self._convert_png_to_jpeg(img, file_path, filename)
+
+        # Keep as PNG but optimize
+        img.save(file_path, "PNG", optimize=True)
+        return file_path, []
+
+    def _optimize_jpeg_image(self, img, file_path):
+        """Optimize a JPEG image with compression."""
+        if img.mode in ("RGBA", "LA"):
+            background = Image.new("RGB", img.size, (255, 255, 255))
+            background.paste(
+                img,
+                mask=img.split()[-1] if img.mode == "RGBA" else None,
+            )
+            img = background
+
+        img.save(file_path, "JPEG", optimize=True, quality=self.quality)
+
+    def _log_optimization_results(
+        self,
+        file_path,
+        original_size,
+        new_size,
+        resized,
+        old_dimensions,
+        new_dimensions,
+    ):
+        """Log optimization results for a processed file."""
+        relative_path = str(file_path.relative_to(settings.MEDIA_ROOT)).replace(
+            "\\", "/"
+        )
+        attachment = EnquiryAttachment.objects.filter(file_path=relative_path).first()
+
+        if not attachment:
+            return
+
+        enquiry_ref = attachment.enquiry.reference if attachment.enquiry else None
+
+        if resized:
+            file_logger.log_resize(
+                file_path=relative_path,
+                old_dimensions=old_dimensions,
+                new_dimensions=new_dimensions,
+                enquiry_ref=enquiry_ref,
+            )
+
+        savings_percent = (
+            round((original_size - new_size) / original_size * 100, 1)
+            if original_size > 0
+            else 0
+        )
+        file_logger.log_compression(
+            file_path=relative_path,
+            original_size=format_file_size(original_size),
+            new_size=format_file_size(new_size),
+            savings_percent=savings_percent,
+            enquiry_ref=enquiry_ref,
+        )
+
+        if attachment.file_size != new_size:
+            old_db_size = attachment.file_size
+            attachment.file_size = new_size
+            attachment.save(update_fields=["file_size"])
+            file_logger.log_size_update(
+                file_path=relative_path,
+                old_size=old_db_size,
+                new_size=new_size,
+                enquiry_ref=enquiry_ref,
+            )
+
+    def _process_image_optimization(self, img, file_path, filename, original_size):
+        """Run the actual optimization on an opened image.
+
+        Returns (updated_file_path, resized, old_dims, new_dims, events).
+        """
+        img, resized, old_dims, new_dims, events = self._resize_if_needed(img, filename)
+
+        is_png = filename.lower().endswith(".png")
+        if is_png:
+            file_path, convert_events = self._optimize_png_image(
+                img, file_path, filename, original_size
+            )
+            events.extend(convert_events)
+        else:
+            self._optimize_jpeg_image(img, file_path)
+
+        return file_path, resized, old_dims, new_dims, events
+
+    def _process_single_file(self, file_path, index, total_files):
+        """Process a single image file. Yields SSE events."""
+        filename = file_path.name
+        progress_percent = round((index / total_files) * 100, 1)
+        yield self._sse_event(
+            {
+                "status": "processing",
+                "current_file": filename,
+                "progress": index,
+                "total": total_files,
+                "percent": progress_percent,
+            }
+        )
+
+        original_size = file_path.stat().st_size
+        self.results["total_size_before"] += original_size
+
+        if self.dry_run:
+            new_size = int(original_size * (self.quality / 100))
+        else:
+            with Image.open(file_path) as img:
+                file_path, resized, old_dims, new_dims, events = (
+                    self._process_image_optimization(
+                        img, file_path, filename, original_size
+                    )
+                )
+            for event in events:
+                yield event
+
+            new_size = file_path.stat().st_size
+            self._log_optimization_results(
+                file_path,
+                original_size,
+                new_size,
+                resized,
+                old_dims,
+                new_dims,
+            )
+
+        self.results["total_size_after"] += new_size
+        self.results["processed"] += 1
+
+        file_savings = original_size - new_size
+        file_savings_percent = (
+            (file_savings / original_size * 100) if original_size > 0 else 0
+        )
+        yield self._sse_event(
+            {
+                "status": "file_complete",
+                "filename": filename,
+                "original_size": original_size,
+                "new_size": new_size,
+                "savings": file_savings,
+                "savings_percent": round(file_savings_percent, 1),
+                "original_formatted": format_file_size(original_size),
+                "new_formatted": format_file_size(new_size),
+                "savings_formatted": format_file_size(file_savings),
+            }
+        )
+
+    def _handle_file_error(self, file_path, error):
+        """Record an error for a file and yield an SSE error event."""
+        self.results["errors"] += 1
+        self.results["error_files"].append(
+            {"filename": file_path.name, "error": str(error)}
+        )
+        relative_path = str(file_path.relative_to(settings.MEDIA_ROOT)).replace(
+            "\\", "/"
+        )
+        file_logger.log_error(
+            operation="COMPRESS", file_path=relative_path, error_msg=str(error)
+        )
+        return self._sse_event(
+            {
+                "status": "file_error",
+                "filename": file_path.name,
+                "error": str(error),
+            }
+        )
+
+    def _build_final_results(self, total_files):
+        """Build and return the final results SSE event."""
+        savings = self.results["total_size_before"] - self.results["total_size_after"]
+        savings_percent = (
+            (savings / self.results["total_size_before"] * 100)
+            if self.results["total_size_before"] > 0
+            else 0
+        )
+        return self._sse_event(
+            {
+                "status": "complete",
+                "processed": self.results["processed"],
+                "errors": self.results["errors"],
+                "total_files": total_files,
+                "savings_bytes": savings,
+                "savings_percent": round(savings_percent, 1),
+                "total_size_before": self.results["total_size_before"],
+                "total_size_after": self.results["total_size_after"],
+                "total_size_before_formatted": format_file_size(
+                    self.results["total_size_before"]
+                ),
+                "total_size_after_formatted": format_file_size(
+                    self.results["total_size_after"]
+                ),
+                "savings_formatted": format_file_size(savings),
+                "error_files": self.results["error_files"],
+                "dry_run": self.dry_run,
+            }
+        )
+
+    def _generate_no_files_message(self, skipped_files):
+        """Generate the completion message when no files need optimization."""
+        if skipped_files > 0:
+            msg = (
+                f"No optimization needed! Found {skipped_files} images, "
+                f"but all are either smaller than {self.min_size_mb}MB "
+                f"or already well-compressed."
+            )
+        else:
+            msg = "No image files found to optimize"
+        return self._sse_event({"status": "complete", "message": msg})
+
+    def generate_progress(self):
+        """Generator function for streaming progress updates."""
+        try:
+            print(
+                f"DEBUG: Starting optimization with quality={self.quality}, "
+                f"dry_run={self.dry_run}, min_size_mb={self.min_size_mb}"
+            )
+
+            if Image is None:
+                yield self._sse_event(
+                    {
+                        "error": "PIL (Pillow) is not installed. Please install it with: pip install Pillow"
+                    }
+                )
+                return
+
+            enquiry_photos_dir = Path(settings.MEDIA_ROOT) / "enquiry_photos"
+            if not enquiry_photos_dir.exists():
+                yield self._sse_event(
+                    {"error": "No image directory found (enquiry_photos)"}
+                )
+                return
+
+            yield self._sse_event(
+                {
+                    "status": "scanning",
+                    "message": "Scanning enquiry images for optimization candidates...",
+                }
+            )
+
+            image_files, total_files, skipped_files = self._scan_image_files(
+                enquiry_photos_dir
+            )
+
+            yield self._sse_event(
+                {
+                    "status": "starting",
+                    "total_files": total_files,
+                    "skipped_files": skipped_files,
+                    "min_size_mb": self.min_size_mb,
+                    "dry_run": self.dry_run,
+                }
+            )
+
+            if total_files == 0:
+                yield self._generate_no_files_message(skipped_files)
+                return
+
+            for i, file_path in enumerate(image_files, 1):
+                try:
+                    yield from self._process_single_file(file_path, i, total_files)
+                except Exception as e:
+                    yield self._handle_file_error(file_path, e)
+
+            yield self._build_final_results(total_files)
+
+        except Exception as e:
+            yield self._sse_event({"status": "error", "error": str(e)})
+
+
+def _parse_optimization_params(request):
+    """Extract optimization parameters from a GET or POST request."""
+    params = request.GET if request.method == "GET" else request.POST
+    return {
+        "quality": int(params.get("quality", 85)),
+        "dry_run": params.get("dry_run", "false").lower() == "true",
+        "min_size_mb": float(params.get("min_size_mb", 1.0)),
+        "max_dimension": int(params.get("max_dimension", 1920)),
+    }
+
+
 @login_required
 @admin_required()
 @require_http_methods(["GET", "POST"])
@@ -263,434 +801,14 @@ def optimize_enquiry_images_stream(request):
     """
     Stream real-time progress for enquiry image optimization.
     """
-    # Support both GET and POST for EventSource compatibility
-    if request.method == "GET":
-        quality = int(request.GET.get("quality", 85))
-        dry_run = request.GET.get("dry_run", "false").lower() == "true"
-        min_size_mb = float(request.GET.get("min_size_mb", 1.0))
-        max_dimension = int(request.GET.get("max_dimension", 1920))
-    else:
-        quality = int(request.POST.get("quality", 85))
-        dry_run = request.POST.get("dry_run", "false").lower() == "true"
-        min_size_mb = float(request.POST.get("min_size_mb", 1.0))
-        max_dimension = int(request.POST.get("max_dimension", 1920))
-
-    def generate_progress():
-        """Generator function for streaming progress updates."""
-        try:
-            print(
-                f"DEBUG: Starting optimization with quality={quality}, dry_run={dry_run}, min_size_mb={min_size_mb}"
-            )
-
-            if Image is None:
-                yield f"data: {json.dumps({'error': 'PIL (Pillow) is not installed. Please install it with: pip install Pillow'})}\n\n"
-                return
-
-            enquiry_photos_dir = Path(settings.MEDIA_ROOT) / "enquiry_photos"
-
-            if not enquiry_photos_dir.exists():
-                yield f"data: {json.dumps({'error': 'No image directory found (enquiry_photos)'})}\n\n"
-                return
-
-            existing_dirs = [enquiry_photos_dir]
-
-            # Count total files and filter for optimization candidates
-            total_files = 0
-            image_files = []
-            skipped_files = 0
-            min_size_bytes = min_size_mb * 1024 * 1024
-
-            yield f"data: {json.dumps({'status': 'scanning', 'message': 'Scanning enquiry images for optimization candidates...'})}\n\n"
-
-            # Scan all image directories
-            for image_dir in existing_dirs:
-                for root, dirs, files in os.walk(image_dir):
-                    for filename in files:
-                        if filename.lower().endswith((".jpg", ".jpeg", ".png")):
-                            file_path = Path(root) / filename
-                            try:
-                                file_size = file_path.stat().st_size
-
-                                # Only process files larger than threshold
-                                if file_size > min_size_bytes:
-                                    # Advanced analysis for optimization candidates
-                                    needs_optimization = True
-                                    skip_reason = ""
-
-                                    try:
-                                        with Image.open(file_path) as img:
-                                            width, height = img.size
-                                            pixels = width * height
-                                            bytes_per_pixel = (
-                                                file_size / pixels if pixels > 0 else 0
-                                            )
-
-                                            # Different logic for different file types
-                                            if filename.lower().endswith(".png"):
-                                                # PNG files: Focus on large files and dimensions
-                                                if (
-                                                    width > max_dimension
-                                                    or height > max_dimension
-                                                ):
-                                                    # Large dimensions always need optimization
-                                                    needs_optimization = True
-                                                    skip_reason = f"Large PNG dimensions ({width}x{height}) need resizing/conversion"
-                                                elif (
-                                                    file_size > 1024 * 1024
-                                                ):  # > 1MB PNG
-                                                    # Large PNG files should be optimized (possibly converted to JPEG)
-                                                    needs_optimization = True
-                                                    skip_reason = f"Large PNG file ({format_file_size(file_size)}) needs optimization"
-                                                elif (
-                                                    bytes_per_pixel < 0.5
-                                                    and file_size < 500 * 1024
-                                                ):  # Very efficient and small
-                                                    needs_optimization = False
-                                                    skip_reason = "PNG already very efficient and small"
-                                                else:
-                                                    # Default to optimizing PNGs over threshold
-                                                    needs_optimization = True
-                                                    skip_reason = "PNG will be analyzed for optimization"
-
-                                            elif filename.lower().endswith(
-                                                (".jpg", ".jpeg")
-                                            ):
-                                                # JPEG files: Prioritize dimension reduction over compression analysis
-                                                if (
-                                                    width > max_dimension
-                                                    or height > max_dimension
-                                                ):
-                                                    # Large dimensions always need optimization (resize)
-                                                    needs_optimization = True
-                                                    skip_reason = f"Large dimensions ({width}x{height}) need resizing"
-                                                elif (
-                                                    file_size > 2 * 1024 * 1024
-                                                ):  # > 2MB
-                                                    # Large files always need optimization regardless of compression
-                                                    needs_optimization = True
-                                                    skip_reason = f"Large file size ({format_file_size(file_size)}) needs compression"
-                                                elif (
-                                                    bytes_per_pixel < 0.15
-                                                    and file_size < 1024 * 1024
-                                                ):  # Very well compressed and small
-                                                    needs_optimization = False
-                                                    skip_reason = "JPEG already very well-compressed and reasonably sized"
-                                                else:
-                                                    # Default to optimizing if we're not sure
-                                                    needs_optimization = True
-                                                    skip_reason = (
-                                                        "Will attempt optimization"
-                                                    )
-
-                                            # Log analysis for debugging
-                                            if not needs_optimization:
-                                                print(
-                                                    f"DEBUG: SKIPPING {filename}: {skip_reason} ({width}x{height}, {format_file_size(file_size)}, {bytes_per_pixel:.2f} bytes/pixel)"
-                                                )
-                                            else:
-                                                print(
-                                                    f"DEBUG: WILL OPTIMIZE {filename}: {skip_reason} ({width}x{height}, {format_file_size(file_size)}, {bytes_per_pixel:.2f} bytes/pixel)"
-                                                )
-
-                                    except Exception as e:
-                                        # If we can't analyze, assume it needs optimization
-                                        print(f"DEBUG: Cannot analyze {filename}: {e}")
-                                        needs_optimization = True
-
-                                    if needs_optimization:
-                                        image_files.append(file_path)
-                                        total_files += 1
-                                    else:
-                                        skipped_files += 1
-                                else:
-                                    skipped_files += 1
-                            except OSError:
-                                continue
-
-            yield f"data: {json.dumps({'status': 'starting', 'total_files': total_files, 'skipped_files': skipped_files, 'min_size_mb': min_size_mb, 'dry_run': dry_run})}\n\n"
-
-            if total_files == 0:
-                if skipped_files > 0:
-                    yield f"data: {json.dumps({'status': 'complete', 'message': f'No optimization needed! Found {skipped_files} images, but all are either smaller than {min_size_mb}MB or already well-compressed.'})}\n\n"
-                else:
-                    yield f"data: {json.dumps({'status': 'complete', 'message': 'No image files found to optimize'})}\n\n"
-                return
-
-            results = {
-                "processed": 0,
-                "errors": 0,
-                "total_size_before": 0,
-                "total_size_after": 0,
-                "error_files": [],
-            }
-
-            # Process each image file
-            for i, file_path in enumerate(image_files, 1):
-                try:
-                    filename = file_path.name
-                    progress_percent = round((i / total_files) * 100, 1)
-                    yield f"data: {json.dumps({'status': 'processing', 'current_file': filename, 'progress': i, 'total': total_files, 'percent': progress_percent})}\n\n"
-
-                    # Get original size
-                    original_size = file_path.stat().st_size
-                    results["total_size_before"] += original_size
-
-                    if not dry_run:
-                        # Optimize image with advanced processing
-                        with Image.open(file_path) as img:
-                            original_width, original_height = img.size
-
-                            # Resize if image is too large
-                            resized = False
-                            old_dimensions = None
-                            new_dimensions = None
-                            if (
-                                original_width > max_dimension
-                                or original_height > max_dimension
-                            ):
-                                # Calculate new dimensions maintaining aspect ratio
-                                if original_width > original_height:
-                                    new_width = max_dimension
-                                    new_height = int(
-                                        (original_height * max_dimension)
-                                        / original_width
-                                    )
-                                else:
-                                    new_height = max_dimension
-                                    new_width = int(
-                                        (original_width * max_dimension)
-                                        / original_height
-                                    )
-
-                                old_dimensions = f"{original_width}x{original_height}"
-                                new_dimensions = f"{new_width}x{new_height}"
-                                resized = True
-
-                                img = img.resize(
-                                    (new_width, new_height), Image.Resampling.LANCZOS
-                                )
-                                yield f"data: {json.dumps({'status': 'file_resized', 'filename': filename, 'old_size': old_dimensions, 'new_size': new_dimensions})}\n\n"
-
-                            # Handle different file types
-                            is_png = filename.lower().endswith(".png")
-
-                            if is_png:
-                                # For PNG files, try converting to JPEG if it's photographic
-                                # Check if PNG has transparency
-                                has_transparency = (
-                                    img.mode in ("RGBA", "LA")
-                                    or "transparency" in img.info
-                                )
-
-                                if (
-                                    not has_transparency and original_size > 1024 * 1024
-                                ):  # > 1MB PNG without transparency
-                                    # Convert to JPEG for better compression
-                                    # BUT: Find attachment FIRST before changing filename
-                                    old_relative_path = str(
-                                        file_path.relative_to(settings.MEDIA_ROOT)
-                                    ).replace("\\", "/")
-                                    attachment_to_update = (
-                                        EnquiryAttachment.objects.filter(
-                                            file_path=old_relative_path
-                                        ).first()
-                                    )
-
-                                    if img.mode in ("RGBA", "LA", "P"):
-                                        img = img.convert("RGB")
-
-                                    # Save as JPEG with new extension
-                                    new_path = file_path.with_suffix(".jpg")
-                                    img.save(
-                                        new_path, "JPEG", optimize=True, quality=quality
-                                    )
-
-                                    # Update database BEFORE deleting old file
-                                    if attachment_to_update:
-                                        new_relative_path = str(
-                                            new_path.relative_to(settings.MEDIA_ROOT)
-                                        ).replace("\\", "/")
-                                        new_filename = new_path.name
-
-                                        attachment_to_update.file_path = (
-                                            new_relative_path
-                                        )
-                                        attachment_to_update.filename = new_filename
-                                        attachment_to_update.save(
-                                            update_fields=["file_path", "filename"]
-                                        )
-
-                                        # Log the conversion (don't let logging errors stop deletion)
-                                        try:
-                                            file_logger.log_move(
-                                                old_path=old_relative_path,
-                                                new_path=new_relative_path,
-                                                reason="PNG→JPEG conversion for compression",
-                                            )
-                                        except Exception:
-                                            pass  # Don't let logging errors prevent file cleanup
-
-                                        # NOW safe to remove original PNG
-                                        file_path.unlink()
-                                        file_path = new_path
-
-                                        yield f"data: {json.dumps({'status': 'file_converted', 'filename': filename, 'new_format': 'JPEG'})}\n\n"
-                                    else:
-                                        # No database record found - still delete PNG to avoid orphans
-                                        file_path.unlink()
-                                        file_path = new_path
-                                        yield f"data: {json.dumps({'status': 'file_converted', 'filename': filename, 'new_format': 'JPEG', 'warning': 'No database record found'})}\n\n"
-                                else:
-                                    # Keep as PNG but optimize
-                                    img.save(file_path, "PNG", optimize=True)
-                            else:
-                                # JPEG optimization
-                                if img.mode in ("RGBA", "LA"):
-                                    background = Image.new(
-                                        "RGB", img.size, (255, 255, 255)
-                                    )
-                                    background.paste(
-                                        img,
-                                        mask=(
-                                            img.split()[-1]
-                                            if img.mode == "RGBA"
-                                            else None
-                                        ),
-                                    )
-                                    img = background
-
-                                # Save with compression
-                                img.save(
-                                    file_path, "JPEG", optimize=True, quality=quality
-                                )
-
-                        # Get new size
-                        new_size = file_path.stat().st_size
-
-                        # Update database file size and log the operation
-                        relative_path = str(
-                            file_path.relative_to(settings.MEDIA_ROOT)
-                        ).replace("\\", "/")
-                        attachment = EnquiryAttachment.objects.filter(
-                            file_path=relative_path
-                        ).first()
-
-                        if attachment:
-                            enquiry_ref = (
-                                attachment.enquiry.reference
-                                if attachment.enquiry
-                                else None
-                            )
-
-                            # Log resize if it occurred
-                            if resized:
-                                file_logger.log_resize(
-                                    file_path=relative_path,
-                                    old_dimensions=old_dimensions,
-                                    new_dimensions=new_dimensions,
-                                    enquiry_ref=enquiry_ref,
-                                )
-
-                            # Log compression
-                            file_logger.log_compression(
-                                file_path=relative_path,
-                                original_size=format_file_size(original_size),
-                                new_size=format_file_size(new_size),
-                                savings_percent=(
-                                    round(
-                                        (original_size - new_size)
-                                        / original_size
-                                        * 100,
-                                        1,
-                                    )
-                                    if original_size > 0
-                                    else 0
-                                ),
-                                enquiry_ref=enquiry_ref,
-                            )
-
-                            # Update database if size changed
-                            if attachment.file_size != new_size:
-                                old_db_size = attachment.file_size
-                                attachment.file_size = new_size
-                                attachment.save(update_fields=["file_size"])
-
-                                # Log size update
-                                file_logger.log_size_update(
-                                    file_path=relative_path,
-                                    old_size=old_db_size,
-                                    new_size=new_size,
-                                    enquiry_ref=enquiry_ref,
-                                )
-                    else:
-                        # For dry run, estimate compression
-                        new_size = int(original_size * (quality / 100))
-
-                    results["total_size_after"] += new_size
-                    results["processed"] += 1
-
-                    # Calculate savings for this file
-                    file_savings = original_size - new_size
-                    file_savings_percent = (
-                        (file_savings / original_size * 100) if original_size > 0 else 0
-                    )
-
-                    yield f"data: {json.dumps({'status': 'file_complete', 'filename': filename, 'original_size': original_size, 'new_size': new_size, 'savings': file_savings, 'savings_percent': round(file_savings_percent, 1), 'original_formatted': format_file_size(original_size), 'new_formatted': format_file_size(new_size), 'savings_formatted': format_file_size(file_savings)})}\n\n"
-
-                except Exception as e:
-                    results["errors"] += 1
-                    results["error_files"].append(
-                        {"filename": file_path.name, "error": str(e)}
-                    )
-
-                    # Log error
-                    relative_path = str(
-                        file_path.relative_to(settings.MEDIA_ROOT)
-                    ).replace("\\", "/")
-                    file_logger.log_error(
-                        operation="COMPRESS", file_path=relative_path, error_msg=str(e)
-                    )
-
-                    yield f"data: {json.dumps({'status': 'file_error', 'filename': file_path.name, 'error': str(e)})}\n\n"
-
-            # Calculate final results
-            savings = results["total_size_before"] - results["total_size_after"]
-            savings_percent = (
-                (savings / results["total_size_before"] * 100)
-                if results["total_size_before"] > 0
-                else 0
-            )
-
-            final_results = {
-                "status": "complete",
-                "processed": results["processed"],
-                "errors": results["errors"],
-                "total_files": total_files,
-                "savings_bytes": savings,
-                "savings_percent": round(savings_percent, 1),
-                "total_size_before": results["total_size_before"],
-                "total_size_after": results["total_size_after"],
-                "total_size_before_formatted": format_file_size(
-                    results["total_size_before"]
-                ),
-                "total_size_after_formatted": format_file_size(
-                    results["total_size_after"]
-                ),
-                "savings_formatted": format_file_size(savings),
-                "error_files": results["error_files"],
-                "dry_run": dry_run,
-            }
-
-            yield f"data: {json.dumps(final_results)}\n\n"
-
-        except Exception as e:
-            yield f"data: {json.dumps({'status': 'error', 'error': str(e)})}\n\n"
+    params = _parse_optimization_params(request)
+    streamer = ImageOptimizationStreamer(**params)
 
     # Return streaming response
     from django.http import StreamingHttpResponse
 
     response = StreamingHttpResponse(
-        generate_progress(), content_type="text/event-stream"
+        streamer.generate_progress(), content_type="text/event-stream"
     )
     response["Cache-Control"] = "no-cache"
     response["X-Accel-Buffering"] = "no"  # Disable nginx buffering
@@ -698,69 +816,102 @@ def optimize_enquiry_images_stream(request):
     return response
 
 
+# ---------------------------------------------------------------------------
+# File browser helpers
+# ---------------------------------------------------------------------------
+
+
+def _get_file_attachment_info(normalized_path, filename):
+    """Look up the attachment record and return display metadata.
+
+    Returns (display_name, is_linked, enquiry_ref, enquiry_id).
+    """
+    attachment = EnquiryAttachment.objects.filter(file_path=normalized_path).first()
+
+    if not attachment:
+        return filename, False, None, None
+
+    display_name = attachment.filename
+    enquiry_ref = None
+    enquiry_id = None
+
+    if attachment.enquiry:
+        enquiry_ref = attachment.enquiry.reference
+        enquiry_id = attachment.enquiry.pk
+
+    return display_name, True, enquiry_ref, enquiry_id
+
+
+def _collect_directory_files(target_dir, media_root, iso_dates=False):
+    """Walk a directory and collect file metadata dicts.
+
+    When *iso_dates* is True the 'modified' value is an ISO string;
+    otherwise it is a datetime object.
+    """
+    files = []
+    if not target_dir.exists():
+        return files
+
+    for root, dirs, filenames in os.walk(target_dir):
+        for filename in filenames:
+            file_path = Path(root) / filename
+            try:
+                stat = file_path.stat()
+            except OSError:
+                continue
+
+            relative_path = file_path.relative_to(media_root)
+            normalized_path = str(relative_path).replace("\\", "/")
+
+            display_name, is_linked, enquiry_ref, enquiry_id = (
+                _get_file_attachment_info(normalized_path, filename)
+            )
+
+            modified_val = datetime.fromtimestamp(stat.st_mtime)
+            if iso_dates:
+                modified_val = modified_val.isoformat()
+
+            files.append(
+                {
+                    "name": filename,
+                    "display_name": display_name,
+                    "path": str(relative_path),
+                    "size": stat.st_size,
+                    "size_formatted": format_file_size(stat.st_size),
+                    "modified": modified_val,
+                    "is_linked": is_linked,
+                    "extension": file_path.suffix.lower(),
+                    "enquiry_ref": enquiry_ref,
+                    "enquiry_id": enquiry_id,
+                }
+            )
+
+    return files
+
+
+def _sanitize_directory(directory):
+    """Validate and return the requested directory, defaulting to enquiry_photos."""
+    allowed_dirs = ["enquiry_photos", "enquiry_attachments"]
+    if directory not in allowed_dirs:
+        return "enquiry_photos", allowed_dirs
+    return directory, allowed_dirs
+
+
 @login_required
 @admin_required()
+@require_http_methods(["GET"])
 def file_browser(request):
     """
     Browse files in the media directory with DataTables interface.
     """
-    directory = request.GET.get("dir", "enquiry_photos")
+    directory, allowed_dirs = _sanitize_directory(
+        request.GET.get("dir", "enquiry_photos")
+    )
 
-    # Security check - only allow specific directories
-    allowed_dirs = ["enquiry_photos", "enquiry_attachments"]
-    if directory not in allowed_dirs:
-        directory = "enquiry_photos"
-
-    # For debugging, let's also get the files data directly
     media_root = Path(settings.MEDIA_ROOT)
     target_dir = media_root / directory
 
-    files = []
-    if target_dir.exists():
-        # Get all files in directory
-        for root, dirs, filenames in os.walk(target_dir):
-            for filename in filenames:
-                file_path = Path(root) / filename
-                try:
-                    stat = file_path.stat()
-                    relative_path = file_path.relative_to(media_root)
-
-                    # Check if file is linked to an enquiry and get display name
-                    normalized_path = str(relative_path).replace("\\", "/")
-                    attachment = EnquiryAttachment.objects.filter(
-                        file_path=normalized_path
-                    ).first()
-
-                    is_linked = attachment is not None
-                    display_name = filename  # Default to filename
-                    enquiry_ref = None
-                    enquiry_id = None
-
-                    if attachment:
-                        # Use the original filename (stored in 'filename' field)
-                        display_name = attachment.filename
-
-                        # Get enquiry reference and ID for linking
-                        if attachment.enquiry:
-                            enquiry_ref = attachment.enquiry.reference
-                            enquiry_id = attachment.enquiry.pk
-
-                    files.append(
-                        {
-                            "name": filename,
-                            "display_name": display_name,
-                            "path": str(relative_path),
-                            "size": stat.st_size,
-                            "size_formatted": format_file_size(stat.st_size),
-                            "modified": datetime.fromtimestamp(stat.st_mtime),
-                            "is_linked": is_linked,
-                            "extension": file_path.suffix.lower(),
-                            "enquiry_ref": enquiry_ref,
-                            "enquiry_id": enquiry_id,
-                        }
-                    )
-                except OSError:
-                    continue
+    files = _collect_directory_files(target_dir, media_root, iso_dates=False)
 
     # Convert datetime objects to strings for JSON serialization
     files_json = []
@@ -782,108 +933,71 @@ def file_browser(request):
 
 @login_required
 @admin_required()
+@require_http_methods(["GET"])
 def file_browser_data(request):
     """
     DataTables-compatible API endpoint for file browser data.
     """
-    directory = request.GET.get("directory", "enquiry_photos")
-
-    # Security check - only allow specific directories
-    allowed_dirs = ["enquiry_photos", "enquiry_attachments"]
-    if directory not in allowed_dirs:
-        directory = "enquiry_photos"
+    directory, _ = _sanitize_directory(request.GET.get("directory", "enquiry_photos"))
 
     media_root = Path(settings.MEDIA_ROOT)
     target_dir = media_root / directory
 
-    files = []
-    if target_dir.exists():
-        # Get all files in directory
-        for root, dirs, filenames in os.walk(target_dir):
-            for filename in filenames:
-                file_path = Path(root) / filename
-                try:
-                    stat = file_path.stat()
-                    relative_path = file_path.relative_to(media_root)
-
-                    # Check if file is linked to an enquiry and get display name
-                    normalized_path = str(relative_path).replace("\\", "/")
-                    attachment = EnquiryAttachment.objects.filter(
-                        file_path=normalized_path
-                    ).first()
-
-                    is_linked = attachment is not None
-                    display_name = filename  # Default to filename
-                    enquiry_ref = None
-                    enquiry_id = None
-
-                    if attachment:
-                        # Use the original filename (stored in 'filename' field)
-                        display_name = attachment.filename
-
-                        # Get enquiry reference and ID for linking
-                        if attachment.enquiry:
-                            enquiry_ref = attachment.enquiry.reference
-                            enquiry_id = attachment.enquiry.pk
-
-                    files.append(
-                        {
-                            "name": filename,
-                            "display_name": display_name,
-                            "path": str(relative_path),
-                            "size": stat.st_size,
-                            "size_formatted": format_file_size(stat.st_size),
-                            "modified": datetime.fromtimestamp(
-                                stat.st_mtime
-                            ).isoformat(),
-                            "is_linked": is_linked,
-                            "extension": file_path.suffix.lower(),
-                            "enquiry_ref": enquiry_ref,
-                            "enquiry_id": enquiry_id,
-                        }
-                    )
-                except OSError:
-                    continue
+    files = _collect_directory_files(target_dir, media_root, iso_dates=True)
 
     # Return DataTables-compatible JSON
     return JsonResponse({"data": files})
 
 
+# ---------------------------------------------------------------------------
+# Storage analytics helpers
+# ---------------------------------------------------------------------------
+
+
+def _collect_file_stats(media_root):
+    """Walk media directories and gather date and file-type statistics.
+
+    Returns (date_stats, file_type_stats) as defaultdicts.
+    """
+    date_stats = defaultdict(lambda: {"files": 0, "size": 0})
+    file_type_stats = defaultdict(lambda: {"files": 0, "size": 0})
+
+    for directory_name in ["enquiry_photos", "enquiry_attachments"]:
+        directory_path = media_root / directory_name
+        if not directory_path.exists():
+            continue
+
+        for root, dirs, files in os.walk(directory_path):
+            for file in files:
+                file_path = Path(root) / file
+                try:
+                    stat = file_path.stat()
+                except OSError:
+                    continue
+
+                file_date = datetime.fromtimestamp(stat.st_mtime).date()
+                file_ext = file_path.suffix.lower()
+
+                date_stats[str(file_date)]["files"] += 1
+                date_stats[str(file_date)]["size"] += stat.st_size
+
+                file_type_stats[file_ext]["files"] += 1
+                file_type_stats[file_ext]["size"] += stat.st_size
+
+    return date_stats, file_type_stats
+
+
 @login_required
 @admin_required()
+@require_http_methods(["GET"])
 def storage_analytics_api(request):
     """
     API endpoint for storage analytics data (for charts and graphs).
     """
     try:
-        # Get storage data by date
         media_root = Path(settings.MEDIA_ROOT)
+        date_stats, file_type_stats = _collect_file_stats(media_root)
 
-        # Analyze files by date
-        date_stats = defaultdict(lambda: {"files": 0, "size": 0})
-        file_type_stats = defaultdict(lambda: {"files": 0, "size": 0})
-
-        for directory_name in ["enquiry_photos", "enquiry_attachments"]:
-            directory_path = media_root / directory_name
-            if directory_path.exists():
-                for root, dirs, files in os.walk(directory_path):
-                    for file in files:
-                        file_path = Path(root) / file
-                        try:
-                            stat = file_path.stat()
-                            file_date = datetime.fromtimestamp(stat.st_mtime).date()
-                            file_ext = file_path.suffix.lower()
-
-                            date_stats[str(file_date)]["files"] += 1
-                            date_stats[str(file_date)]["size"] += stat.st_size
-
-                            file_type_stats[file_ext]["files"] += 1
-                            file_type_stats[file_ext]["size"] += stat.st_size
-
-                        except OSError:
-                            continue
-
-        # Convert to lists for JSON serialization
         date_data = [
             {
                 "date": date,
@@ -918,6 +1032,98 @@ def storage_analytics_api(request):
         return JsonResponse({"success": False, "error": str(e)})
 
 
+# ---------------------------------------------------------------------------
+# Missing images check helpers
+# ---------------------------------------------------------------------------
+
+
+def _get_enquiry_ref(attachment):
+    """Return the enquiry reference string or 'N/A'."""
+    if attachment.enquiry:
+        return attachment.enquiry.reference
+    return "N/A"
+
+
+def _get_enquiry_id(attachment):
+    """Return the enquiry id or None."""
+    if attachment.enquiry:
+        return attachment.enquiry.id
+    return None
+
+
+def _build_missing_file_record(attachment):
+    """Build a dict describing a missing attachment file."""
+    return {
+        "enquiry_ref": _get_enquiry_ref(attachment),
+        "enquiry_id": _get_enquiry_id(attachment),
+        "filename": attachment.filename,
+        "file_path": attachment.file_path,
+        "uploaded_at": attachment.uploaded_at.strftime("%Y-%m-%d %H:%M"),
+        "file_size": (
+            format_file_size(attachment.file_size)
+            if attachment.file_size
+            else "Unknown"
+        ),
+    }
+
+
+def _build_corrupted_file_record(attachment, reason):
+    """Build a dict describing a corrupted attachment file."""
+    return {
+        "enquiry_ref": _get_enquiry_ref(attachment),
+        "enquiry_id": _get_enquiry_id(attachment),
+        "filename": attachment.filename,
+        "file_path": attachment.file_path,
+        "reason": reason,
+        "uploaded_at": attachment.uploaded_at.strftime("%Y-%m-%d %H:%M"),
+    }
+
+
+def _check_image_integrity(file_path):
+    """Try to load an image file to verify it is not corrupted.
+
+    Returns an error message string if corrupted, or None if OK.
+    """
+    if not Image:
+        return None
+
+    try:
+        from PIL import ImageFile
+
+        ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+        with Image.open(file_path) as img:
+            img.load()
+    except Exception as img_error:
+        return f"Image corrupted: {str(img_error)}"
+
+    return None
+
+
+def _check_file_corruption(file_path, attachment):
+    """Check whether an existing file is corrupted.
+
+    Returns a corrupted-file record dict, or None if the file is healthy.
+    """
+    try:
+        actual_size = file_path.stat().st_size
+    except Exception as e:
+        return _build_corrupted_file_record(attachment, f"Cannot read file: {str(e)}")
+
+    if actual_size == 0:
+        return _build_corrupted_file_record(attachment, "File is 0 bytes (corrupted)")
+
+    is_image = file_path.suffix.lower() in [".jpg", ".jpeg", ".png"]
+    if not is_image:
+        return None
+
+    error_msg = _check_image_integrity(file_path)
+    if error_msg:
+        return _build_corrupted_file_record(attachment, error_msg)
+
+    return None
+
+
 @login_required
 @admin_required()
 @require_http_methods(["POST"])
@@ -933,117 +1139,20 @@ def check_missing_images(request):
         corrupted_files = []
         total_checked = 0
 
-        # Check all attachments
         attachments = EnquiryAttachment.objects.select_related("enquiry").all()
 
         for attachment in attachments:
             total_checked += 1
             file_path = media_root / attachment.file_path
 
-            # Check if file exists
             if not file_path.exists():
-                missing_files.append(
-                    {
-                        "enquiry_ref": (
-                            attachment.enquiry.reference
-                            if attachment.enquiry
-                            else "N/A"
-                        ),
-                        "enquiry_id": (
-                            attachment.enquiry.id if attachment.enquiry else None
-                        ),
-                        "filename": attachment.filename,
-                        "file_path": attachment.file_path,
-                        "uploaded_at": attachment.uploaded_at.strftime(
-                            "%Y-%m-%d %H:%M"
-                        ),
-                        "file_size": (
-                            format_file_size(attachment.file_size)
-                            if attachment.file_size
-                            else "Unknown"
-                        ),
-                    }
-                )
-            else:
-                # File exists - check if it's corrupted (0 bytes or can't be read)
-                try:
-                    actual_size = file_path.stat().st_size
-                    if actual_size == 0:
-                        corrupted_files.append(
-                            {
-                                "enquiry_ref": (
-                                    attachment.enquiry.reference
-                                    if attachment.enquiry
-                                    else "N/A"
-                                ),
-                                "enquiry_id": (
-                                    attachment.enquiry.id
-                                    if attachment.enquiry
-                                    else None
-                                ),
-                                "filename": attachment.filename,
-                                "file_path": attachment.file_path,
-                                "reason": "File is 0 bytes (corrupted)",
-                                "uploaded_at": attachment.uploaded_at.strftime(
-                                    "%Y-%m-%d %H:%M"
-                                ),
-                            }
-                        )
-                    elif file_path.suffix.lower() in [".jpg", ".jpeg", ".png"]:
-                        # Try to open image files to verify they're not corrupted
-                        # Use lenient loading like browsers do - truncated images are OK if displayable
-                        if Image:
-                            try:
-                                from PIL import ImageFile
+                missing_files.append(_build_missing_file_record(attachment))
+                continue
 
-                                ImageFile.LOAD_TRUNCATED_IMAGES = True
+            corruption = _check_file_corruption(file_path, attachment)
+            if corruption:
+                corrupted_files.append(corruption)
 
-                                with Image.open(file_path) as img:
-                                    # Try to load the image (not just verify)
-                                    # This matches browser behavior - if it can be displayed, it's not corrupted
-                                    img.load()
-                            except Exception as img_error:
-                                corrupted_files.append(
-                                    {
-                                        "enquiry_ref": (
-                                            attachment.enquiry.reference
-                                            if attachment.enquiry
-                                            else "N/A"
-                                        ),
-                                        "enquiry_id": (
-                                            attachment.enquiry.id
-                                            if attachment.enquiry
-                                            else None
-                                        ),
-                                        "filename": attachment.filename,
-                                        "file_path": attachment.file_path,
-                                        "reason": f"Image corrupted: {str(img_error)}",
-                                        "uploaded_at": attachment.uploaded_at.strftime(
-                                            "%Y-%m-%d %H:%M"
-                                        ),
-                                    }
-                                )
-                except Exception as e:
-                    corrupted_files.append(
-                        {
-                            "enquiry_ref": (
-                                attachment.enquiry.reference
-                                if attachment.enquiry
-                                else "N/A"
-                            ),
-                            "enquiry_id": (
-                                attachment.enquiry.id if attachment.enquiry else None
-                            ),
-                            "filename": attachment.filename,
-                            "file_path": attachment.file_path,
-                            "reason": f"Cannot read file: {str(e)}",
-                            "uploaded_at": attachment.uploaded_at.strftime(
-                                "%Y-%m-%d %H:%M"
-                            ),
-                        }
-                    )
-
-        # Sort both lists by enquiry reference
         missing_files.sort(key=lambda x: x["enquiry_ref"])
         corrupted_files.sort(key=lambda x: x["enquiry_ref"])
 
@@ -1060,6 +1169,57 @@ def check_missing_images(request):
 
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)})
+
+
+# ---------------------------------------------------------------------------
+# Attachment size update helpers
+# ---------------------------------------------------------------------------
+
+
+def _process_attachment_size(attachment, file_path, stats, dry_run):
+    """Check and optionally update a single attachment's file size.
+
+    Mutates *stats* in place.
+    """
+    try:
+        actual_size = file_path.stat().st_size
+    except Exception:
+        return
+
+    db_size = attachment.file_size or 0
+    size_difference = abs(actual_size - db_size)
+
+    if size_difference < 1024:
+        stats["files_matched"] += 1
+        return
+
+    stats["files_updated"] += 1
+    stats["total_size_difference"] += db_size - actual_size
+
+    enquiry_ref = attachment.enquiry.reference if attachment.enquiry else "N/A"
+
+    if len(stats["details"]) < 20:
+        stats["details"].append(
+            {
+                "enquiry_ref": enquiry_ref,
+                "filename": attachment.filename,
+                "old_size": format_file_size(db_size),
+                "new_size": format_file_size(actual_size),
+            }
+        )
+
+    if dry_run:
+        return
+
+    attachment.file_size = actual_size
+    attachment.save(update_fields=["file_size"])
+
+    file_logger.log_size_update(
+        file_path=attachment.file_path,
+        old_size=db_size,
+        new_size=actual_size,
+        enquiry_ref=enquiry_ref,
+    )
 
 
 @login_required
@@ -1080,7 +1240,6 @@ def update_attachment_sizes(request):
                 {"success": False, "error": f"Media directory not found: {media_root}"}
             )
 
-        # Statistics
         stats = {
             "total_checked": 0,
             "files_updated": 0,
@@ -1090,66 +1249,18 @@ def update_attachment_sizes(request):
             "details": [],
         }
 
-        # Get all attachments
         attachments = EnquiryAttachment.objects.select_related("enquiry").all()
 
         for attachment in attachments:
             stats["total_checked"] += 1
             file_path = media_root / attachment.file_path
 
-            # Check if file exists
             if not file_path.exists():
                 stats["files_missing"] += 1
                 continue
 
-            # Get actual file size
-            try:
-                actual_size = file_path.stat().st_size
-                db_size = attachment.file_size or 0
-                size_difference = abs(actual_size - db_size)
+            _process_attachment_size(attachment, file_path, stats, dry_run)
 
-                # Check if sizes match (within 1KB tolerance)
-                if size_difference < 1024:
-                    stats["files_matched"] += 1
-                    continue
-
-                # Sizes differ - update needed
-                stats["files_updated"] += 1
-                stats["total_size_difference"] += db_size - actual_size
-
-                enquiry_ref = (
-                    attachment.enquiry.reference if attachment.enquiry else "N/A"
-                )
-
-                # Store detail for first 20 updates
-                if len(stats["details"]) < 20:
-                    stats["details"].append(
-                        {
-                            "enquiry_ref": enquiry_ref,
-                            "filename": attachment.filename,
-                            "old_size": format_file_size(db_size),
-                            "new_size": format_file_size(actual_size),
-                        }
-                    )
-
-                # Update database if not dry run
-                if not dry_run:
-                    attachment.file_size = actual_size
-                    attachment.save(update_fields=["file_size"])
-
-                    # Log the update
-                    file_logger.log_size_update(
-                        file_path=attachment.file_path,
-                        old_size=db_size,
-                        new_size=actual_size,
-                        enquiry_ref=enquiry_ref,
-                    )
-
-            except Exception as e:
-                # Skip files with errors
-                continue
-
-        # Build response
         response = {
             "success": True,
             "total_checked": stats["total_checked"],

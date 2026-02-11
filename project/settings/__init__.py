@@ -7,20 +7,22 @@ To use a different settings file, set the DJANGO_SETTINGS_MODULE environment var
 import os
 import sys
 
-# Default to development settings
-settings_module = os.environ.get('DJANGO_SETTINGS_MODULE', 'project.settings.development')
+DEV_SETTINGS_MODULE = "project.settings.development"
 
-if settings_module == 'project.settings':
+# Default to development settings
+settings_module = os.environ.get("DJANGO_SETTINGS_MODULE", DEV_SETTINGS_MODULE)
+
+if settings_module == "project.settings":
     # If the old settings module is specified, redirect to the new one
-    os.environ['DJANGO_SETTINGS_MODULE'] = 'project.settings.development'
-    settings_module = 'project.settings.development'
+    os.environ["DJANGO_SETTINGS_MODULE"] = DEV_SETTINGS_MODULE
+    settings_module = DEV_SETTINGS_MODULE
 
 # Import the specified settings module
-if settings_module == 'project.settings.development':
+if settings_module == DEV_SETTINGS_MODULE:
     from .development import *
-elif settings_module == 'project.settings.test':
+elif settings_module == "project.settings.test":
     from .test import *
-elif settings_module == 'project.settings.production':
+elif settings_module == "project.settings.production":
     from .production import *
 else:
     # Default to development settings if an unknown module is specified

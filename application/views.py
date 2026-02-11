@@ -77,6 +77,526 @@ from .message_service import MessageService
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
+# ---------------------------------------------------------------------------
+# Shared string constants (SonarQube S1192 - avoid duplicated string literals)
+# ---------------------------------------------------------------------------
+URL_ENQUIRY_LIST = "application:enquiry_list"
+URL_ENQUIRY_DETAIL = "application:enquiry_detail"
+MSG_NO_FILE_PROVIDED = "No file provided"
+
+
+# ---------------------------------------------------------------------------
+# Helper functions to reduce cognitive complexity of view functions
+# ---------------------------------------------------------------------------
+
+
+def _get_enquiry_or_redirect(pk, request, redirect_target=URL_ENQUIRY_LIST):
+    """Fetch an enquiry by pk or return a redirect response if not found."""
+    try:
+        return Enquiry.objects.get(pk=pk), None
+    except Enquiry.DoesNotExist:
+        messages.error(request, f"Enquiry with ID {pk} does not exist.")
+        return None, redirect(redirect_target)
+
+
+def _handle_attach_only_request(enquiry, user, extracted_images_json):
+    """Handle attach-only POST requests during enquiry edit."""
+    try:
+        EnquiryService.add_attachments_to_enquiry(
+            enquiry=enquiry,
+            user=user,
+            extracted_images_json=extracted_images_json,
+        )
+        return create_json_response(True, message="Images attached successfully")
+    except Exception as e:
+        logger.error(f"Error attaching images to enquiry {enquiry.pk}: {e}")
+        return JsonResponse({"success": False, "error": str(e)})
+
+
+def _get_edit_success_message(enquiry, changes, has_new_attachments):
+    """Return the appropriate success message for an enquiry edit."""
+    if not changes and not has_new_attachments:
+        return "info", f'No changes made to enquiry "{enquiry.reference}".'
+    if changes and has_new_attachments:
+        return (
+            "success",
+            f'Enquiry "{enquiry.reference}" updated successfully with new attachments.',
+        )
+    if changes:
+        return "success", f'Enquiry "{enquiry.reference}" updated successfully.'
+    return "success", f'New attachments added to enquiry "{enquiry.reference}".'
+
+
+def _handle_enquiry_edit_post(request, enquiry, form, extracted_images_json):
+    """Process a regular (non-attach-only) form submission for enquiry edit."""
+    if not form.is_valid():
+        return None  # Signal that form is invalid; caller will re-render
+
+    original_enquiry = Enquiry.objects.get(pk=enquiry.pk)
+    changes = EnquiryService.track_enquiry_changes(original_enquiry, form.cleaned_data)
+    enquiry = form.save()
+
+    if changes:
+        EnquiryService.create_field_change_history_entries(
+            enquiry, changes, request.user
+        )
+
+    has_new_attachments = False
+    if extracted_images_json:
+        EnquiryService.add_attachments_to_enquiry(
+            enquiry=enquiry,
+            user=request.user,
+            extracted_images_json=extracted_images_json,
+        )
+        has_new_attachments = True
+
+    msg_type, msg_text = _get_edit_success_message(
+        enquiry, changes, has_new_attachments
+    )
+    getattr(MessageService, msg_type)(request, msg_text)
+    return redirect(URL_ENQUIRY_DETAIL, pk=enquiry.pk)
+
+
+def _redirect_to_referer_or_detail(request, pk, allowed_paths=None):
+    """Redirect to HTTP_REFERER if it matches allowed paths, else to enquiry detail."""
+    referer = request.META.get("HTTP_REFERER", "")
+    if allowed_paths is None:
+        allowed_paths = ["/enquiries/", "/home/"]
+    if referer and any(path in referer for path in allowed_paths):
+        return HttpResponseRedirect(referer)
+    return redirect(URL_ENQUIRY_DETAIL, pk=pk)
+
+
+def _is_ajax(request):
+    """Check if the request is an AJAX request."""
+    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+
+def _build_reopen_ajax_success(enquiry):
+    """Build the JSON response data for a successful AJAX reopen."""
+    return JsonResponse(
+        {
+            "success": True,
+            "message": f'Enquiry "{enquiry.reference}" has been re-opened successfully.',
+            "enquiry": {
+                "id": enquiry.id,
+                "status": enquiry.status,
+                "status_display": enquiry.get_status_display(),
+                "closed_at": None,
+                "closed_at_formatted": "-",
+                "resolution_time": {
+                    "business_days": None,
+                    "calendar_days": None,
+                    "display": "-",
+                    "color_class": "",
+                },
+            },
+        }
+    )
+
+
+def _handle_reopen_missing_reason(request, pk):
+    """Handle the case where reopen is called without a reason."""
+    if _is_ajax(request):
+        return JsonResponse(
+            {
+                "success": False,
+                "message": "A reason is required to re-open the enquiry.",
+            }
+        )
+    messages.error(request, "A reason is required to re-open the enquiry.")
+    return _redirect_to_referer_or_detail(request, pk)
+
+
+def _handle_reopen_redirect(request, pk, enquiry):
+    """Handle post-reopen redirect for non-AJAX requests."""
+    messages.success(
+        request, f'Enquiry "{enquiry.reference}" has been re-opened successfully.'
+    )
+    referer = request.META.get("HTTP_REFERER", "")
+    if referer:
+        if f"/enquiries/{pk}/" in referer and "/edit" not in referer:
+            return redirect(URL_ENQUIRY_DETAIL, pk=enquiry.pk)
+        if "/enquiries/" in referer or "/home/" in referer:
+            return HttpResponseRedirect(referer)
+    return redirect(URL_ENQUIRY_LIST)
+
+
+def _get_upload_file_type(uploaded_file):
+    """Determine the type of an uploaded file. Returns (file_type, error_response) tuple."""
+    file_ext = os.path.splitext(uploaded_file.name.lower())[1]
+
+    image_extensions = {
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".bmp",
+        ".webp",
+        ".tiff",
+        ".tif",
+        ".mpo",
+    }
+    document_extensions = {".pdf", ".doc", ".docx"}
+
+    if file_ext in image_extensions:
+        return "image", None
+    if file_ext in document_extensions:
+        return "document", None
+
+    error_msg = (
+        f'File type not supported. Allowed: images ({", ".join(sorted(image_extensions))}) '
+        f'and documents ({", ".join(sorted(document_extensions))})'
+    )
+    return None, JsonResponse({"success": False, "error": error_msg})
+
+
+def _handle_file_upload(uploaded_file, file_type):
+    """Upload a file using the appropriate service method."""
+    if file_type == "image":
+        return FileUploadService.handle_image_upload(uploaded_file, "")
+    return FileUploadService.handle_document_upload(uploaded_file, "documents")
+
+
+def _build_upload_response(result, file_type, is_image):
+    """Build response data dict for a successful file upload."""
+    response_data = {
+        "filename": result["file_path"],
+        "original_name": result["original_filename"],
+        "size": result["file_size"],
+        "url": result["file_url"],
+        "file_type": file_type,
+    }
+    if is_image:
+        response_data.update(
+            {
+                "original_size": result.get("original_size", result["file_size"]),
+                "was_resized": result.get("was_resized", False),
+            }
+        )
+    return response_data
+
+
+def _create_attachment_for_enquiry(enquiry, result, request):
+    """Create an attachment record and history entry for an existing enquiry."""
+    attachment = EnquiryAttachment.objects.create(
+        enquiry=enquiry,
+        filename=result["original_filename"],
+        file_path=result["file_path"],
+        file_size=result["file_size"],
+        uploaded_by=request.user,
+    )
+    history_note = f"1 file(s) manually attached: {result['original_filename']}"
+    EnquiryHistory.objects.create(
+        enquiry=enquiry,
+        note=history_note,
+        note_type="attachment_added",
+        created_by=request.user,
+    )
+    logger.info(
+        f"File attached to enquiry {enquiry.id}: "
+        f"{request.FILES.get('photo_file', request.FILES.get('file')).name} -> {result['file_path']}"
+    )
+    return attachment
+
+
+def _calculate_months_back_for_dashboard(date_range, date_range_info, current_date):
+    """Calculate months_back and possibly adjusted current_date for performance dashboard."""
+    if date_range == "all":
+        earliest_enquiry = Enquiry.objects.order_by("created_at").first()
+        if earliest_enquiry:
+            start_date = earliest_enquiry.created_at.replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+            months_back = (
+                (current_date.year - start_date.year) * 12
+                + current_date.month
+                - start_date.month
+            )
+        else:
+            months_back = 12
+        return months_back, current_date
+
+    if date_range == "custom" and date_range_info.date_from and date_range_info.date_to:
+        start_date = date_range_info.date_from
+        end_date = date_range_info.date_to
+        months_back = (
+            (end_date.year - start_date.year) * 12 + end_date.month - start_date.month
+        ) + 1
+        return months_back, end_date
+
+    return date_range_info.months or 12, current_date
+
+
+def _compute_sla_counts(closed_enquiries):
+    """Compute within-SLA and outside-SLA counts for closed enquiries."""
+    from .utils import calculate_business_days
+
+    within_sla = 0
+    outside_sla = 0
+    for enquiry in closed_enquiries:
+        if not (enquiry.created_at and enquiry.closed_at):
+            continue
+        business_days_to_close = calculate_business_days(
+            enquiry.created_at, enquiry.closed_at
+        )
+        if business_days_to_close is not None and business_days_to_close <= 5:
+            within_sla += 1
+        else:
+            outside_sla += 1
+    return within_sla, outside_sla
+
+
+def _collect_month_data(months_back, current_date, service_type):
+    """Collect monthly created/closed/SLA data for the performance dashboard."""
+    months_data = []
+    for i in range(months_back - 1, -1, -1):
+        month_date = current_date.replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0
+        ) - relativedelta(months=i)
+        next_month = month_date + relativedelta(months=1)
+
+        created_query = Enquiry.objects.filter(
+            created_at__gte=month_date, created_at__lt=next_month
+        )
+        if service_type:
+            created_query = created_query.filter(service_type=service_type)
+
+        closed_query = Enquiry.objects.filter(
+            closed_at__gte=month_date, closed_at__lt=next_month, status="closed"
+        )
+        if service_type:
+            closed_query = closed_query.filter(service_type=service_type)
+
+        closed_within_sla, closed_outside_sla = _compute_sla_counts(closed_query)
+
+        still_open_query = Enquiry.objects.filter(
+            created_at__gte=month_date,
+            created_at__lt=next_month,
+            status__in=["new", "open"],
+        )
+        if service_type:
+            still_open_query = still_open_query.filter(service_type=service_type)
+
+        months_data.append(
+            {
+                "month": month_date.strftime("%b %Y"),
+                "created": created_query.count(),
+                "closed_within_sla": closed_within_sla,
+                "closed_outside_sla": closed_outside_sla,
+                "created_still_open": still_open_query.count(),
+            }
+        )
+    return months_data
+
+
+def _apply_date_and_member_filters(
+    queryset, date_from, date_to, member_id, service_type
+):
+    """Apply common date range, member, and service type filters to a queryset."""
+    if date_from:
+        queryset = queryset.filter(created_at__gte=date_from)
+    if date_to:
+        queryset = queryset.filter(created_at__lte=date_to)
+    if member_id:
+        queryset = queryset.filter(member_id=member_id)
+    if service_type:
+        queryset = queryset.filter(service_type=service_type)
+    return queryset
+
+
+def _calculate_business_days_stats(enquiries):
+    """Calculate business day statistics for a queryset of closed enquiries."""
+    from .utils import calculate_business_days
+
+    enquiry_list = []
+    total_business_days = 0
+    valid_count = 0
+
+    for enquiry in enquiries:
+        if not (enquiry.created_at and enquiry.closed_at):
+            continue
+        business_days = calculate_business_days(enquiry.created_at, enquiry.closed_at)
+        if business_days is None:
+            continue
+        enquiry_list.append({"enquiry": enquiry, "business_days": business_days})
+        total_business_days += business_days
+        valid_count += 1
+
+    avg_days = total_business_days / valid_count if valid_count > 0 else 0
+    return enquiry_list, total_business_days, valid_count, avg_days
+
+
+def _group_by_member(enquiry_list):
+    """Group enquiry business-day data by member and compute averages."""
+    member_stats = {}
+    for item in enquiry_list:
+        enquiry = item["enquiry"]
+        business_days = item["business_days"]
+        member_key = enquiry.member.id
+
+        if member_key not in member_stats:
+            member_stats[member_key] = {
+                "member": enquiry.member,
+                "total_enquiries": 0,
+                "total_days": 0,
+                "enquiries": [],
+            }
+
+        member_stats[member_key]["total_enquiries"] += 1
+        member_stats[member_key]["total_days"] += business_days
+        member_stats[member_key]["enquiries"].append(
+            {"enquiry": enquiry, "response_days": business_days}
+        )
+
+    for stats in member_stats.values():
+        stats["avg_days"] = (
+            stats["total_days"] / stats["total_enquiries"]
+            if stats["total_enquiries"] > 0
+            else 0
+        )
+    return member_stats
+
+
+def _build_date_filter_q(date_from, date_to, service_type, prefix="enquiries"):
+    """Build a Q object for date range and service type filtering."""
+    date_filter = Q()
+    if date_from:
+        date_filter &= Q(**{f"{prefix}__created_at__gte": date_from})
+    if date_to:
+        date_filter &= Q(**{f"{prefix}__created_at__lte": date_to})
+    if service_type:
+        date_filter &= Q(**{f"{prefix}__service_type": service_type})
+    return date_filter
+
+
+def _build_status_filters(count_filter, prefix="enquiries"):
+    """Build open and closed Q filters based on a base count filter."""
+    open_filter = count_filter & Q(**{f"{prefix}__status__in": ["new", "open"]})
+    closed_filter = count_filter & Q(**{f"{prefix}__status": "closed"})
+    return open_filter, closed_filter
+
+
+def _annotate_with_enquiry_counts(
+    queryset, count_filter, has_date_range, prefix="enquiries"
+):
+    """Annotate a queryset with total, open, and closed enquiry counts."""
+    base_filter = count_filter if has_date_range else Q()
+    open_filter, closed_filter = _build_status_filters(
+        count_filter if has_date_range else Q(), prefix=prefix
+    )
+
+    return queryset.annotate(
+        total_enquiries=Count(prefix, filter=base_filter),
+        open_enquiries=Count(prefix, filter=open_filter),
+        closed_enquiries=Count(prefix, filter=closed_filter),
+    )
+
+
+def _calculate_system_totals(date_from, date_to, service_type, section=None):
+    """Calculate system-wide or section-specific enquiry totals."""
+    qs = Enquiry.objects.all()
+    if section:
+        qs = qs.filter(section=section)
+    if date_from:
+        qs = qs.filter(created_at__gte=date_from)
+    if date_to:
+        qs = qs.filter(created_at__lte=date_to)
+    if service_type:
+        qs = qs.filter(service_type=service_type)
+    return (
+        qs.count(),
+        qs.filter(status__in=["new", "open"]).count(),
+        qs.filter(status="closed").count(),
+    )
+
+
+def _get_default_section(date_filter, date_from, date_to):
+    """Get the most active section when none is specified."""
+    section_query = Section.objects
+    if date_from or date_to:
+        section_query = section_query.filter(date_filter)
+
+    return (
+        section_query.annotate(
+            total_enquiries=Count(
+                "enquiries", filter=date_filter if (date_from or date_to) else Q()
+            )
+        )
+        .order_by("-total_enquiries")
+        .first()
+    )
+
+
+def _build_job_type_query(count_filter, section=None):
+    """Build annotated job type query for workload charts."""
+    job_type_filter = Q()
+    if section:
+        job_type_filter = Q(enquiries__section=section)
+
+    combined_filter = job_type_filter & count_filter
+
+    open_filter = combined_filter & Q(enquiries__status__in=["new", "open"])
+    closed_filter = combined_filter & Q(enquiries__status="closed")
+
+    qs = (
+        JobType.objects.filter(combined_filter)
+        .annotate(
+            total_enquiries=Count("enquiries", filter=combined_filter),
+            open_enquiries=Count("enquiries", filter=open_filter),
+            closed_enquiries=Count("enquiries", filter=closed_filter),
+        )
+        .order_by("-total_enquiries")
+    )
+    return qs
+
+
+def _classify_enquiry_for_sla(
+    enquiry, section_data, section_id, section_name, section_obj
+):
+    """Classify an enquiry as within/outside SLA or still open, updating section_data."""
+    from .utils import calculate_business_days
+
+    if section_id not in section_data:
+        section_data[section_id] = {
+            "id": section_id,
+            "name": section_name,
+            "section": section_obj,
+            "enquiries_within_sla": 0,
+            "enquiries_outside_sla": 0,
+            "enquiries_open": 0,
+        }
+
+    if enquiry.status == "closed" and enquiry.closed_at:
+        business_days_to_close = calculate_business_days(
+            enquiry.created_at, enquiry.closed_at
+        )
+        if (
+            business_days_to_close is not None
+            and business_days_to_close <= settings.ENQUIRY_SLA_DAYS
+        ):
+            section_data[section_id]["enquiries_within_sla"] += 1
+        else:
+            section_data[section_id]["enquiries_outside_sla"] += 1
+    elif enquiry.status in ["new", "open"]:
+        section_data[section_id]["enquiries_open"] += 1
+
+
+def _filter_active_sections(section_data):
+    """Filter section data to only include sections with at least one enquiry."""
+    sections = []
+    for data in section_data.values():
+        has_enquiries = (
+            data["enquiries_within_sla"] > 0
+            or data["enquiries_outside_sla"] > 0
+            or data["enquiries_open"] > 0
+        )
+        if has_enquiries:
+            sections.append(data)
+    sections.sort(key=lambda x: x["name"] or "ZZZ")
+    return sections
+
+
 ## DO NOT DELETE THE VIEWS IN THIS SECTION -----------------------------------------------
 
 
@@ -84,7 +604,7 @@ User = get_user_model()
 def welcome(request):
     """Landing page for unauthenticated users."""
     if request.user.is_authenticated:
-        return redirect("application:enquiry_list")
+        return redirect(URL_ENQUIRY_LIST)
     return render(request, "welcome.html")
 
 
@@ -133,7 +653,7 @@ def index(request):
 
 
 @login_required
-@require_http_methods(["GET", "POST"])
+@require_http_methods(["POST"])
 def logout_view(request):
     """Custom logout view."""
     logout(request)
@@ -161,11 +681,11 @@ def api_find_member_by_email(request):
         if member:
             return MessageService.create_success_response(
                 data={
-                    'member': {
-                        'id': member.id,
-                        'name': member.full_name,
-                        'email': member.email,
-                        'ward': member.ward.name if member.ward else 'Unknown'
+                    "member": {
+                        "id": member.id,
+                        "name": member.full_name,
+                        "email": member.email,
+                        "ward": member.ward.name if member.ward else "Unknown",
                     }
                 }
             )
@@ -199,7 +719,7 @@ def enquiry_create(request):
             MessageService.success(
                 request, f'Enquiry "{enquiry.reference}" created successfully.'
             )
-            return redirect("application:enquiry_detail", pk=enquiry.pk)
+            return redirect(URL_ENQUIRY_DETAIL, pk=enquiry.pk)
     else:
         form = StaffEnquiryForm()
 
@@ -212,89 +732,32 @@ def enquiry_create(request):
 @require_http_methods(["GET", "POST"])
 def enquiry_edit(request, pk):
     """Edit an existing enquiry."""
-    try:
-        enquiry = Enquiry.objects.get(pk=pk)
-    except Enquiry.DoesNotExist:
-        messages.error(request, f"Enquiry with ID {pk} does not exist.")
-        return redirect("application:enquiry_list")
+    enquiry, error_redirect = _get_enquiry_or_redirect(pk, request)
+    if error_redirect:
+        return error_redirect
 
     # Prevent editing of closed enquiries
     if enquiry.status == "closed":
         messages.warning(
             request, f'Cannot edit enquiry "{enquiry.reference}" because it is closed.'
         )
-        return redirect("application:enquiry_detail", pk=enquiry.pk)
+        return redirect(URL_ENQUIRY_DETAIL, pk=enquiry.pk)
 
     if request.method == "POST":
-        # Check if this is an attach-only request (for immediate image attachment)
         attach_only = request.POST.get("attach_only", False)
         extracted_images_json = request.POST.get("extracted_images", "")
 
         if attach_only and extracted_images_json:
-            # Only attach images without updating the enquiry
-            try:
-                EnquiryService.add_attachments_to_enquiry(
-                    enquiry=enquiry,
-                    user=request.user,
-                    extracted_images_json=extracted_images_json,
-                )
-                return create_json_response(
-                    True, message="Images attached successfully"
-                )
-            except Exception as e:
-                logger.error(f"Error attaching images to enquiry {enquiry.pk}: {e}")
-                return JsonResponse({"success": False, "error": str(e)})
-
-        # Regular form submission
-        form = StaffEnquiryForm(request.POST, instance=enquiry)
-        if form.is_valid():
-            # Get original values from database before form changes them
-            original_enquiry = Enquiry.objects.get(pk=enquiry.pk)
-
-            # Track changes before saving
-            changes = EnquiryService.track_enquiry_changes(
-                original_enquiry, form.cleaned_data
+            return _handle_attach_only_request(
+                enquiry, request.user, extracted_images_json
             )
 
-            # Save the enquiry
-            enquiry = form.save()
-
-            # Create history entries for field changes
-            if changes:
-                EnquiryService.create_field_change_history_entries(
-                    enquiry, changes, request.user
-                )
-
-            # Handle new image attachments if provided
-            has_new_attachments = False
-            if extracted_images_json:
-                # Use service to handle image attachments for existing enquiry
-                EnquiryService.add_attachments_to_enquiry(
-                    enquiry=enquiry,
-                    user=request.user,
-                    extracted_images_json=extracted_images_json,
-                )
-                has_new_attachments = True
-
-            # Show appropriate message based on what changed
-            if changes or has_new_attachments:
-                if changes and has_new_attachments:
-                    MessageService.success(
-                        request, f'Enquiry "{enquiry.reference}" updated successfully with new attachments.'
-                    )
-                elif changes:
-                    MessageService.success(
-                        request, f'Enquiry "{enquiry.reference}" updated successfully.'
-                    )
-                else:  # only new attachments
-                    MessageService.success(
-                        request, f'New attachments added to enquiry "{enquiry.reference}".'
-                    )
-            else:
-                MessageService.info(
-                    request, f'No changes made to enquiry "{enquiry.reference}".'
-                )
-            return redirect("application:enquiry_detail", pk=enquiry.pk)
+        form = StaffEnquiryForm(request.POST, instance=enquiry)
+        result = _handle_enquiry_edit_post(
+            request, enquiry, form, extracted_images_json
+        )
+        if result is not None:
+            return result
     else:
         form = StaffEnquiryForm(instance=enquiry)
 
@@ -316,14 +779,12 @@ def enquiry_edit(request, pk):
 
 
 @login_required
-@require_http_methods(["GET", "POST"])
+@require_http_methods(["POST"])
 def enquiry_reopen(request, pk):
     """Re-open a closed enquiry with reason."""
-    try:
-        enquiry = Enquiry.objects.get(pk=pk)
-    except Enquiry.DoesNotExist:
-        messages.error(request, f"Enquiry with ID {pk} does not exist.")
-        return redirect("application:enquiry_list")
+    enquiry, error_redirect = _get_enquiry_or_redirect(pk, request)
+    if error_redirect:
+        return error_redirect
 
     # Only allow re-opening of closed enquiries
     if enquiry.status != "closed":
@@ -331,96 +792,35 @@ def enquiry_reopen(request, pk):
             request,
             f'Enquiry "{enquiry.reference}" is not closed and cannot be re-opened.',
         )
-        # Redirect back to source or detail page
-        referer = request.META.get("HTTP_REFERER", "")
-        if referer and ("/enquiries/" in referer or "/home/" in referer):
-            return HttpResponseRedirect(referer)
-        return redirect("application:enquiry_detail", pk=enquiry.pk)
+        return _redirect_to_referer_or_detail(request, enquiry.pk)
 
-    if request.method == "POST":
-        reason = request.POST.get("reason", "").strip()
-        note = request.POST.get("note", "").strip()
+    reason = request.POST.get("reason", "").strip()
+    note = request.POST.get("note", "").strip()
 
-        if not reason:
-            # Handle AJAX requests differently
-            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                return JsonResponse(
-                    {
-                        "success": False,
-                        "message": "A reason is required to re-open the enquiry.",
-                    }
-                )
+    if not reason:
+        return _handle_reopen_missing_reason(request, pk)
 
-            # Non-AJAX requests
-            messages.error(request, "A reason is required to re-open the enquiry.")
-            # Redirect back to source or detail page
-            referer = request.META.get("HTTP_REFERER", "")
-            if referer and ("/enquiries/" in referer or "/home/" in referer):
-                return HttpResponseRedirect(referer)
-            return redirect("application:enquiry_detail", pk=enquiry.pk)
+    # Re-open the enquiry
+    enquiry.status = "open"
+    enquiry.closed_at = None
+    enquiry.save(update_fields=["status", "closed_at"])
 
-        # Re-open the enquiry
-        enquiry.status = "open"
-        enquiry.closed_at = None
-        enquiry.save(update_fields=["status", "closed_at"])
+    # Create history entry
+    history_note = f"Enquiry re-opened by {request.user.get_full_name() or request.user.username}\nReason: {reason}"
+    if note:
+        history_note += f"\nAdditional notes: {note}"
 
-        # Create history entry
-        history_note = f"Enquiry re-opened by {request.user.get_full_name() or request.user.username}\nReason: {reason}"
-        if note:
-            history_note += f"\nAdditional notes: {note}"
+    EnquiryHistory.objects.create(
+        enquiry=enquiry,
+        note=history_note,
+        note_type="enquiry_reopened",
+        created_by=request.user,
+    )
 
-        EnquiryHistory.objects.create(
-            enquiry=enquiry,
-            note=history_note,
-            note_type='enquiry_reopened',
-            created_by=request.user
-        )
+    if _is_ajax(request):
+        return _build_reopen_ajax_success(enquiry)
 
-        # Handle AJAX requests differently
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            return JsonResponse(
-                {
-                    "success": True,
-                    "message": f'Enquiry "{enquiry.reference}" has been re-opened successfully.',
-                    "enquiry": {
-                        "id": enquiry.id,
-                        "status": enquiry.status,
-                        "status_display": enquiry.get_status_display(),
-                        "closed_at": None,
-                        "closed_at_formatted": "-",
-                        "resolution_time": {
-                            "business_days": None,
-                            "calendar_days": None,
-                            "display": "-",
-                            "color_class": "",
-                        },
-                    },
-                }
-            )
-
-        # Non-AJAX requests (existing behavior)
-        messages.success(
-            request, f'Enquiry "{enquiry.reference}" has been re-opened successfully.'
-        )
-
-        # Redirect back to source page (list/dashboard) or detail if coming from detail page
-        referer = request.META.get("HTTP_REFERER", "")
-        if referer:
-            # If coming from enquiry detail page, go back to detail
-            if f"/enquiries/{pk}/" in referer and "/edit" not in referer:
-                return redirect("application:enquiry_detail", pk=enquiry.pk)
-            # If coming from enquiry list or dashboard, preserve the URL with filters
-            elif "/enquiries/" in referer or "/home/" in referer:
-                return HttpResponseRedirect(referer)
-
-        # Default fallback to enquiry list
-        return redirect("application:enquiry_list")
-
-    # If not POST, redirect back to referer or detail view
-    referer = request.META.get("HTTP_REFERER", "")
-    if referer and ("/enquiries/" in referer or "/home/" in referer):
-        return HttpResponseRedirect(referer)
-    return redirect("application:enquiry_detail", pk=enquiry.pk)
+    return _handle_reopen_redirect(request, pk, enquiry)
 
 
 ### Email and Attachment functionality
@@ -433,7 +833,7 @@ def api_parse_email(request):
     """API endpoint to parse uploaded email files."""
     uploaded_file = request.FILES.get("email_file")
     if not uploaded_file:
-        return JsonResponse({"success": False, "error": "No file provided"})
+        return JsonResponse({"success": False, "error": MSG_NO_FILE_PROVIDED})
 
     # Use unified email processing service
     return UnifiedEmailService.process_email_for_form_population(uploaded_file)
@@ -461,7 +861,7 @@ def api_upload_photos(request):
     # Support both 'photo_file' (existing) and 'file' (new dropzone) parameter names
     uploaded_file = request.FILES.get("photo_file") or request.FILES.get("file")
     if not uploaded_file:
-        return JsonResponse({"success": False, "error": "No file provided"})
+        return JsonResponse({"success": False, "error": MSG_NO_FILE_PROVIDED})
 
     # Check if this is for attaching to an existing enquiry
     enquiry_id = request.POST.get("enquiry_id")
@@ -479,108 +879,32 @@ def api_upload_photos(request):
             )
 
     try:
-        # Get file extension to determine file type
-        file_ext = os.path.splitext(uploaded_file.name.lower())[1]
+        file_type, error_response = _get_upload_file_type(uploaded_file)
+        if error_response:
+            return error_response
 
-        # Define supported file types
-        image_extensions = {
-            ".jpg",
-            ".jpeg",
-            ".png",
-            ".gif",
-            ".bmp",
-            ".webp",
-            ".tiff",
-            ".tif",
-            ".mpo",  # Multi Picture Object format from cameras
-        }
-        document_extensions = {".pdf", ".doc", ".docx"}
+        result = _handle_file_upload(uploaded_file, file_type)
 
-        is_image = file_ext in image_extensions
-        is_document = file_ext in document_extensions
+        if not result["success"]:
+            return JsonResponse({"success": False, "error": result["error"]})
 
-        if not (is_image or is_document):
-            return JsonResponse(
+        logger.info(
+            f"Manual {file_type} upload: {uploaded_file.name} -> {result['file_path']}"
+        )
+
+        response_data = _build_upload_response(result, file_type, file_type == "image")
+
+        if enquiry:
+            attachment = _create_attachment_for_enquiry(enquiry, result, request)
+            response_data.update(
                 {
-                    "success": False,
-                    "error": f'File type not supported. Allowed: images ({", ".join(sorted(image_extensions))}) and documents ({", ".join(sorted(document_extensions))})',
+                    "attachment_id": attachment.id,
+                    "enquiry_id": enquiry.id,
+                    "message": "File attached successfully",
                 }
             )
 
-        if is_image:
-            # Handle image upload with the existing secure service
-            # Use empty subfolder to match email extraction path: enquiry_photos/yyyy/mm/dd/
-            result = FileUploadService.handle_image_upload(uploaded_file, "")
-            file_type = "image"
-        else:  # is_document
-            # Handle document upload with the new secure service
-            result = FileUploadService.handle_document_upload(
-                uploaded_file, "documents"
-            )
-            file_type = "document"
-
-        if result["success"]:
-            logger.info(
-                f"Manual {file_type} upload: {uploaded_file.name} -> {result['file_path']}"
-            )
-
-            response_data = {
-                "filename": result["file_path"],  # Use relative path
-                "original_name": result["original_filename"],
-                "size": result["file_size"],
-                "url": result["file_url"],
-                "file_type": file_type,
-            }
-
-            # Add image-specific data
-            if is_image:
-                response_data.update(
-                    {
-                        "original_size": result.get(
-                            "original_size", result["file_size"]
-                        ),
-                        "was_resized": result.get("was_resized", False),
-                    }
-                )
-
-            # If this is for an existing enquiry, create attachment record and history
-            if enquiry:
-                attachment = EnquiryAttachment.objects.create(
-                    enquiry=enquiry,
-                    filename=result["original_filename"],
-                    file_path=result["file_path"],
-                    file_size=result["file_size"],
-                    uploaded_by=request.user,
-                )
-
-                # Create history entry using consistent format
-                history_note = (
-                    f"1 file(s) manually attached: {result['original_filename']}"
-                )
-
-                EnquiryHistory.objects.create(
-                    enquiry=enquiry,
-                    note=history_note,
-                    note_type='attachment_added',
-                    created_by=request.user
-                )
-
-                logger.info(
-                    f"File attached to enquiry {enquiry.id}: {uploaded_file.name} -> {result['file_path']}"
-                )
-
-                # Add attachment info to response
-                response_data.update(
-                    {
-                        "attachment_id": attachment.id,
-                        "enquiry_id": enquiry.id,
-                        "message": "File attached successfully",
-                    }
-                )
-
-            return JsonResponse({"success": True, "data": response_data})
-        else:
-            return JsonResponse({"success": False, "error": result["error"]})
+        return JsonResponse({"success": True, "data": response_data})
 
     except Exception as e:
         logger.error(f"Unexpected error in api_upload_photos: {e}", exc_info=True)
@@ -596,7 +920,7 @@ def upload_image(request):
     """Handle image uploads for Summernote editor with enhanced security."""
     uploaded_file = request.FILES.get("file")
     if not uploaded_file:
-        return JsonResponse({"error": "No file provided"}, status=400)
+        return JsonResponse({"error": MSG_NO_FILE_PROVIDED}, status=400)
 
     try:
         # Use secure file upload service
@@ -642,19 +966,19 @@ def api_add_email_note(request, pk):
             return JsonResponse({"success": False, "error": "Note content is required"})
 
         # Determine note type based on email direction
-        if direction == 'INCOMING':
-            note_type = 'email_incoming'
-        elif direction == 'OUTGOING':
-            note_type = 'email_outgoing'
+        if direction == "INCOMING":
+            note_type = "email_incoming"
+        elif direction == "OUTGOING":
+            note_type = "email_outgoing"
         else:
-            note_type = 'email_update'
+            note_type = "email_update"
 
         # Create history entry (keep HTML formatting for email notes)
         history_entry = EnquiryHistory.objects.create(
             enquiry=enquiry,
             note=note_content,
             note_type=note_type,
-            created_by=request.user
+            created_by=request.user,
         )
 
         return JsonResponse(
@@ -681,7 +1005,9 @@ def api_delete_attachment(request, attachment_id):
 
     try:
         attachment = EnquiryAttachment.objects.get(id=attachment_id)
-        logger.info(f"Found attachment: {attachment.filename} (enquiry: {attachment.enquiry.id})")
+        logger.info(
+            f"Found attachment: {attachment.filename} (enquiry: {attachment.enquiry.id})"
+        )
     except EnquiryAttachment.DoesNotExist:
         logger.warning(f"Attachment with ID {attachment_id} not found in database")
         return JsonResponse(
@@ -720,12 +1046,14 @@ def api_delete_attachment(request, attachment_id):
             success_message = "Attachment deleted successfully"
         else:
             history_note = f"Attachment removed from enquiry (file was already missing): {filename}"
-            success_message = "Attachment removed from enquiry (file was already missing from server)"
+            success_message = (
+                "Attachment removed from enquiry (file was already missing from server)"
+            )
 
         EnquiryHistory.objects.create(
             enquiry=enquiry,
             note=history_note,
-            note_type='attachment_deleted',
+            note_type="attachment_deleted",
             created_by=request.user,
         )
 
@@ -846,67 +1174,87 @@ def api_update_closed_enquiry_job_type(request):
     """
     try:
         data = json.loads(request.body)
-        enquiry_id = data.get('enquiry_id')
-        job_type_id = data.get('job_type_id')
+        enquiry_id = data.get("enquiry_id")
+        job_type_id = data.get("job_type_id")
 
         if not enquiry_id or not job_type_id:
-            return JsonResponse({
-                'success': False,
-                'error': 'Missing required parameters: enquiry_id and job_type_id'
-            }, status=400)
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "Missing required parameters: enquiry_id and job_type_id",
+                },
+                status=400,
+            )
 
         # Fetch enquiry with related objects
         try:
-            enquiry = Enquiry.objects.select_related('job_type', 'contact').get(pk=enquiry_id)
+            enquiry = Enquiry.objects.select_related("job_type", "contact").get(
+                pk=enquiry_id
+            )
         except Enquiry.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'error': f'Enquiry with ID {enquiry_id} not found'
-            }, status=404)
+            return JsonResponse(
+                {"success": False, "error": f"Enquiry with ID {enquiry_id} not found"},
+                status=404,
+            )
 
         # Validation 1: Enquiry must be closed
-        if enquiry.status != 'closed':
-            return JsonResponse({
-                'success': False,
-                'error': 'Only closed enquiries can be updated with this method'
-            }, status=403)
+        if enquiry.status != "closed":
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "Only closed enquiries can be updated with this method",
+                },
+                status=403,
+            )
 
         # Validation 2: Current job type must be Miscellaneous
-        if not enquiry.job_type or enquiry.job_type.name != 'Miscellaneous':
-            return JsonResponse({
-                'success': False,
-                'error': 'This feature is only available for enquiries with Miscellaneous job type'
-            }, status=403)
+        if not enquiry.job_type or enquiry.job_type.name != "Miscellaneous":
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "This feature is only available for enquiries with Miscellaneous job type",
+                },
+                status=403,
+            )
 
         # Validation 3: Must have a contact assigned
         if not enquiry.contact:
-            return JsonResponse({
-                'success': False,
-                'error': 'This enquiry has no contact assigned'
-            }, status=400)
+            return JsonResponse(
+                {"success": False, "error": "This enquiry has no contact assigned"},
+                status=400,
+            )
 
         # Fetch the new job type
         try:
             new_job_type = JobType.objects.get(pk=job_type_id)
         except JobType.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'error': f'Job type with ID {job_type_id} not found'
-            }, status=404)
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": f"Job type with ID {job_type_id} not found",
+                },
+                status=404,
+            )
 
         # Validation 4: New job type must belong to the contact
         if not enquiry.contact.job_types.filter(pk=job_type_id).exists():
-            return JsonResponse({
-                'success': False,
-                'error': f'Job type "{new_job_type.name}" is not associated with contact "{enquiry.contact.name}"'
-            }, status=403)
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": f'Job type "{new_job_type.name}" is not associated with contact "{enquiry.contact.name}"',
+                },
+                status=403,
+            )
 
         # Validation 5: Cannot set to same job type
         if new_job_type.id == enquiry.job_type.id:
-            return JsonResponse({
-                'success': False,
-                'error': 'New job type is the same as current job type'
-            }, status=400)
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "New job type is the same as current job type",
+                },
+                status=400,
+            )
 
         old_job_type_name = enquiry.job_type.name
 
@@ -923,41 +1271,40 @@ def api_update_closed_enquiry_job_type(request):
                 f"(closed enquiry update)"
             )
 
-            EnquiryHistory.objects.bulk_create([
-                EnquiryHistory(
-                    enquiry=enquiry,
-                    note_type='enquiry_edited',
-                    note=history_note,
-                    created_by=request.user,
-                    created_at=timezone.now()
-                )
-            ])
+            EnquiryHistory.objects.bulk_create(
+                [
+                    EnquiryHistory(
+                        enquiry=enquiry,
+                        note_type="enquiry_edited",
+                        note=history_note,
+                        created_by=request.user,
+                        created_at=timezone.now(),
+                    )
+                ]
+            )
 
         logger.info(
             f"User {request.user.username} updated job type for closed enquiry "
             f"{enquiry.reference} from '{old_job_type_name}' to '{new_job_type.name}'"
         )
 
-        return JsonResponse({
-            'success': True,
-            'message': f'Job type updated to "{new_job_type.name}"',
-            'new_job_type': {
-                'id': new_job_type.id,
-                'name': new_job_type.name
+        return JsonResponse(
+            {
+                "success": True,
+                "message": f'Job type updated to "{new_job_type.name}"',
+                "new_job_type": {"id": new_job_type.id, "name": new_job_type.name},
             }
-        })
+        )
 
     except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': 'Invalid JSON data'
-        }, status=400)
+        return JsonResponse(
+            {"success": False, "error": "Invalid JSON data"}, status=400
+        )
     except Exception as e:
         logger.error(f"Error updating closed enquiry job type: {str(e)}", exc_info=True)
-        return JsonResponse({
-            'success': False,
-            'error': 'An unexpected error occurred'
-        }, status=500)
+        return JsonResponse(
+            {"success": False, "error": "An unexpected error occurred"}, status=500
+        )
 
 
 @login_required
@@ -1000,123 +1347,22 @@ def performance_dashboard_report(request):
     )
     from django.utils import timezone
 
-    # Get filter parameters
-    service_type = request.GET.get('service_type', None)
-
-    # Use centralized date range calculation
+    service_type = request.GET.get("service_type", None)
     date_range_info = parse_request_date_range(request, default_range="12months")
-
-    date_range = date_range_info.range_type
-    date_from_str = date_range_info.date_from_str
-    date_to_str = date_range_info.date_to_str
-
     current_date = timezone.now()
 
-    # Determine number of months to show for chart data
-    if date_range == "all":
-        # For "all time", get data from the earliest enquiry
-        earliest_enquiry = Enquiry.objects.order_by("created_at").first()
-        if earliest_enquiry:
-            start_date = earliest_enquiry.created_at.replace(
-                day=1, hour=0, minute=0, second=0, microsecond=0
-            )
-            months_back = (
-                (current_date.year - start_date.year) * 12
-                + current_date.month
-                - start_date.month
-            )
-        else:
-            months_back = 12  # Default if no enquiries
-    elif date_range == "custom":
-        if date_range_info.date_from and date_range_info.date_to:
-            # Calculate months between custom dates
-            start_date = date_range_info.date_from
-            end_date = date_range_info.date_to
-            current_date = end_date
-            months_back = (
-                (end_date.year - start_date.year) * 12
-                + end_date.month
-                - start_date.month
-            ) + 1
-        else:
-            months_back = 12
-    else:
-        # Use months from date range info
-        months_back = date_range_info.months or 12
+    months_back, current_date = _calculate_months_back_for_dashboard(
+        date_range_info.range_type, date_range_info, current_date
+    )
 
-    months_data = []
-    for i in range(
-        months_back - 1, -1, -1
-    ):  # months_back-1 months ago to current month
-        # Use proper month arithmetic with timezone awareness
-        month_date = current_date.replace(
-            day=1, hour=0, minute=0, second=0, microsecond=0
-        ) - relativedelta(months=i)
-
-        # Calculate next month for range
-        next_month = month_date + relativedelta(months=1)
-
-        # Get enquiries created in this month
-        created_query = Enquiry.objects.filter(
-            created_at__gte=month_date, created_at__lt=next_month
-        )
-        if service_type:
-            created_query = created_query.filter(service_type=service_type)
-        created_count = created_query.count()
-
-        # Get all closed enquiries in this month (by closed_at date)
-        # This is correct - we want to show when enquiries were actually closed
-        closed_query = Enquiry.objects.filter(
-            closed_at__gte=month_date, closed_at__lt=next_month, status="closed"
-        )
-        if service_type:
-            closed_query = closed_query.filter(service_type=service_type)
-        closed_enquiries = closed_query
-
-        # Calculate SLA performance (5 business days)
-        closed_within_sla = 0
-        closed_outside_sla = 0
-
-        for enquiry in closed_enquiries:
-            if enquiry.created_at and enquiry.closed_at:
-                from .utils import calculate_business_days
-
-                business_days_to_close = calculate_business_days(
-                    enquiry.created_at, enquiry.closed_at
-                )
-                if business_days_to_close is not None and business_days_to_close <= 5:
-                    closed_within_sla += 1
-                else:
-                    closed_outside_sla += 1
-
-        # Get enquiries created in this month that are still open
-        still_open_query = Enquiry.objects.filter(
-            created_at__gte=month_date,
-            created_at__lt=next_month,
-            status__in=["new", "open"],
-        )
-        if service_type:
-            still_open_query = still_open_query.filter(service_type=service_type)
-        created_still_open = still_open_query.count()
-
-        month_data = {
-            "month": month_date.strftime("%b %Y"),
-            "created": created_count,
-            "closed_within_sla": closed_within_sla,
-            "closed_outside_sla": closed_outside_sla,
-            "created_still_open": created_still_open,
-        }
-
-        months_data.append(month_data)
-
-    from .date_utils import get_javascript_date_constants
+    months_data = _collect_month_data(months_back, current_date, service_type)
 
     context = {
         "months_data": json.dumps(months_data),
-        "date_range": date_range,
+        "date_range": date_range_info.range_type,
         "filters": {
-            "date_from": date_from_str,
-            "date_to": date_to_str,
+            "date_from": date_range_info.date_from_str,
+            "date_to": date_range_info.date_to_str,
         },
         "js_date_constants": get_javascript_date_constants(),
         "page_title": get_page_title_with_date_range(
@@ -1140,98 +1386,32 @@ def average_response_time_report(request):
         get_javascript_date_constants,
     )
 
-    # Get filter parameters
     member_id = request.GET.get("member")
-    service_type = request.GET.get('service_type', None)
-
-    # Use centralized date range calculation
+    service_type = request.GET.get("service_type", None)
     date_range_info = parse_request_date_range(request, default_range="12months")
-
-    date_from = date_range_info.date_from
-    date_to = date_range_info.date_to
-    date_range = date_range_info.range_type
-    date_from_str = date_range_info.date_from_str
-    date_to_str = date_range_info.date_to_str
 
     # Base queryset for closed enquiries
     enquiries = Enquiry.objects.filter(status="closed", closed_at__isnull=False)
-
-    # Apply filters
-    if date_from:
-        enquiries = enquiries.filter(created_at__gte=date_from)
-    if date_to:
-        enquiries = enquiries.filter(created_at__lte=date_to)
-    if member_id:
-        enquiries = enquiries.filter(member_id=member_id)
-    if service_type:
-        enquiries = enquiries.filter(service_type=service_type)
-
-    # Calculate response times using business days
+    enquiries = _apply_date_and_member_filters(
+        enquiries,
+        date_range_info.date_from,
+        date_range_info.date_to,
+        member_id,
+        service_type,
+    )
     enquiries = enquiries.select_related("member", "section__department", "admin__user")
 
-    # Calculate business days for each enquiry
-    from .utils import calculate_business_days
-
-    enquiry_list = []
-    total_business_days = 0
-    valid_enquiries = 0
-
-    for enquiry in enquiries:
-        if enquiry.created_at and enquiry.closed_at:
-            business_days = calculate_business_days(
-                enquiry.created_at, enquiry.closed_at
-            )
-            if business_days is not None:
-                enquiry_list.append(
-                    {"enquiry": enquiry, "business_days": business_days}
-                )
-                total_business_days += business_days
-                valid_enquiries += 1
-
-    # Calculate overall average
-    overall_avg_days = (
-        total_business_days / valid_enquiries if valid_enquiries > 0 else 0
-    )
-
-    # Group by member using business days data
-    member_stats = {}
-    for item in enquiry_list:
-        enquiry = item["enquiry"]
-        business_days = item["business_days"]
-        member_key = enquiry.member.id
-
-        if member_key not in member_stats:
-            member_stats[member_key] = {
-                "member": enquiry.member,
-                "total_enquiries": 0,
-                "total_days": 0,
-                "enquiries": [],
-            }
-
-        member_stats[member_key]["total_enquiries"] += 1
-        member_stats[member_key]["total_days"] += business_days
-        member_stats[member_key]["enquiries"].append(
-            {"enquiry": enquiry, "response_days": business_days}
-        )
-
-    # Calculate averages for each member
-    for stats in member_stats.values():
-        stats["avg_days"] = (
-            stats["total_days"] / stats["total_enquiries"]
-            if stats["total_enquiries"] > 0
-            else 0
-        )
-
-    from .date_utils import get_javascript_date_constants
+    enquiry_list, _, _, overall_avg_days = _calculate_business_days_stats(enquiries)
+    member_stats = _group_by_member(enquiry_list)
 
     context = {
         "overall_avg_days": overall_avg_days,
         "member_stats": member_stats,
         "total_enquiries": enquiries.count(),
-        "date_range": date_range,
+        "date_range": date_range_info.range_type,
         "filters": {
-            "date_from": date_from_str,
-            "date_to": date_to_str,
+            "date_from": date_range_info.date_from_str,
+            "date_to": date_range_info.date_to_str,
             "member_id": member_id,
         },
         "members": Member.objects.filter(is_active=True).select_related("ward"),
@@ -1336,138 +1516,64 @@ def section_workload_chart_report(request):
         get_javascript_date_constants,
     )
 
-    # Get filter parameters
-    service_type = request.GET.get('service_type', None)
-
-    # Use centralized date range calculation
+    service_type = request.GET.get("service_type", None)
     date_range_info = parse_request_date_range(request, default_range="12months")
 
     date_from = date_range_info.date_from
     date_to = date_range_info.date_to
-    date_range = date_range_info.range_type
-    date_from_str = date_range_info.date_from_str
-    date_to_str = date_range_info.date_to_str
+    has_date_range = bool(date_from or date_to)
 
-    # Generate dynamic titles
-    page_title = get_page_title_with_date_range("Section Workload", date_range_info)
-    page_subtitle = get_date_range_subtitle(date_range_info)
+    count_filter = _build_date_filter_q(date_from, date_to, service_type)
 
-    # Build date filter conditions
-    date_filter = Q()
-    if date_from:
-        date_filter &= Q(enquiries__created_at__gte=date_from)
-    if date_to:
-        date_filter &= Q(enquiries__created_at__lte=date_to)
-    if service_type:
-        date_filter &= Q(enquiries__service_type=service_type)
-
-    # Build annotations with date filtering
-    count_filter = Q()
-    if date_from:
-        count_filter &= Q(enquiries__created_at__gte=date_from)
-    if date_to:
-        count_filter &= Q(enquiries__created_at__lte=date_to)
-    if service_type:
-        count_filter &= Q(enquiries__service_type=service_type)
-
-    open_filter = count_filter & Q(enquiries__status__in=["new", "open"])
-    closed_filter = count_filter & Q(enquiries__status="closed")
-
-    # Get sections with their enquiry counts
+    # Get sections with their enquiry counts - top 20 for chart
     sections_query = Section.objects
-    if date_from or date_to:
-        sections_query = sections_query.filter(date_filter)
+    if has_date_range:
+        sections_query = sections_query.filter(count_filter)
 
-    # Get top 20 sections for chart display
-    sections_for_chart = sections_query.annotate(
-        total_enquiries=Count(
-            "enquiries", filter=count_filter if (date_from or date_to) else Q()
-        ),
-        open_enquiries=Count(
-            "enquiries",
-            filter=(
-                open_filter
-                if (date_from or date_to)
-                else Q(enquiries__status__in=["new", "open"])
-            ),
-        ),
-        closed_enquiries=Count(
-            "enquiries",
-            filter=(
-                closed_filter
-                if (date_from or date_to)
-                else Q(enquiries__status="closed")
-            ),
-        ),
-    ).order_by("-total_enquiries")[
-        :20
-    ]  # Top 20 busiest sections for chart
+    sections_for_chart = _annotate_with_enquiry_counts(
+        sections_query, count_filter, has_date_range
+    ).order_by("-total_enquiries")[:20]
 
-    # Get all sections for details table (including unused ones)
-    sections = Section.objects.select_related("department").annotate(
-        total_enquiries=Count(
-            "enquiries", filter=count_filter if (date_from or date_to) else Q()
-        ),
-        open_enquiries=Count(
-            "enquiries",
-            filter=(
-                open_filter
-                if (date_from or date_to)
-                else Q(enquiries__status__in=["new", "open"])
-            ),
-        ),
-        closed_enquiries=Count(
-            "enquiries",
-            filter=(
-                closed_filter
-                if (date_from or date_to)
-                else Q(enquiries__status="closed")
-            ),
-        ),
-    ).order_by("-total_enquiries", "department__name", "name")  # All sections including unused ones
+    # All sections for details table
+    sections = _annotate_with_enquiry_counts(
+        Section.objects.select_related("department"), count_filter, has_date_range
+    ).order_by("-total_enquiries", "department__name", "name")
 
-    # Get job type distribution for the same timeframe as sections
+    # Job type distribution
     job_types_query = JobType.objects
-    if date_from or date_to:
-        job_types_query = job_types_query.filter(date_filter)
+    if has_date_range:
+        job_types_query = job_types_query.filter(count_filter)
 
     job_types = job_types_query.annotate(
         total_enquiries=Count(
-            "enquiries", filter=count_filter if (date_from or date_to) else Q()
+            "enquiries", filter=count_filter if has_date_range else Q()
         )
     ).order_by("-total_enquiries")
 
-    # Calculate system-wide totals for the selected date range
-    system_enquiries = Enquiry.objects
-    if date_from:
-        system_enquiries = system_enquiries.filter(created_at__gte=date_from)
-    if date_to:
-        system_enquiries = system_enquiries.filter(created_at__lte=date_to)
-    if service_type:
-        system_enquiries = system_enquiries.filter(service_type=service_type)
-
-    system_total_enquiries = system_enquiries.count()
-    system_open_enquiries = system_enquiries.filter(status__in=["new", "open"]).count()
-    system_closed_enquiries = system_enquiries.filter(status="closed").count()
+    system_total, system_open, system_closed = _calculate_system_totals(
+        date_from, date_to, service_type
+    )
 
     context = {
-        "sections": sections,  # All sections for details table
-        "sections_for_chart": sections_for_chart,  # Top 20 for chart
+        "sections": sections,
+        "sections_for_chart": sections_for_chart,
         "date_from": date_from,
         "date_to": date_to,
-        "date_range": date_range,
-        "date_from_str": date_from_str,
-        "date_to_str": date_to_str,
-        "page_title": page_title,
-        "page_subtitle": page_subtitle,
+        "date_range": date_range_info.range_type,
+        "date_from_str": date_range_info.date_from_str,
+        "date_to_str": date_range_info.date_to_str,
+        "page_title": get_page_title_with_date_range(
+            "Section Workload", date_range_info
+        ),
+        "page_subtitle": get_date_range_subtitle(date_range_info),
         "job_types": job_types,
-        "system_total_enquiries": system_total_enquiries,
-        "system_open_enquiries": system_open_enquiries,
-        "system_closed_enquiries": system_closed_enquiries,
+        "system_total_enquiries": system_total,
+        "system_open_enquiries": system_open,
+        "system_closed_enquiries": system_closed,
         "js_date_constants": get_javascript_date_constants(),
         "filters": {
-            "date_from": date_from_str,
-            "date_to": date_to_str,
+            "date_from": date_range_info.date_from_str,
+            "date_to": date_range_info.date_to_str,
         },
         "service_type": service_type,
     }
@@ -1486,25 +1592,19 @@ def job_workload_chart_report(request):
         get_date_range_subtitle,
     )
 
-    # Parse date range using centralized utility
     date_range_info = parse_request_date_range(request, default_range="12months")
     section_filter = request.GET.get("section", "")
-    service_type = request.GET.get('service_type', None)
-
-    # Extract date filtering values
+    service_type = request.GET.get("service_type", None)
     date_from = date_range_info.date_from
     date_to = date_range_info.date_to
 
-    # Get all sections for dropdown
     all_sections = Section.objects.select_related("department").order_by(
         "department__name", "name"
     )
-    selected_section = None
-    show_all_sections = False
 
-    if section_filter == "all":
-        show_all_sections = True
-    elif section_filter:
+    show_all_sections = section_filter == "all"
+    selected_section = None
+    if not show_all_sections and section_filter:
         try:
             selected_section = Section.objects.select_related("department").get(
                 id=section_filter
@@ -1512,133 +1612,26 @@ def job_workload_chart_report(request):
         except (Section.DoesNotExist, ValueError):
             pass
 
-    # Build date filter conditions
-    date_filter = Q()
-    if date_from:
-        date_filter &= Q(enquiries__created_at__gte=date_from)
-    if date_to:
-        date_filter &= Q(enquiries__created_at__lte=date_to)
-    if service_type:
-        date_filter &= Q(enquiries__service_type=service_type)
+    date_filter = _build_date_filter_q(date_from, date_to, service_type)
 
-    # Handle different section filter scenarios
     if not show_all_sections and not selected_section:
-        # No section selected, get the most active section in the period
-        section_query = Section.objects
-        if date_from or date_to:
-            section_query = section_query.filter(date_filter)
+        selected_section = _get_default_section(date_filter, date_from, date_to)
 
-        selected_section = (
-            section_query.annotate(
-                total_enquiries=Count(
-                    "enquiries", filter=date_filter if (date_from or date_to) else Q()
-                )
-            )
-            .order_by("-total_enquiries")
-            .first()
-        )
-
+    # Build count filter and get job types + totals
+    count_filter = _build_date_filter_q(date_from, date_to, service_type)
     job_types = []
-    system_total_enquiries = 0
-    system_open_enquiries = 0
-    system_closed_enquiries = 0
+    system_total = system_open = system_closed = 0
 
     if show_all_sections:
-        # All Sections view - aggregate across all sections
-        # Build job type filter conditions for all sections
-        job_type_filter = Q()
-        if date_from:
-            job_type_filter &= Q(enquiries__created_at__gte=date_from)
-        if date_to:
-            job_type_filter &= Q(enquiries__created_at__lte=date_to)
-        if service_type:
-            job_type_filter &= Q(enquiries__service_type=service_type)
-
-        # Build annotations with date filtering for all sections
-        count_filter = Q()
-        if date_from:
-            count_filter &= Q(enquiries__created_at__gte=date_from)
-        if date_to:
-            count_filter &= Q(enquiries__created_at__lte=date_to)
-        if service_type:
-            count_filter &= Q(enquiries__service_type=service_type)
-
-        open_filter = count_filter & Q(enquiries__status__in=["new", "open"])
-        closed_filter = count_filter & Q(enquiries__status="closed")
-
-        # Get job types across all sections with their enquiry counts
-        job_types = (
-            JobType.objects.filter(job_type_filter)
-            .annotate(
-                total_enquiries=Count("enquiries", filter=count_filter),
-                open_enquiries=Count("enquiries", filter=open_filter),
-                closed_enquiries=Count("enquiries", filter=closed_filter),
-            )
-            .order_by("-total_enquiries")
+        job_types = _build_job_type_query(count_filter)
+        system_total, system_open, system_closed = _calculate_system_totals(
+            date_from, date_to, service_type
         )
-
     elif selected_section:
-        # Single section view - existing logic
-        # Build job type filter conditions
-        job_type_filter = Q(enquiries__section=selected_section)
-        if date_from:
-            job_type_filter &= Q(enquiries__created_at__gte=date_from)
-        if date_to:
-            job_type_filter &= Q(enquiries__created_at__lte=date_to)
-        if service_type:
-            job_type_filter &= Q(enquiries__service_type=service_type)
-
-        # Build annotations with date filtering
-        count_filter = Q(enquiries__section=selected_section)
-        if date_from:
-            count_filter &= Q(enquiries__created_at__gte=date_from)
-        if date_to:
-            count_filter &= Q(enquiries__created_at__lte=date_to)
-        if service_type:
-            count_filter &= Q(enquiries__service_type=service_type)
-
-        open_filter = count_filter & Q(enquiries__status__in=["new", "open"])
-        closed_filter = count_filter & Q(enquiries__status="closed")
-
-        # Get job types for the selected section with their enquiry counts
-        job_types = (
-            JobType.objects.filter(job_type_filter)
-            .annotate(
-                total_enquiries=Count("enquiries", filter=count_filter),
-                open_enquiries=Count("enquiries", filter=open_filter),
-                closed_enquiries=Count("enquiries", filter=closed_filter),
-            )
-            .order_by("-total_enquiries")
+        job_types = _build_job_type_query(count_filter, section=selected_section)
+        system_total, system_open, system_closed = _calculate_system_totals(
+            date_from, date_to, service_type, section=selected_section
         )
-
-        # Calculate section-specific totals for the selected period
-        section_enquiries = Enquiry.objects.filter(section=selected_section)
-        if date_from:
-            section_enquiries = section_enquiries.filter(created_at__gte=date_from)
-        if date_to:
-            section_enquiries = section_enquiries.filter(created_at__lte=date_to)
-        if service_type:
-            section_enquiries = section_enquiries.filter(service_type=service_type)
-
-        system_total_enquiries = section_enquiries.count()
-        system_open_enquiries = section_enquiries.filter(
-            status__in=["new", "open"]
-        ).count()
-        system_closed_enquiries = section_enquiries.filter(status="closed").count()
-
-    # Calculate system totals for All Sections view
-    if show_all_sections:
-        all_enquiries = Enquiry.objects.all()
-        if date_from:
-            all_enquiries = all_enquiries.filter(created_at__gte=date_from)
-        if date_to:
-            all_enquiries = all_enquiries.filter(created_at__lte=date_to)
-        if service_type:
-            all_enquiries = all_enquiries.filter(service_type=service_type)
-
-        system_total_enquiries = all_enquiries.count()
-        system_open_enquiries = all_enquiries.filter(status__in=["new", "open"]).count()
-        system_closed_enquiries = all_enquiries.filter(status="closed").count()
 
     context = {
         "job_types": job_types,
@@ -1657,9 +1650,9 @@ def job_workload_chart_report(request):
         "js_date_constants": get_javascript_date_constants(),
         "page_title": get_page_title_with_date_range("Job Workload", date_range_info),
         "page_subtitle": get_date_range_subtitle(date_range_info),
-        "system_total_enquiries": system_total_enquiries,
-        "system_open_enquiries": system_open_enquiries,
-        "system_closed_enquiries": system_closed_enquiries,
+        "system_total_enquiries": system_total,
+        "system_open_enquiries": system_open,
+        "system_closed_enquiries": system_closed,
         "service_type": service_type,
     }
 
@@ -1689,11 +1682,7 @@ def enquiries_per_member_report(request):
 
     members = (
         Member.objects.filter(queryset_filter)
-        .annotate(
-            enquiry_count=Count(
-                "enquiries", filter=queryset_filter
-            )
-        )
+        .annotate(enquiry_count=Count("enquiries", filter=queryset_filter))
         .order_by("-enquiry_count")
     )
 
@@ -1835,11 +1824,7 @@ def enquiries_per_section_report(request):
 
     sections = (
         Section.objects.filter(queryset_filter)
-        .annotate(
-            enquiry_count=Count(
-                "enquiries", filter=queryset_filter
-            )
-        )
+        .annotate(enquiry_count=Count("enquiries", filter=queryset_filter))
         .order_by("-enquiry_count")
         .select_related("department")
     )
@@ -1986,11 +1971,7 @@ def enquiries_per_job_report(request):
 
     job_types = (
         JobType.objects.filter(queryset_filter)
-        .annotate(
-            enquiry_count=Count(
-                "enquiries", filter=queryset_filter
-            )
-        )
+        .annotate(enquiry_count=Count("enquiries", filter=queryset_filter))
         .order_by("-enquiry_count")
     )
 
@@ -2228,14 +2209,12 @@ def enquiries_per_ward_monthly_report(request):
 
     for ward in wards_with_counts:
         ward_months = []
-        row_total = 0
 
         # Get monthly counts and build months array
         for i, month_key in enumerate(month_keys):
             count_attr = f'count_{month_key.replace("-", "_")}'
             count = getattr(ward, count_attr, 0)
             ward_months.append(count)
-            row_total += count
             grand_totals[i] += count
 
         ward_row = {
@@ -2276,8 +2255,8 @@ def enquiries_per_ward_monthly_report(request):
 @require_http_methods(["GET"])
 def monthly_enquiries_report(request):
     """Report showing enquiry SLA performance by month and section."""
+    import calendar
 
-    # Get selected month or default to current month
     selected_month = request.GET.get("month", timezone.now().strftime("%Y-%m"))
 
     try:
@@ -2285,81 +2264,39 @@ def monthly_enquiries_report(request):
         selected_date = datetime(year, month, 1)
     except (ValueError, TypeError):
         selected_date = timezone.now().replace(day=1)
+        year = selected_date.year
+        month = selected_date.month
         selected_month = selected_date.strftime("%Y-%m")
 
-    # Calculate month range
     month_start = selected_date.replace(day=1)
-    if month == 12:
-        month_end = month_start.replace(year=year + 1, month=1)
-    else:
-        month_end = month_start.replace(month=month + 1)
-
-    # Calculate last day of the month for URL links
-    import calendar
-
-    last_day = calendar.monthrange(year, month)[1]
-    month_end_date = selected_date.replace(day=last_day)
+    month_end = (
+        month_start.replace(year=year + 1, month=1)
+        if month == 12
+        else month_start.replace(month=month + 1)
+    )
+    month_end_date = selected_date.replace(day=calendar.monthrange(year, month)[1])
 
     # Generate list of months for dropdown (last 24 months)
     months_list = []
     current_date = timezone.now().replace(day=1)
     for i in range(24):
-        month_date = current_date - timedelta(days=i * 30)
-        month_date = month_date.replace(day=1)
+        month_date = (current_date - timedelta(days=i * 30)).replace(day=1)
         months_list.append(month_date)
 
-    # Get sections with SLA performance data using business days calculation
-    from .utils import calculate_business_days
-
-    # Get all enquiries for the month
+    # Get all enquiries for the month and classify by section
     month_enquiries = Enquiry.objects.filter(
         created_at__gte=month_start, created_at__lt=month_end
     ).select_related("section")
 
-    # Calculate SLA performance for each section
     section_data = {}
-
     for enquiry in month_enquiries:
-        section_id = enquiry.section.id if enquiry.section else None
-        section_name = enquiry.section.name if enquiry.section else "Unassigned"
+        sec_id = enquiry.section.id if enquiry.section else None
+        sec_name = enquiry.section.name if enquiry.section else "Unassigned"
+        _classify_enquiry_for_sla(
+            enquiry, section_data, sec_id, sec_name, enquiry.section
+        )
 
-        if section_id not in section_data:
-            section_data[section_id] = {
-                "id": section_id,
-                "name": section_name,
-                "section": enquiry.section,
-                "enquiries_within_sla": 0,
-                "enquiries_outside_sla": 0,
-                "enquiries_open": 0,
-            }
-
-        if enquiry.status == "closed" and enquiry.closed_at:
-            # Calculate business days to close
-            business_days_to_close = calculate_business_days(
-                enquiry.created_at, enquiry.closed_at
-            )
-            if (
-                business_days_to_close is not None
-                and business_days_to_close <= settings.ENQUIRY_SLA_DAYS
-            ):
-                section_data[section_id]["enquiries_within_sla"] += 1
-            else:
-                section_data[section_id]["enquiries_outside_sla"] += 1
-        elif enquiry.status in ["new", "open"]:
-            section_data[section_id]["enquiries_open"] += 1
-
-    # Convert to list and filter out sections with no enquiries
-    sections = []
-    for data in section_data.values():
-        if (
-            data["enquiries_within_sla"] > 0
-            or data["enquiries_outside_sla"] > 0
-            or data["enquiries_open"] > 0
-        ):
-            sections.append(data)
-
-    # Sort by section name
-    sections.sort(key=lambda x: x["name"] or "ZZZ")
+    sections = _filter_active_sections(section_data)
 
     context = {
         "sections": sections,
@@ -2384,7 +2321,7 @@ def enquiries_by_section(request, section_id):
 
     # Redirect to main enquiries list with section filter
     params = {"section": section_id}
-    url = reverse("application:enquiry_list") + "?" + urlencode(params)
+    url = reverse(URL_ENQUIRY_LIST) + "?" + urlencode(params)
     return HttpResponseRedirect(url)
 
 
@@ -2395,7 +2332,7 @@ def enquiries_by_contact(request, contact_id):
 
     # Redirect to main enquiries list with contact filter
     params = {"contact": contact_id}
-    url = reverse("application:enquiry_list") + "?" + urlencode(params)
+    url = reverse(URL_ENQUIRY_LIST) + "?" + urlencode(params)
     return HttpResponseRedirect(url)
 
 
@@ -2406,5 +2343,5 @@ def enquiries_by_jobtype(request, jobtype_id):
 
     # Redirect to main enquiries list with job type filter
     params = {"job_type": jobtype_id}
-    url = reverse("application:enquiry_list") + "?" + urlencode(params)
+    url = reverse(URL_ENQUIRY_LIST) + "?" + urlencode(params)
     return HttpResponseRedirect(url)

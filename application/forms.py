@@ -158,8 +158,7 @@ class EnquiryHistoryForm(forms.ModelForm):
             Row(
                 Column("note_type", css_class="col-md-2"),
                 Column(
-                    HTML(
-                        """
+                    HTML("""
                     <!-- Email Update Dropzone (Visible) -->
                     <div class="mb-3">
                         <label class="form-label small text-muted">Quick Email Import:</label>
@@ -184,16 +183,14 @@ class EnquiryHistoryForm(forms.ModelForm):
 
 
                     </div>
-                    """
-                    ),
+                    """),
                     css_class="col-md-10",
                 ),
             ),
             Row(Column("note", css_class="col-12")),
             Row(
                 Column(
-                    HTML(
-                        """
+                    HTML("""
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="d-flex gap-2">
                             <!-- Email buttons will be inserted here by template -->
@@ -203,8 +200,7 @@ class EnquiryHistoryForm(forms.ModelForm):
                             <button type="submit" class="btn btn-primary">Add Note</button>
                         </div>
                     </div>
-                    """
-                    ),
+                    """),
                     css_class="col-12",
                 )
             ),
@@ -328,7 +324,16 @@ class EnquiryFilterForm(forms.Form):
         # Apply select field styling with filter labels
         FormStyleService.apply_select_field_styling(
             self,
-            ["status", "member", "admin", "section", "job_type", "service_type", "contact", "ward"],
+            [
+                "status",
+                "member",
+                "admin",
+                "section",
+                "job_type",
+                "service_type",
+                "contact",
+                "ward",
+            ],
             use_filter_labels=True,
         )
 

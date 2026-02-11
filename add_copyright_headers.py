@@ -9,7 +9,7 @@ import re
 from pathlib import Path
 
 # Copyright header for Python files
-PYTHON_HEADER = '''# Copyright (C) 2026 Redcar & Cleveland Borough Council
+PYTHON_HEADER = """# Copyright (C) 2026 Redcar & Cleveland Borough Council
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
 # the Free Software Foundation, version 3.
@@ -21,10 +21,10 @@ PYTHON_HEADER = '''# Copyright (C) 2026 Redcar & Cleveland Borough Council
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
-'''
+"""
 
 # Copyright header for JavaScript files
-JS_HEADER = '''/*
+JS_HEADER = """/*
  * Copyright (C) 2026 Redcar & Cleveland Borough Council
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
@@ -38,10 +38,10 @@ JS_HEADER = '''/*
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-'''
+"""
 
 # Copyright header for HTML and CSS files
-HTML_CSS_HEADER = '''<!--
+HTML_CSS_HEADER = """<!--
   Copyright (C) 2026 Redcar & Cleveland Borough Council
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as published by
@@ -55,24 +55,27 @@ HTML_CSS_HEADER = '''<!--
   You should have received a copy of the GNU Affero General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
-'''
+"""
 
 # Directories to exclude
 EXCLUDE_DIRS = {
-    'venv', '.venv', 'env',
-    'node_modules',
-    '__pycache__',
-    '.git', '.pytest_cache',
-    'migrations',
-    'vendor',  # Third-party JavaScript libraries
+    "venv",
+    ".venv",
+    "env",
+    "node_modules",
+    "__pycache__",
+    ".git",
+    ".pytest_cache",
+    "migrations",
+    "vendor",  # Third-party JavaScript libraries
 }
 
 # Files that typically shouldn't have headers
 EXCLUDE_FILES = {
-    'manage.py',
-    'setup.py',
-    '__init__.py',
-    'add_copyright_headers.py',  # This script itself
+    "manage.py",
+    "setup.py",
+    "__init__.py",
+    "add_copyright_headers.py",  # This script itself
 }
 
 
@@ -87,13 +90,13 @@ def should_exclude_path(path):
 
 def has_copyright_header(content):
     """Check if file already has a copyright header."""
-    return 'Copyright (C) 2026 Redcar & Cleveland Borough Council' in content
+    return "Copyright (C) 2026 Redcar & Cleveland Borough Council" in content
 
 
 def add_header_to_file(file_path, header):
     """Add copyright header to a file if it doesn't already have one."""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
 
         # Skip if already has header
@@ -102,9 +105,9 @@ def add_header_to_file(file_path, header):
             return False
 
         # Add header
-        new_content = header + '\n' + content
+        new_content = header + "\n" + content
 
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(new_content)
 
         print(f"[OK]   {file_path}")
@@ -123,7 +126,7 @@ def process_files():
     css_files = []
 
     # Collect files
-    for root, dirs, files in os.walk('.'):
+    for root, dirs, files in os.walk("."):
         # Remove excluded directories
         dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
 
@@ -139,13 +142,13 @@ def process_files():
 
             file_path = root_path / file
 
-            if file.endswith('.py'):
+            if file.endswith(".py"):
                 python_files.append(file_path)
-            elif file.endswith('.js'):
+            elif file.endswith(".js"):
                 js_files.append(file_path)
-            elif file.endswith('.html'):
+            elif file.endswith(".html"):
                 html_files.append(file_path)
-            elif file.endswith('.css'):
+            elif file.endswith(".css"):
                 css_files.append(file_path)
 
     # Process files
@@ -189,5 +192,5 @@ def process_files():
     print("=" * 60 + "\n")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     process_files()

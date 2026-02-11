@@ -15,10 +15,18 @@
 Django development settings for Members Enquiries project.
 """
 
-from .base import *
+from . import base as _base_settings
 
-# Import the original MIDDLEWARE from base to modify it
-from .base import MIDDLEWARE as BASE_MIDDLEWARE
+# Import all base settings into this module's namespace so they are available
+# both locally and for re-export via __init__.py's 'from .development import *'.
+# This replaces 'from .base import *' to satisfy SonarQube rule S2208 (no wildcard imports)
+# while preserving the standard Django settings inheritance pattern.
+globals().update(
+    {k: v for k, v in vars(_base_settings).items() if not k.startswith("_")}
+)
+
+# Import names explicitly referenced in this file
+from .base import BASE_DIR, MIDDLEWARE as BASE_MIDDLEWARE
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True

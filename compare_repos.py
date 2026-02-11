@@ -26,6 +26,7 @@ from typing import Dict, List, Tuple, Set
 
 try:
     from colorama import Fore, Style, init
+
     init(autoreset=True)
     HAS_COLORAMA = True
 except ImportError:
@@ -34,21 +35,34 @@ except ImportError:
 
 # Configuration
 SKIP_DIRS = {
-    'venv', '__pycache__', 'migrations', '.git', 'media', 'logs',
-    'staticfiles', 'htmlcov', 'node_modules', '.env', 'db.sqlite3',
-    '.env_example', '.claude'
+    "venv",
+    "__pycache__",
+    "migrations",
+    ".git",
+    "media",
+    "logs",
+    "staticfiles",
+    "htmlcov",
+    "node_modules",
+    ".env",
+    "db.sqlite3",
+    ".env_example",
+    ".claude",
 }
-ALLOWED_EXTENSIONS = {'.py', '.html', '.js', '.css'}
+ALLOWED_EXTENSIONS = {".py", ".html", ".js", ".css"}
 
 # Branding detection patterns
 BRANDING_PATTERNS = [
     # Domain pattern
-    (r'[a-zA-Z0-9-]+\.redclev\.net', 'DOMAIN'),
-    (r'[a-zA-Z0-9-]+\.rcbc\.[a-z]+', 'RCBC_DOMAIN'),
-    (r'redclev|rcbc|redcar', 'BRANDING_TERM'),
+    (r"[a-zA-Z0-9-]+\.redclev\.net", "DOMAIN"),
+    (r"[a-zA-Z0-9-]+\.rcbc\.[a-z]+", "RCBC_DOMAIN"),
+    (r"redclev|rcbc|redcar", "BRANDING_TERM"),
     # Settings patterns
-    (r'(?:ALLOWED_HOSTS|CORS_ALLOWED_ORIGINS|CSRF_TRUSTED_ORIGINS)\s*=\s*\[([^\]]+)\]', 'SETTINGS_LIST'),
-    (r'DATABASE_HOST\s*=\s*["\']([^"\']+)["\']', 'DATABASE_HOST'),
+    (
+        r"(?:ALLOWED_HOSTS|CORS_ALLOWED_ORIGINS|CSRF_TRUSTED_ORIGINS)\s*=\s*\[([^\]]+)\]",
+        "SETTINGS_LIST",
+    ),
+    (r'DATABASE_HOST\s*=\s*["\']([^"\']+)["\']', "DATABASE_HOST"),
 ]
 
 
@@ -57,13 +71,13 @@ def colored(text: str, color: str) -> str:
     if not HAS_COLORAMA:
         return text
     color_map = {
-        'red': Fore.RED,
-        'green': Fore.GREEN,
-        'yellow': Fore.YELLOW,
-        'cyan': Fore.CYAN,
-        'white': Fore.WHITE,
+        "red": Fore.RED,
+        "green": Fore.GREEN,
+        "yellow": Fore.YELLOW,
+        "cyan": Fore.CYAN,
+        "white": Fore.WHITE,
     }
-    return color_map.get(color, '') + text + Style.RESET_ALL
+    return color_map.get(color, "") + text + Style.RESET_ALL
 
 
 def get_file_extension(filepath: str) -> str:
@@ -75,35 +89,35 @@ def strip_copyright_header(content: str, filepath: str) -> str:
     """Strip AGPL copyright header from file content based on file type."""
     ext = get_file_extension(filepath)
 
-    if ext == '.py':
+    if ext == ".py":
         # Python: remove block of # comment lines followed by blank line
-        pattern = r'^(#.*?\n)+\n'
-        content = re.sub(pattern, '', content, flags=re.MULTILINE)
-    elif ext == '.js':
+        pattern = r"^(#.*?\n)+\n"
+        content = re.sub(pattern, "", content, flags=re.MULTILINE)
+    elif ext == ".js":
         # JavaScript: remove /* ... */ block at start containing Copyright
-        pattern = r'^/\*[\s\S]*?\*/\s*\n'
-        content = re.sub(pattern, '', content)
-    elif ext in {'.html', '.css'}:
+        pattern = r"^/\*[\s\S]*?\*/\s*\n"
+        content = re.sub(pattern, "", content)
+    elif ext in {".html", ".css"}:
         # HTML/CSS: remove <!-- ... --> block at start containing Copyright
-        pattern = r'^<!--[\s\S]*?-->\s*\n'
-        content = re.sub(pattern, '', content)
+        pattern = r"^<!--[\s\S]*?-->\s*\n"
+        content = re.sub(pattern, "", content)
 
-    return content.lstrip('\n')
+    return content.lstrip("\n")
 
 
 def compute_sha256(filepath: str, strip_headers: bool = True) -> str:
     """Compute SHA256 hash of a file, optionally stripping copyright headers."""
     try:
-        with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+        with open(filepath, "r", encoding="utf-8", errors="replace") as f:
             content = f.read()
 
         if strip_headers:
             content = strip_copyright_header(content, filepath)
 
-        return hashlib.sha256(content.encode('utf-8')).hexdigest()
+        return hashlib.sha256(content.encode("utf-8")).hexdigest()
     except Exception as e:
         # Fallback: return error indicator
-        return f'error_{hash(str(e))}'
+        return f"error_{hash(str(e))}"
 
 
 def should_skip(path: str) -> bool:
@@ -164,35 +178,37 @@ def detect_branding(lines: List[str]) -> List[Tuple[int, str, str]]:
 
 def generate_env_var_name(value: str, pattern_type: str) -> str:
     """Generate a suggested .env variable name from detected value."""
-    if pattern_type == 'DOMAIN':
+    if pattern_type == "DOMAIN":
         # Extract domain like "members2.redclev.net"
-        domain_part = value.split('.')[0].upper()
-        return f'{domain_part}_DOMAIN'
-    elif pattern_type == 'RCBC_DOMAIN':
-        return 'RCBC_DOMAIN'
-    elif pattern_type == 'BRANDING_TERM':
-        return 'BRANDING_VALUE'
-    elif pattern_type == 'SETTINGS_LIST':
-        return 'ALLOWED_HOSTS'
-    elif pattern_type == 'DATABASE_HOST':
-        return 'DATABASE_HOST'
+        domain_part = value.split(".")[0].upper()
+        return f"{domain_part}_DOMAIN"
+    elif pattern_type == "RCBC_DOMAIN":
+        return "RCBC_DOMAIN"
+    elif pattern_type == "BRANDING_TERM":
+        return "BRANDING_VALUE"
+    elif pattern_type == "SETTINGS_LIST":
+        return "ALLOWED_HOSTS"
+    elif pattern_type == "DATABASE_HOST":
+        return "DATABASE_HOST"
     else:
-        return 'CUSTOM_VALUE'
+        return "CUSTOM_VALUE"
 
 
-def get_diff(public_file: str, private_file: str, strip_headers: bool = True) -> List[str]:
+def get_diff(
+    public_file: str, private_file: str, strip_headers: bool = True
+) -> List[str]:
     """Get unified diff between two files, optionally stripping copyright headers."""
     try:
-        with open(public_file, 'r', encoding='utf-8', errors='replace') as f:
+        with open(public_file, "r", encoding="utf-8", errors="replace") as f:
             public_content = f.read()
     except Exception as e:
-        return [f'Error reading public file: {e}']
+        return [f"Error reading public file: {e}"]
 
     try:
-        with open(private_file, 'r', encoding='utf-8', errors='replace') as f:
+        with open(private_file, "r", encoding="utf-8", errors="replace") as f:
             private_content = f.read()
     except Exception as e:
-        return [f'Error reading private file: {e}']
+        return [f"Error reading private file: {e}"]
 
     if strip_headers:
         public_content = strip_copyright_header(public_content, public_file)
@@ -201,56 +217,60 @@ def get_diff(public_file: str, private_file: str, strip_headers: bool = True) ->
     public_lines = public_content.splitlines(keepends=True)
     private_lines = private_content.splitlines(keepends=True)
 
-    diff = list(unified_diff(
-        public_lines,
-        private_lines,
-        fromfile='public',
-        tofile='private',
-        lineterm=''
-    ))
+    diff = list(
+        unified_diff(
+            public_lines,
+            private_lines,
+            fromfile="public",
+            tofile="private",
+            lineterm="",
+        )
+    )
 
     return diff
 
 
-def format_diff_output(diff_lines: List[str], public_file: str, private_file: str) -> str:
+def format_diff_output(
+    diff_lines: List[str], public_file: str, private_file: str
+) -> str:
     """Format diff output with coloring."""
     output = []
 
     # File header
-    output.append(colored(f'--- {Path(public_file).name} ---', 'cyan'))
-    output.append(f'Public:  {public_file}')
-    output.append(f'Private: {private_file}')
+    output.append(colored(f"--- {Path(public_file).name} ---", "cyan"))
+    output.append(f"Public:  {public_file}")
+    output.append(f"Private: {private_file}")
 
     # SHA256 hashes
     public_sha = compute_sha256(public_file)
     private_sha = compute_sha256(private_file)
-    output.append(f'SHA256 public:  {public_sha[:16]}...')
-    output.append(f'SHA256 private: {private_sha[:16]}...')
-    output.append('')
+    output.append(f"SHA256 public:  {public_sha[:16]}...")
+    output.append(f"SHA256 private: {private_sha[:16]}...")
+    output.append("")
 
     # Diff content with coloring
     for line in diff_lines:
-        if line.startswith('-'):
-            output.append(colored(line, 'red'))
-        elif line.startswith('+'):
-            output.append(colored(line, 'green'))
+        if line.startswith("-"):
+            output.append(colored(line, "red"))
+        elif line.startswith("+"):
+            output.append(colored(line, "green"))
         else:
             output.append(line)
 
     # Branding detection
     branding_found = detect_branding(diff_lines)
     if branding_found:
-        output.append('')
-        output.append(colored('[BRANDING DETECTED]', 'yellow'))
+        output.append("")
+        output.append(colored("[BRANDING DETECTED]", "yellow"))
         seen = set()
         for line_num, value, suggested_var in branding_found:
             key = (value, suggested_var)
             if key not in seen:
-                output.append(f'  {value}')
-                output.append(f'  Suggested .env variable: {suggested_var}')
+                output.append(f"  {value}")
+                output.append(f"  Suggested .env variable: {suggested_var}")
                 seen.add(key)
 
-    return '\n'.join(output)
+    return "\n".join(output)
 
 
 def compare_repos(public_path: str, private_path: str) -> None:
@@ -259,11 +279,11 @@ def compare_repos(public_path: str, private_path: str) -> None:
     private_path = Path(private_path).resolve()
 
     if not public_path.exists():
-        print(colored(f'ERROR: Public repo not found: {public_path}', 'red'))
+        print(colored(f"ERROR: Public repo not found: {public_path}", "red"))
         sys.exit(1)
 
     if not private_path.exists():
-        print(colored(f'ERROR: Private repo not found: {private_path}', 'red'))
+        print(colored(f"ERROR: Private repo not found: {private_path}", "red"))
         sys.exit(1)
 
     # Get all files
@@ -289,24 +309,24 @@ def compare_repos(public_path: str, private_path: str) -> None:
 
     # Print header
     print()
-    print(colored('=' * 60, 'cyan'))
-    print(colored('=== REPO COMPARISON REPORT ===', 'cyan'))
-    print(colored('=' * 60, 'cyan'))
-    print(f'Public:  {public_path}')
-    print(f'Private: {private_path}')
+    print(colored("=" * 60, "cyan"))
+    print(colored("=== REPO COMPARISON REPORT ===", "cyan"))
+    print(colored("=" * 60, "cyan"))
+    print(f"Public:  {public_path}")
+    print(f"Private: {private_path}")
     print()
 
     # Print summary
-    print(colored('=== FILES COMPARED ===', 'cyan'))
-    print(f'Identical (SHA256 match):  {len(identical)} files')
-    print(f'Different:                  {len(different)} files')
-    print(f'Private-only:               {len(private_only)} files')
-    print(f'Public-only:                {len(public_only)} files')
+    print(colored("=== FILES COMPARED ===", "cyan"))
+    print(f"Identical (SHA256 match):  {len(identical)} files")
+    print(f"Different:                  {len(different)} files")
+    print(f"Private-only:               {len(private_only)} files")
+    print(f"Public-only:                {len(public_only)} files")
     print()
 
     # Print differing files with diffs
     if different:
-        print(colored('=== DIFFERING FILES ===', 'cyan'))
+        print(colored("=== DIFFERING FILES ===", "cyan"))
         print()
 
         for rel_path in sorted(different):
@@ -319,15 +339,15 @@ def compare_repos(public_path: str, private_path: str) -> None:
 
     # Print file lists
     if private_only:
-        print(colored('=== PRIVATE-ONLY FILES ===', 'cyan'))
+        print(colored("=== PRIVATE-ONLY FILES ===", "cyan"))
         for rel_path in sorted(private_only):
-            print(f'  {rel_path}')
+            print(f"  {rel_path}")
         print()
 
     if public_only:
-        print(colored('=== PUBLIC-ONLY FILES ===', 'cyan'))
+        print(colored("=== PUBLIC-ONLY FILES ===", "cyan"))
         for rel_path in sorted(public_only):
-            print(f'  {rel_path}')
+            print(f"  {rel_path}")
         print()
 
     # Print suggested .env additions
@@ -341,26 +361,26 @@ def compare_repos(public_path: str, private_path: str) -> None:
             all_branding.add((value, suggested_var))
 
     if all_branding:
-        print(colored('=== SUGGESTED .env_example ADDITIONS ===', 'cyan'))
+        print(colored("=== SUGGESTED .env_example ADDITIONS ===", "cyan"))
         for value, suggested_var in sorted(all_branding, key=lambda x: x[1]):
             example_value = f'your-{suggested_var.lower().replace("_", "-")}.org'
-            print(f'{suggested_var}={example_value}')
+            print(f"{suggested_var}={example_value}")
         print()
 
-    print(colored('=' * 60, 'cyan'))
-    print(colored('Report complete.', 'cyan'))
+    print(colored("=" * 60, "cyan"))
+    print(colored("Report complete.", "cyan"))
     print()
 
 
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
-        description='Compare public and private repos to identify differences and branding.'
+        description="Compare public and private repos to identify differences and branding."
     )
     parser.add_argument(
-        '--private-repo',
-        default='../private/members2',
-        help='Path to private repo (default: ../private/members2)'
+        "--private-repo",
+        default="../private/members2",
+        help="Path to private repo (default: ../private/members2)",
     )
 
     args = parser.parse_args()
@@ -373,5 +393,5 @@ def main():
     compare_repos(str(public_path), str(private_path))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

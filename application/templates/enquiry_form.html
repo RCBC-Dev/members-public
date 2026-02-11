@@ -49,7 +49,7 @@
     </nav>
     <h1>{{ title }}</h1>
   </div>
-  <div class="btn-group" role="group">
+  <div class="btn-group">
     {% if enquiry %}
     <a
       href="{% url 'application:enquiry_detail' enquiry.id %}"
@@ -161,7 +161,7 @@
                         {% if attachment.file_path|file_exists %}
                           <img src="{{ attachment.file_url }}" alt="{{ attachment.filename }}" class="img-thumbnail attachment-thumb-small">
                         {% else %}
-                          <img src="{% static 'img/missing-image.svg' %}" alt="Missing Image" class="attachment-thumb-small opacity-50">
+                          <img src="{% static 'img/missing-image.svg' %}" alt="Missing file" class="attachment-thumb-small opacity-50">
                         {% endif %}
                       {% endif %}
                     </div>

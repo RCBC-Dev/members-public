@@ -48,18 +48,18 @@ def parse_properties_file(filepath):
     """
     properties = {}
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 # Skip comments and empty lines
-                if not line or line.startswith('#'):
+                if not line or line.startswith("#"):
                     continue
                 # Skip lines with backslash (continuation)
-                if line.endswith('\\'):
+                if line.endswith("\\"):
                     continue
                 # Parse key=value
-                if '=' in line:
-                    key, value = line.split('=', 1)
+                if "=" in line:
+                    key, value = line.split("=", 1)
                     properties[key.strip()] = value.strip()
     except Exception as e:
         print(f"ERROR: Failed to parse sonar-project.properties: {e}")
@@ -79,7 +79,9 @@ def run_sonar_scan():
     properties_file = Path("sonar-project.properties")
     if not properties_file.exists():
         print("ERROR: sonar-project.properties not found!")
-        print("Please create sonar-project.properties with your SonarQube project configuration.")
+        print(
+            "Please create sonar-project.properties with your SonarQube project configuration."
+        )
         return 1
 
     # Parse properties file
@@ -90,9 +92,9 @@ def run_sonar_scan():
         return 1
 
     # Get configuration from properties file
-    project_key = properties.get('sonar.projectKey')
-    project_name = properties.get('sonar.projectName', project_key)
-    sonar_host = properties.get('sonar.host.url', 'http://localhost:9000')
+    project_key = properties.get("sonar.projectKey")
+    project_name = properties.get("sonar.projectName", project_key)
+    sonar_host = properties.get("sonar.host.url", "http://localhost:9000")
 
     if not project_key:
         print("ERROR: sonar.projectKey not found in sonar-project.properties")
@@ -104,11 +106,15 @@ def run_sonar_scan():
     print()
 
     # Get SonarQube token from environment variable or properties file
-    sonar_token = os.environ.get("SONARQUBE_TOKEN") or properties.get('sonar.token')
+    sonar_token = os.environ.get("SONARQUBE_TOKEN") or properties.get("sonar.token")
 
     if not sonar_token:
-        print("ERROR: SONARQUBE_TOKEN environment variable or sonar.token in properties not set!")
-        print("Please set SONARQUBE_TOKEN in .env or add sonar.token to sonar-project.properties")
+        print(
+            "ERROR: SONARQUBE_TOKEN environment variable or sonar.token in properties not set!"
+        )
+        print(
+            "Please set SONARQUBE_TOKEN in .env or add sonar.token to sonar-project.properties"
+        )
         return 1
 
     # Configure environment to prevent JGit from using network drive H:\

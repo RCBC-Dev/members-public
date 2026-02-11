@@ -96,7 +96,7 @@
                                         <strong>{{ stats.size_formatted }}</strong>
                                     </p>
                                     <div class="progress progress-height-8">
-                                        <div class="progress-bar" role="progressbar"
+                                        <div class="progress-bar"
                                              data-width="{% widthratio stats.size total_size 100 %}"></div>
                                     </div>
                                     <small class="text-muted">
@@ -126,8 +126,7 @@
                     </button>
                     <div id="analysis-progress" class="progress-container hidden">
                         <div class="progress">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated w-100"
-                                 role="progressbar"></div>
+                            <div class="progress-bar progress-bar-striped progress-bar-animated w-100"></div>
                         </div>
                         <small class="text-muted">Analyzing storage...</small>
                     </div>
@@ -165,8 +164,7 @@
                     </button>
                     <div id="cleanup-progress" class="progress-container hidden">
                         <div class="progress">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning w-100"
-                                 role="progressbar"></div>
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning w-100"></div>
                         </div>
                         <small class="text-muted">Cleaning up files...</small>
                     </div>
@@ -198,8 +196,7 @@
                     </button>
                     <div id="missing-progress" class="progress-container hidden">
                         <div class="progress">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning w-100"
-                                 role="progressbar"></div>
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning w-100"></div>
                         </div>
                         <small class="text-muted">Checking attachments...</small>
                     </div>
@@ -234,8 +231,7 @@
                     </button>
                     <div id="size-update-progress" class="progress-container hidden">
                         <div class="progress">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary w-100"
-                                 role="progressbar"></div>
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary w-100"></div>
                         </div>
                         <small class="text-muted">Updating attachment sizes...</small>
                     </div>
@@ -304,8 +300,7 @@
                     </div>
                     <div id="summernote-progress" class="progress-container hidden">
                         <div class="progress">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info w-100"
-                                 role="progressbar"></div>
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info w-100"></div>
                         </div>
                         <small class="text-muted">Optimizing images...</small>
                     </div>
@@ -699,7 +694,7 @@ function optimizeSummernote(action, dryRun = false) {
                     <span id="summernote-progress-percent">0%</span>
                 </div>
                 <div class="progress">
-                    <div id="summernote-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated progress-width-0" role="progressbar"></div>
+                    <div id="summernote-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated progress-width-0"></div>
                 </div>
             </div>
             <div id="summernote-file-details" class="small text-muted mb-3"></div>

@@ -29,7 +29,7 @@
         <h1>⏱️ {{ page_title|default:"Average Response Time Report" }}</h1>
         <p class="text-muted">{{ page_subtitle }} - analysis of response times for closed enquiries (using business days)</p>
     </div>
-    <div class="btn-group" role="group">
+    <div class="btn-group">
         <a href="{% url 'application:overdue_enquiries_report' %}" class="btn btn-outline-primary">Overdue Report</a>
         <a href="{% url 'application:index' %}" class="btn btn-outline-secondary">Back to Dashboard</a>
     </div>
@@ -82,7 +82,7 @@
                 </select>
             </div>
             <div class="col-md-1">
-                <label class="form-label">&nbsp;</label>
+                <span class="form-label d-block">&nbsp;</span>
                 <div>
                     <a href="{% url 'application:average_response_time_report' %}" class="btn btn-outline-secondary">Clear</a>
                 </div>

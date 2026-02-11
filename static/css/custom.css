@@ -15,6 +15,15 @@
 
 /* Custom styles for Members Enquiries application */
 
+/* Navbar dropdown toggle buttons - ensure buttons match anchor nav-link styling */
+.navbar .nav-item.dropdown > button.nav-link.dropdown-toggle {
+    text-decoration: none;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    padding: 0.5rem 1rem;
+}
+
 /* File Management Dashboard Styles */
 .storage-card {
     border-left: 4px solid #007bff;

@@ -559,6 +559,20 @@ function initializeLoadingOverlay() {
 // Initialize loading overlay on DOM ready
 document.addEventListener('DOMContentLoaded', initializeLoadingOverlay);
 
+// --- Image Fallback Handler ---
+// Handles broken images by swapping to a fallback src specified in data-fallback-src
+document.addEventListener('DOMContentLoaded', function() {
+    var fallbackImages = document.querySelectorAll('img[data-fallback-src]');
+    fallbackImages.forEach(function(img) {
+        img.addEventListener('error', function() {
+            var fallbackSrc = this.getAttribute('data-fallback-src');
+            if (fallbackSrc && this.src !== fallbackSrc) {
+                this.src = fallbackSrc;
+            }
+        });
+    });
+});
+
 // Make functions globally available
 window.showLoadingOverlay = showLoadingOverlay;
 window.hideLoadingOverlay = hideLoadingOverlay;

@@ -23,9 +23,12 @@ from dateutil.relativedelta import relativedelta
 from django.utils import timezone
 from typing import Tuple, Optional, NamedTuple, Dict, Any
 
+DATE_FORMAT_UK = "%d/%m/%Y"
+
 
 class DateRange(NamedTuple):
     """Standard date range structure used across all reports."""
+
     date_from: Optional[datetime]
     date_to: Optional[datetime]
     date_from_str: Optional[str]
@@ -52,22 +55,18 @@ class DateRangeCalculator:
         Returns:
             DateRange with consistent calculations using exact month arithmetic
         """
-        if range_type == 'all':
+        if range_type == "all":
             return DateRange(
                 date_from=None,
                 date_to=None,
-                date_from_str='',
-                date_to_str='',
-                range_type='all',
-                months=None
+                date_from_str="",
+                date_to_str="",
+                range_type="all",
+                months=None,
             )
 
         # Use exact month arithmetic for consistency
-        months_map = {
-            '3months': 3,
-            '6months': 6,
-            '12months': 12
-        }
+        months_map = {"3months": 3, "6months": 6, "12months": 12}
 
         months = months_map.get(range_type, 12)
 
@@ -86,13 +85,15 @@ class DateRangeCalculator:
         return DateRange(
             date_from=date_from,
             date_to=date_to,
-            date_from_str=date_from_date.strftime('%Y-%m-%d'),
-            date_to_str=date_to_date.strftime('%Y-%m-%d'),
+            date_from_str=date_from_date.strftime("%Y-%m-%d"),
+            date_to_str=date_to_date.strftime("%Y-%m-%d"),
             range_type=range_type,
-            months=months
+            months=months,
         )
 
-    def calculate_custom_range(self, date_from_str: Optional[str], date_to_str: Optional[str]) -> DateRange:
+    def calculate_custom_range(
+        self, date_from_str: Optional[str], date_to_str: Optional[str]
+    ) -> DateRange:
         """
         Calculate date range from custom date strings.
 
@@ -109,34 +110,40 @@ class DateRangeCalculator:
         # Parse date strings
         if date_from_str:
             try:
-                date_from_date = datetime.strptime(date_from_str, '%Y-%m-%d').date()
+                date_from_date = datetime.strptime(date_from_str, "%Y-%m-%d").date()
                 if self.timezone_aware:
-                    date_from = timezone.make_aware(datetime.combine(date_from_date, time.min))
+                    date_from = timezone.make_aware(
+                        datetime.combine(date_from_date, time.min)
+                    )
                 else:
                     date_from = datetime.combine(date_from_date, time.min)
             except ValueError:
-                date_from_str = ''
+                date_from_str = ""
 
         if date_to_str:
             try:
-                date_to_date = datetime.strptime(date_to_str, '%Y-%m-%d').date()
+                date_to_date = datetime.strptime(date_to_str, "%Y-%m-%d").date()
                 if self.timezone_aware:
-                    date_to = timezone.make_aware(datetime.combine(date_to_date, time.max))
+                    date_to = timezone.make_aware(
+                        datetime.combine(date_to_date, time.max)
+                    )
                 else:
                     date_to = datetime.combine(date_to_date, time.max)
             except ValueError:
-                date_to_str = ''
+                date_to_str = ""
 
         return DateRange(
             date_from=date_from,
             date_to=date_to,
-            date_from_str=date_from_str or '',
-            date_to_str=date_to_str or '',
-            range_type='custom',
-            months=None
+            date_from_str=date_from_str or "",
+            date_to_str=date_to_str or "",
+            range_type="custom",
+            months=None,
         )
 
-    def parse_request_dates(self, request, default_range: str = '12months') -> DateRange:
+    def parse_request_dates(
+        self, request, default_range: str = "12months"
+    ) -> DateRange:
         """
         Parse date range from Django request parameters.
 
@@ -147,20 +154,22 @@ class DateRangeCalculator:
         Returns:
             DateRange based on request parameters
         """
-        range_type = request.GET.get('date_range', default_range)
-        date_from_str = request.GET.get('date_from', '')
-        date_to_str = request.GET.get('date_to', '')
+        range_type = request.GET.get("date_range", default_range)
+        date_from_str = request.GET.get("date_from", "")
+        date_to_str = request.GET.get("date_to", "")
 
         # If custom dates are provided but range is not explicitly custom,
         # check if they match any preset
-        if (date_from_str or date_to_str) and range_type != 'custom':
+        if (date_from_str or date_to_str) and range_type != "custom":
             # Check if the provided dates match the selected preset
             preset_range = self.calculate_preset_range(range_type)
-            if (date_from_str != preset_range.date_from_str or
-                date_to_str != preset_range.date_to_str):
-                range_type = 'custom'
+            if (
+                date_from_str != preset_range.date_from_str
+                or date_to_str != preset_range.date_to_str
+            ):
+                range_type = "custom"
 
-        if range_type == 'custom':
+        if range_type == "custom":
             return self.calculate_custom_range(date_from_str, date_to_str)
         else:
             return self.calculate_preset_range(range_type)
@@ -173,14 +182,14 @@ class DateRangeCalculator:
             Dictionary with standardized date strings for JavaScript
         """
         ranges = {}
-        for range_type in ['3months', '6months', '12months']:
+        for range_type in ["3months", "6months", "12months"]:
             date_range = self.calculate_preset_range(range_type)
             ranges[range_type] = {
-                'from': date_range.date_from_str,
-                'to': date_range.date_to_str
+                "from": date_range.date_from_str,
+                "to": date_range.date_to_str,
             }
 
-        ranges['today'] = self.today.strftime('%Y-%m-%d')
+        ranges["today"] = self.today.strftime("%Y-%m-%d")
         return ranges
 
 
@@ -190,7 +199,9 @@ def get_date_range_calculator(timezone_aware: bool = True) -> DateRangeCalculato
 
 
 # Convenience functions for common use cases
-def parse_request_date_range(request, default_range: str = '12months', timezone_aware: bool = True) -> DateRange:
+def parse_request_date_range(
+    request, default_range: str = "12months", timezone_aware: bool = True
+) -> DateRange:
     """Quick function to parse date range from request."""
     calculator = get_date_range_calculator(timezone_aware)
     return calculator.parse_request_dates(request, default_range)
@@ -208,7 +219,9 @@ def get_javascript_date_constants(timezone_aware: bool = True) -> Dict[str, str]
     return calculator.get_javascript_dates()
 
 
-def get_date_range_description(date_range_info: DateRange, prefix: str = "for", include_dates: bool = False) -> str:
+def get_date_range_description(
+    date_range_info: DateRange, prefix: str = "for", include_dates: bool = False
+) -> str:
     """
     Generate human-readable descriptions for date ranges.
 
@@ -230,11 +243,11 @@ def get_date_range_description(date_range_info: DateRange, prefix: str = "for", 
     """
     range_type = date_range_info.range_type
 
-    if range_type == 'all':
+    if range_type == "all":
         description = f"{prefix} all time"
-    elif range_type == 'custom':
+    elif range_type == "custom":
         description = f"{prefix} custom date range"
-    elif range_type in ['3months', '6months', '12months']:
+    elif range_type in ["3months", "6months", "12months"]:
         months = date_range_info.months
         description = f"{prefix} the last {months} months"
     else:
@@ -244,10 +257,10 @@ def get_date_range_description(date_range_info: DateRange, prefix: str = "for", 
     if include_dates and date_range_info.date_from_str and date_range_info.date_to_str:
         try:
             # Format dates as dd/mm/yyyy for display
-            from_date = datetime.strptime(date_range_info.date_from_str, '%Y-%m-%d')
-            to_date = datetime.strptime(date_range_info.date_to_str, '%Y-%m-%d')
-            from_formatted = from_date.strftime('%d/%m/%Y')
-            to_formatted = to_date.strftime('%d/%m/%Y')
+            from_date = datetime.strptime(date_range_info.date_from_str, "%Y-%m-%d")
+            to_date = datetime.strptime(date_range_info.date_to_str, "%Y-%m-%d")
+            from_formatted = from_date.strftime(DATE_FORMAT_UK)
+            to_formatted = to_date.strftime(DATE_FORMAT_UK)
             description += f" ({from_formatted} - {to_formatted})"
         except ValueError:
             pass
@@ -286,22 +299,22 @@ def get_page_title_with_date_range(base_title: str, date_range_info: DateRange) 
     """
     range_type = date_range_info.range_type
 
-    if range_type == 'all':
+    if range_type == "all":
         range_text = "All Time"
-    elif range_type == 'custom':
+    elif range_type == "custom":
         # Show actual dates for custom ranges
         if date_range_info.date_from_str and date_range_info.date_to_str:
             try:
-                from_date = datetime.strptime(date_range_info.date_from_str, '%Y-%m-%d')
-                to_date = datetime.strptime(date_range_info.date_to_str, '%Y-%m-%d')
-                from_formatted = from_date.strftime('%d/%m/%Y')
-                to_formatted = to_date.strftime('%d/%m/%Y')
+                from_date = datetime.strptime(date_range_info.date_from_str, "%Y-%m-%d")
+                to_date = datetime.strptime(date_range_info.date_to_str, "%Y-%m-%d")
+                from_formatted = from_date.strftime(DATE_FORMAT_UK)
+                to_formatted = to_date.strftime(DATE_FORMAT_UK)
                 range_text = f"{from_formatted} - {to_formatted}"
             except ValueError:
                 range_text = "Custom Range"
         else:
             range_text = "Custom Range"
-    elif range_type in ['3months', '6months', '12months']:
+    elif range_type in ["3months", "6months", "12months"]:
         months = date_range_info.months
         range_text = f"Last {months} Months"
     else:
@@ -327,17 +340,17 @@ def build_enquiry_list_url(base_params: dict, date_range_info: DateRange) -> str
     params = base_params.copy()
 
     # Add date range parameter for consistency
-    params['date_range'] = date_range_info.range_type
+    params["date_range"] = date_range_info.range_type
 
     # For preset ranges, we don't need to include specific dates
     # The enquiry list will calculate them consistently using the centralized system
     # This reduces URL length and improves maintainability
 
     # Only include specific dates for custom ranges
-    if date_range_info.range_type == 'custom':
+    if date_range_info.range_type == "custom":
         if date_range_info.date_from_str:
-            params['date_from'] = date_range_info.date_from_str
+            params["date_from"] = date_range_info.date_from_str
         if date_range_info.date_to_str:
-            params['date_to'] = date_range_info.date_to_str
+            params["date_to"] = date_range_info.date_to_str
 
     return f"?{urlencode(params)}"
