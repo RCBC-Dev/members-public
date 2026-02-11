@@ -423,6 +423,69 @@ python manage.py runserver
 
 **Note**: The server must be running separately. Don't start it in the background from scripts.
 
+## Dependency Management
+
+The project uses a three-tier dependency management system to balance stability with security updates:
+
+### Understanding the Three Requirements Files
+
+1. **`requirements.txt`** (Pinned versions with `==`)
+   - Used for production and reproducible deployments
+   - Ensures exact same versions run everywhere
+   - Created by `pip freeze > requirements.txt`
+   - Provides maximum stability but won't update automatically
+
+2. **`update_requirements.txt`** (Compatible release with `~=`)
+   - Used for conservative patch and minor version updates
+   - `pillow~=12.1.0` allows 12.1.1, 12.1.2, but NOT 12.2.0
+   - Safe for regular updates to get security patches without breaking changes
+
+3. **`upgrade_requirements.txt`** (Permissive with `>=`)
+   - Used for major version upgrades
+   - Installs latest compatible versions of all dependencies
+   - Useful for testing new features and resolving security vulnerabilities across major versions
+
+### Updating Dependencies
+
+**For regular security patches (recommended):**
+```bash
+pip install -r update_requirements.txt
+```
+
+**For major version upgrades (when needed):**
+```bash
+pip install -r upgrade_requirements.txt
+```
+
+**Validation steps (BEFORE freezing):**
+
+1. **Check for configuration issues:**
+   ```bash
+   python manage.py check
+   ```
+   This validates your Django configuration and models for any compatibility issues or deprecation warnings.
+
+2. **Run the full test suite:**
+   ```bash
+   python -m pytest
+   ```
+   Ensures all dependencies are compatible and there are no deprecated features in use.
+
+**If validation passes, lock in the changes:**
+```bash
+pip freeze > requirements.txt
+git add requirements.txt
+git commit -m "Update dependencies"
+```
+
+**If validation fails, revert to the previous working state:**
+```bash
+pip install -r requirements.txt
+```
+This restores your last known good dependency set from the original `requirements.txt`.
+
+**Important**: Always validate BEFORE freezing. This way, if something breaks, you can easily rollback by reinstalling from your current `requirements.txt` without needing to restore files from git.
+
 ## Database Migrations
 
 Create a new migration after model changes:
@@ -542,7 +605,7 @@ Ensure the `DJANGO_SETTINGS_MODULE` environment variable is set or pytest-django
 3. **HTTPS**: Always use HTTPS in production
 4. **CORS**: Keep CORS origins as restrictive as possible
 5. **CSP**: Review and maintain Content Security Policy headers
-6. **Dependencies**: Regularly update packages with `pip install --upgrade -r requirements.txt`
+6. **Dependencies**: Regularly update packages to patch security vulnerabilities - see [Dependency Management](#dependency-management) section
 7. **Azure Secrets**: Rotate Azure App Secrets annually
 8. **Environment Variables**: Never commit `.env` to version control
 

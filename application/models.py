@@ -226,7 +226,7 @@ class Enquiry(models.Model):
         ('failed_service', 'Failed service'),
         ('new_addition', 'New/addition requests'),
         ('pre_programmed', 'Pre-programmed work'),
-        ('not_rcbc', 'Not RCBC'),
+        ('3rd_party', '3rd Party'),
     )
     title = models.CharField(max_length=255)
     reference = models.CharField(max_length=12, unique=True, blank=True, null=True)

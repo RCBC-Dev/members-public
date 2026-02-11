@@ -19,11 +19,13 @@ Version information for the Members Enquiries System.
 # - MAJOR: Significant changes that may require data migration or affect compatibility
 # - MINOR: Incremented for each release with minor changes or bug fixes
 
-VERSION = "1.04"
+VERSION = "1.05"
 
 # Change log entries should be in the format:
 # (version, date, description)
 CHANGE_LOG = [
+    ("1.05", "2026-02-11", "Updated settings and templates to use .env variables for COUNCIL_NAME, DOMAIN, updated the model choices for Service Types to use 3rd Party, rather than 'Not RCBC' reflected in templates"),
+
     ("1.04", "2026-02-09", "Add db.sqlite3 to .gitignore - database files should not be committed"),
 
     ("1.03", "2026-02-09", "Updated README.md with Deployment/DB Options"),

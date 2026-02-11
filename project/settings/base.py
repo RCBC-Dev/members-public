@@ -72,8 +72,13 @@ SITE_ID = 1
 # For production: 'yourdomain.com'
 SITE_DOMAIN = os.environ.get("SITE_DOMAIN", "localhost:8000")
 
-# Council email domain for determining email direction (incoming/outgoing)
-COUNCIL_EMAIL_DOMAIN = "yourdomain.gov.uk"
+# Council name - used in footer and branding
+COUNCIL_NAME = os.environ.get("COUNCIL_NAME", "Your Council Name")
+
+# Domain for ALLOWED_HOSTS and CSRF/CORS settings
+# For development: 'localhost'
+# For test/production: 'yourdomain.example.net'
+DOMAIN = os.environ.get("DOMAIN", "localhost")
 
 MIDDLEWARE = [
     "project.middleware.csp.CSPMiddleware",

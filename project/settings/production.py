@@ -25,18 +25,18 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ["members2.redclev.net", "localhost"]
+ALLOWED_HOSTS = [DOMAIN, "localhost"]
 
 # Override base.py setting - MUST come after import
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 
 # CSRF Trusted Origins - domains that are allowed to make POST requests
-CSRF_TRUSTED_ORIGINS = ["https://members2.redclev.net"]
+CSRF_TRUSTED_ORIGINS = [f"https://{DOMAIN}"]
 
-# CORS settings for test environment
-# Only allow specific origins in test environment
-CORS_ALLOWED_ORIGINS = ["https://members2.redclev.net"]
-CORS_ALLOW_CREDENTIALS = True  # Allow credentials in test environment
+# CORS settings for production environment
+# Only allow specific origins in production environment
+CORS_ALLOWED_ORIGINS = [f"https://{DOMAIN}"]
+CORS_ALLOW_CREDENTIALS = True
 
 # Static files configuration for production
 STATIC_URL = "/static/"
@@ -89,10 +89,7 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_SAMESITE = "Strict"
 
-# CORS settings
+# CORS settings (CORS_ALLOWED_ORIGINS already defined above)
 CORS_ALLOW_ALL_ORIGINS = False  # Explicitly set
-CORS_ALLOWED_ORIGINS = [
-    "https://members2.redclev.net",  # Only your domain
-]
-CORS_ALLOW_CREDENTIALS = True  # If you use cookies/session auth
+CORS_ALLOW_CREDENTIALS = True
 WHITENOISE_ADD_HEADERS_FUNCTION = add_cors_headers

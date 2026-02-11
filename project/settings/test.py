@@ -25,18 +25,18 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ["yoururl-test.internaldomain.net", "localhost"]
+ALLOWED_HOSTS = [DOMAIN, "localhost"]
 
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 
 # CSRF Trusted Origins - domains that are allowed to make POST requests
 CSRF_TRUSTED_ORIGINS = [
-    "https://yoururl-test.internaldomain.net"
-]  # eg. https://membersenquiries-test.redclev.net
+    f"https://{DOMAIN}"
+]
 
 # CORS settings for test environment
 # Only allow specific origins in test environment
-CORS_ALLOWED_ORIGINS = ["https://yoururl-test.internaldomain.net"]
+CORS_ALLOWED_ORIGINS = [f"https://{DOMAIN}"]
 CORS_ALLOW_CREDENTIALS = True  # Allow credentials in test environment
 
 # Static files configuration for production
@@ -89,10 +89,7 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_SAMESITE = "Strict"
 
-# CORS settings
+# CORS settings (CORS_ALLOWED_ORIGINS already defined above)
 CORS_ALLOW_ALL_ORIGINS = False  # Explicitly set
-CORS_ALLOWED_ORIGINS = [
-    "https://yoururl-test.internaldomain.net",  # Only your domain
-]
-CORS_ALLOW_CREDENTIALS = True  # If you use cookies/session auth
+CORS_ALLOW_CREDENTIALS = True  # Allow credentials in CORS requests
 WHITENOISE_ADD_HEADERS_FUNCTION = add_cors_headers

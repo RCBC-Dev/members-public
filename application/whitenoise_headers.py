@@ -14,17 +14,16 @@
 def add_cors_headers(headers, path, url):
     """
     Add CORS headers to static files for allowed origins only.
+    Uses the DOMAIN environment variable for the origin.
     """
     import os
-    
-    # Determine domain based on environment
+
+    # Get domain from environment variable
+    domain = os.environ.get('DOMAIN', 'localhost')
+
+    # Determine protocol based on environment
     environment = os.environ.get('ENVIRONMENT', '').strip().lower()
-    if environment == 'production':
-        headers['Access-Control-Allow-Origin'] = 'https://membersenquiries.redclev.net'
-    elif environment == 'test':
-        headers['Access-Control-Allow-Origin'] = 'https://membersenquiries-test.redclev.net'
-    else:
-        # Fallback for test environment
-        headers['Access-Control-Allow-Origin'] = 'https://membersenquiries-test.redclev.net'
-    
+    protocol = 'https' if environment in ('production', 'test') else 'http'
+
+    headers['Access-Control-Allow-Origin'] = f'{protocol}://{domain}'
     headers['Vary'] = 'Origin'

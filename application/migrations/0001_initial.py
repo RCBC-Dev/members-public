@@ -135,7 +135,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(default=django.utils.timezone.now)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('closed_at', models.DateTimeField(blank=True, null=True)),
-                ('service_type', models.CharField(blank=True, choices=[('failed_service', 'Failed service'), ('new_addition', 'New/addition requests'), ('pre_programmed', 'Pre-programmed work'), ('not_rcbc', 'Not RCBC')], db_index=True, max_length=20, null=True)),
+                ('service_type', models.CharField(blank=True, choices=[('failed_service', 'Failed service'), ('new_addition', 'New/addition requests'), ('pre_programmed', 'Pre-programmed work'), ('3rd_party', '3rd Party')], db_index=True, max_length=20, null=True)),
                 ('admin', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='assigned_enquiries', to='application.admin')),
                 ('contact', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='enquiries', to='application.contact')),
                 ('job_type', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='enquiries', to='application.jobtype')),
