@@ -19,13 +19,18 @@ Version information for the Members Enquiries System.
 # - MAJOR: Significant changes that may require data migration or affect compatibility
 # - MINOR: Incremented for each release with minor changes or bug fixes
 
-VERSION = "1.07"
+VERSION = "1.08"
 
 # Change log entries should be in the format:
 # (version, date, description)
 CHANGE_LOG = [
-    ("1.07", "2026-02-11", "Some refactoring after plugging back into SonarQube - used Opus4.6 to rull parallel refactoring/fixes using up to 11 agents simultaneously, without a single error/test failure"),
+    ("1.08", "2026-02-12", "Added new tests to get QualityGate Pass in SonarQube"),
 
+    (
+        "1.07",
+        "2026-02-11",
+        "Some refactoring after plugging back into SonarQube - used Opus4.6 to run parallel refactoring/fixes using up to 11 agents simultaneously, without a single error/test failure",
+    ),
     (
         "1.06",
         "2026-02-11",

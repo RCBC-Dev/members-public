@@ -12,7 +12,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-def add_cors_headers(headers, path, url):
+def add_cors_headers(headers):
     """
     Add CORS headers to static files for allowed origins only.
     Uses the DOMAIN environment variable for the origin.

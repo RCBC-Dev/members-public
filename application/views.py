@@ -2261,7 +2261,7 @@ def monthly_enquiries_report(request):
 
     try:
         year, month = map(int, selected_month.split("-"))
-        selected_date = datetime(year, month, 1)
+        selected_date = timezone.make_aware(datetime(year, month, 1))
     except (ValueError, TypeError):
         selected_date = timezone.now().replace(day=1)
         year = selected_date.year

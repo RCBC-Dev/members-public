@@ -1,0 +1,23 @@
+[run]
+branch = True
+omit =
+    */tests/*
+    */test_*.py
+    */__init__.py
+    */urls.py
+    */migrations/*
+    */management/commands/*
+    project/settings/production.py
+    project/settings/test.py
+    application/utils/date_calculations.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+    @abstract

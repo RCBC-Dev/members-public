@@ -104,9 +104,11 @@ def run_tests():
 
         print("Running tests for the XXXXX project... [change this in setup_git_hooks.py]")
 
-        # Run pytest with verbose output directly to the console (no capture)
-        # Add --no-cov to disable coverage reporting and avoid the "No data to report" warning
-        result = subprocess.run([python_cmd, '-m', 'pytest', '-v', '--no-cov'],
+        # Run pytest with coverage reporting for SonarQube
+        # Generates coverage.xml in project root (sonar.python.coverage.reportPaths=coverage.xml)
+        result = subprocess.run([python_cmd, '-m', 'pytest', '-v',
+                                 '--cov=application', '--cov=project',
+                                 '--cov-report=xml:coverage.xml'],
                                capture_output=False,  # Show output directly in console
                                text=True,
                                env=env,

@@ -2,5 +2,5 @@ projectKey=members-public
 serverUrl=http://localhost:9000
 serverVersion=25.10.0.114319
 dashboardUrl=http://localhost:9000/dashboard?id=members-public
-ceTaskId=08f3174b-4b72-46cf-9d5b-5a791fc4b008
-ceTaskUrl=http://localhost:9000/api/ce/task?id=08f3174b-4b72-46cf-9d5b-5a791fc4b008
+ceTaskId=338d166f-0a45-4f40-b6c4-bebf33ad939d
+ceTaskUrl=http://localhost:9000/api/ce/task?id=338d166f-0a45-4f40-b6c4-bebf33ad939d

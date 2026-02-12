@@ -274,6 +274,50 @@ class TestFileSecurityIntegration(TestCase):
         # This would require a real image file and Django settings
         # For now, just test that the service can be imported and initialized
         assert FileUploadService is not None
+
+    def test_handle_image_upload_validation_error_returns_error_dict(self):
+        """FileValidationError in handle_image_upload returns error dict."""
+        from unittest.mock import patch
+        uploaded_file = SimpleUploadedFile(
+            "virus.exe", b"bad content", content_type="application/x-executable"
+        )
+        result = FileUploadService.handle_image_upload(uploaded_file)
+        assert result["success"] is False
+        assert result["error_type"] == "validation"
+
+    def test_handle_image_upload_unexpected_exception_returns_error(self):
+        """Unexpected exception in handle_image_upload returns processing error."""
+        from unittest.mock import patch
+        from application.file_security import ImageProcessingService, FileSecurityService
+        uploaded_file = SimpleUploadedFile(
+            "test.jpg", b"\xff\xd8\xff\xe0" + b"\x00" * 100, content_type="image/jpeg"
+        )
+        # Mock validate_file_security to pass, then process_and_save_image to fail
+        with patch.object(FileSecurityService, "validate_file_security", return_value={"extension": ".jpg"}):
+            with patch.object(ImageProcessingService, "process_and_save_image", side_effect=Exception("disk error")):
+                result = FileUploadService.handle_image_upload(uploaded_file)
+        assert result["success"] is False
+        assert result["error_type"] == "processing"
+
+    def test_handle_email_upload_unexpected_exception_returns_error(self):
+        """Unexpected exception in handle_email_upload returns processing error."""
+        from unittest.mock import patch
+        from application.file_security import FileSecurityService
+        uploaded_file = SimpleUploadedFile(
+            "test.msg", b"\xd0\xcf\x11\xe0" + b"\x00" * 100, content_type="application/vnd.ms-outlook"
+        )
+        with patch.object(FileSecurityService, "validate_file_security", side_effect=Exception("unexpected")):
+            result = FileUploadService.handle_email_upload(uploaded_file)
+        assert result["success"] is False
+        assert result["error_type"] == "processing"
+
+    def test_handle_document_upload_validation_error_returns_error(self):
+        """FileValidationError in handle_document_upload returns error dict."""
+        uploaded_file = SimpleUploadedFile(
+            "script.php", b"<?php ?>", content_type="text/x-php"
+        )
+        result = FileUploadService.handle_document_upload(uploaded_file)
+        assert result["success"] is False
         assert FileSecurityService is not None
         assert ImageProcessingService is not None
 
