@@ -123,6 +123,7 @@ class TestCleanUrlParametersEdgeCases:
 
     def _make_querydict(self, params):
         from django.http import QueryDict
+
         qd = QueryDict(mutable=True)
         qd.update(params)
         return qd

@@ -205,9 +205,7 @@ class TestApplyFieldFilters:
         qs.filter.return_value = qs
         member_val = MagicMock()
         section_val = MagicMock()
-        mixin._apply_field_filters(
-            qs, {"member": member_val, "section": section_val}
-        )
+        mixin._apply_field_filters(qs, {"member": member_val, "section": section_val})
         qs.filter.assert_any_call(member=member_val)
         qs.filter.assert_any_call(section=section_val)
         assert qs.filter.call_count == 2
@@ -215,9 +213,7 @@ class TestApplyFieldFilters:
     def test_none_values_are_skipped(self):
         mixin = _make_mixin()
         qs = MagicMock()
-        mixin._apply_field_filters(
-            qs, {"member": None, "admin": None, "section": None}
-        )
+        mixin._apply_field_filters(qs, {"member": None, "admin": None, "section": None})
         qs.filter.assert_not_called()
 
 
@@ -371,9 +367,7 @@ class TestBuildResolutionTimeData:
     @patch("application.class_views.resolution_time_color", create=True)
     @patch("application.class_views.calculate_calendar_days", create=True)
     @patch("application.class_views.calculate_business_days", create=True)
-    def test_closed_at_set_returns_proper_data(
-        self, mock_biz, mock_cal, mock_color
-    ):
+    def test_closed_at_set_returns_proper_data(self, mock_biz, mock_cal, mock_color):
         # The imports are inside the method, so we patch at the utils level
         with patch(
             "application.utils.calculate_business_days", return_value=3
@@ -390,12 +384,8 @@ class TestBuildResolutionTimeData:
 
             result = view._build_resolution_time_data(enquiry)
 
-            mock_biz_days.assert_called_once_with(
-                enquiry.created_at, enquiry.closed_at
-            )
-            mock_cal_days.assert_called_once_with(
-                enquiry.created_at, enquiry.closed_at
-            )
+            mock_biz_days.assert_called_once_with(enquiry.created_at, enquiry.closed_at)
+            mock_cal_days.assert_called_once_with(enquiry.created_at, enquiry.closed_at)
             mock_rtc.assert_called_once_with(3)
             assert result["business_days"] == 3
             assert result["calendar_days"] == 5
@@ -521,9 +511,7 @@ class TestHandleStandardClose:
         enquiry = MagicMock()
         enquiry.reference = "ENQ-002"
 
-        view._handle_standard_close(
-            request, enquiry, pk=2, service_type="type_a"
-        )
+        view._handle_standard_close(request, enquiry, pk=2, service_type="type_a")
 
         mock_messages.success.assert_called_once()
         assert "ENQ-002" in mock_messages.success.call_args[0][1]
@@ -541,9 +529,7 @@ class TestHandleStandardClose:
         enquiry = MagicMock()
         enquiry.reference = "ENQ-003"
 
-        view._handle_standard_close(
-            request, enquiry, pk=3, service_type="type_a"
-        )
+        view._handle_standard_close(request, enquiry, pk=3, service_type="type_a")
 
         mock_messages.warning.assert_called_once()
         assert "already closed" in mock_messages.warning.call_args[0][1]
@@ -551,17 +537,13 @@ class TestHandleStandardClose:
     @patch("application.class_views.EnquiryService.close_enquiry")
     @patch("application.class_views.redirect")
     @patch("application.class_views.messages")
-    def test_value_error_shows_error(
-        self, mock_messages, mock_redirect, mock_close
-    ):
+    def test_value_error_shows_error(self, mock_messages, mock_redirect, mock_close):
         mock_close.side_effect = ValueError("Bad value")
         view = self._make_view()
         request = MagicMock()
         enquiry = MagicMock()
 
-        view._handle_standard_close(
-            request, enquiry, pk=4, service_type="type_a"
-        )
+        view._handle_standard_close(request, enquiry, pk=4, service_type="type_a")
 
         mock_messages.error.assert_called_once_with(request, "Bad value")
         mock_redirect.assert_called_with("application:enquiry_detail", pk=4)
@@ -588,14 +570,10 @@ class TestResolveRedirect:
 
         view._resolve_redirect(request, pk=10, enquiry=enquiry)
 
-        mock_redirect.assert_called_with(
-            "application:enquiry_detail", pk=10
-        )
+        mock_redirect.assert_called_with("application:enquiry_detail", pk=10)
 
     @patch("application.class_views.HttpResponseRedirect")
-    def test_referer_is_enquiries_list_redirects_to_referer(
-        self, mock_http_redirect
-    ):
+    def test_referer_is_enquiries_list_redirects_to_referer(self, mock_http_redirect):
         view = self._make_view()
         request = MagicMock()
         referer = "http://example.com/enquiries/?status=open"
@@ -608,9 +586,7 @@ class TestResolveRedirect:
         mock_http_redirect.assert_called_with(referer)
 
     @patch("application.class_views.HttpResponseRedirect")
-    def test_referer_is_home_page_redirects_to_referer(
-        self, mock_http_redirect
-    ):
+    def test_referer_is_home_page_redirects_to_referer(self, mock_http_redirect):
         view = self._make_view()
         request = MagicMock()
         referer = "http://example.com/home/"
@@ -623,14 +599,10 @@ class TestResolveRedirect:
         mock_http_redirect.assert_called_with(referer)
 
     @patch("application.class_views.redirect")
-    def test_referer_is_edit_page_does_not_redirect_to_detail(
-        self, mock_redirect
-    ):
+    def test_referer_is_edit_page_does_not_redirect_to_detail(self, mock_redirect):
         view = self._make_view()
         request = MagicMock()
-        request.META = {
-            "HTTP_REFERER": "http://example.com/enquiries/10/edit"
-        }
+        request.META = {"HTTP_REFERER": "http://example.com/enquiries/10/edit"}
         enquiry = MagicMock()
         enquiry.pk = 10
 

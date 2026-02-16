@@ -56,22 +56,23 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "mssql",
-        "NAME": os.environ.get("DATABASE_NAME"),
-        "USER": os.environ.get("DATABASE_USER"),
-        "PASSWORD": os.environ.get(
-            "DATABASE_PASSWORD"
-        ),  # Required environment variable
-        "HOST": os.environ.get("DATABASE_HOST"),
-        "PORT": os.environ.get("DATABASE_PORT"),
-        "OPTIONS": {
-            "driver": "ODBC Driver 17 for SQL Server",  # This might need to be changed to 18 depending on the MS SQL Driver you download
-            "extra_params": "TrustServerCertificate=yes",
-        },
-    }
+_db_engine = os.environ.get("DATABASE_ENGINE", "mssql")
+_db_config = {
+    "ENGINE": _db_engine,
+    "NAME": os.environ.get("DATABASE_NAME"),
+    "USER": os.environ.get("DATABASE_USER"),
+    "PASSWORD": os.environ.get("DATABASE_PASSWORD"),
+    "HOST": os.environ.get("DATABASE_HOST"),
+    "PORT": os.environ.get("DATABASE_PORT"),
 }
+if _db_engine == "mssql":
+    _db_config["OPTIONS"] = {
+        # Change driver to 18 if using ODBC Driver 18 for SQL Server
+        "driver": "ODBC Driver 17 for SQL Server",
+        "extra_params": "TrustServerCertificate=yes",
+    }
+
+DATABASES = {"default": _db_config}
 
 # Security Settings
 

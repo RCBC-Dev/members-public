@@ -21,7 +21,15 @@ from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
 
-from application.models import Admin, Ward, Section, Department, Member, Enquiry, JobType
+from application.models import (
+    Admin,
+    Ward,
+    Section,
+    Department,
+    Member,
+    Enquiry,
+    JobType,
+)
 
 
 def _make_section(name="Section A"):
@@ -34,7 +42,7 @@ def _make_member(email="member1@example.com"):
     ward, _ = Ward.objects.get_or_create(name="Test Ward")
     m, _ = Member.objects.get_or_create(
         email=email,
-        defaults={"first_name": "Test", "last_name": "Member", "ward": ward}
+        defaults={"first_name": "Test", "last_name": "Member", "ward": ward},
     )
     return m
 
@@ -100,7 +108,7 @@ class TestEnquiryCloseView(BaseViewTest):
                 "section": section.pk,
                 "job_type": job_type.pk,
                 "close_note": "Closing test enquiry",
-            }
+            },
         )
         self.assertIn(response.status_code, [200, 302])
 
@@ -116,7 +124,7 @@ class TestEnquiryReopenView(BaseViewTest):
         enquiry.save()
         response = self.client.post(
             reverse("application:enquiry_reopen", kwargs={"pk": enquiry.pk}),
-            {"reopen_reason": "Need to investigate more"}
+            {"reopen_reason": "Need to investigate more"},
         )
         self.assertIn(response.status_code, [200, 302])
 
@@ -132,8 +140,7 @@ class TestEnquiryReopenView(BaseViewTest):
         enquiry.status = "closed"
         enquiry.save()
         response = self.client.post(
-            reverse("application:enquiry_reopen", kwargs={"pk": enquiry.pk}),
-            {}
+            reverse("application:enquiry_reopen", kwargs={"pk": enquiry.pk}), {}
         )
         self.assertIn(response.status_code, [200, 302])
 
@@ -142,7 +149,7 @@ class TestEnquiryReopenView(BaseViewTest):
         response = self.client.post(
             reverse("application:enquiry_reopen", kwargs={"pk": enquiry.pk}),
             {},
-            HTTP_X_REQUESTED_WITH="XMLHttpRequest"
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
         self.assertIn(response.status_code, [200, 302])
         if response.status_code == 200:
@@ -196,9 +203,7 @@ class TestEnquiryListView(BaseViewTest):
         self.assertIn(response.status_code, [200, 302])
 
     def test_list_view_with_search(self):
-        response = self.client.get(
-            reverse("application:enquiry_list") + "?search=test"
-        )
+        response = self.client.get(reverse("application:enquiry_list") + "?search=test")
         self.assertIn(response.status_code, [200, 302])
 
     def test_list_view_closed_filter(self):
@@ -209,7 +214,8 @@ class TestEnquiryListView(BaseViewTest):
 
     def test_list_view_custom_date_range(self):
         response = self.client.get(
-            reverse("application:enquiry_list") + "?date_range=custom&date_from=2024-01-01&date_to=2024-12-31"
+            reverse("application:enquiry_list")
+            + "?date_range=custom&date_from=2024-01-01&date_to=2024-12-31"
         )
         self.assertIn(response.status_code, [200, 302])
 
@@ -292,7 +298,9 @@ class TestApiDeleteAttachment(BaseViewTest):
 
     def test_delete_nonexistent_attachment_returns_404(self):
         response = self.client.delete(
-            reverse("application:api_delete_attachment", kwargs={"attachment_id": 999999})
+            reverse(
+                "application:api_delete_attachment", kwargs={"attachment_id": 999999}
+            )
         )
         self.assertIn(response.status_code, [200, 404])
         if response.status_code == 200:

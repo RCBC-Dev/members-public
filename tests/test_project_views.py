@@ -28,9 +28,7 @@ class TestServeMediaFile:
     """Tests for the serve_media_file view."""
 
     def _login(self, client):
-        user = User.objects.create_user(
-            username="mediauser", password="pass123"
-        )
+        user = User.objects.create_user(username="mediauser", password="pass123")
         client.login(username="mediauser", password="pass123")
         return user
 

@@ -48,7 +48,6 @@ from application.file_management_views import (
     ImageOptimizationStreamer,
 )
 
-
 # ===========================================================================
 # Pure utility function tests (no Django DB required)
 # ===========================================================================
@@ -70,10 +69,10 @@ class TestFormatFileSize:
         assert format_file_size(1024 * 1024) == "1.0 MB"
 
     def test_gigabytes(self):
-        assert format_file_size(1024 ** 3) == "1.0 GB"
+        assert format_file_size(1024**3) == "1.0 GB"
 
     def test_terabytes(self):
-        assert format_file_size(1024 ** 4) == "1.0 TB"
+        assert format_file_size(1024**4) == "1.0 TB"
 
     def test_fractional_kb(self):
         assert format_file_size(1536) == "1.5 KB"
@@ -505,9 +504,7 @@ class TestCollectDirectoryFiles:
                 "application.file_management_views.EnquiryAttachment"
             ) as mock_ea:
                 mock_ea.objects.filter.return_value.first.return_value = None
-                files = _collect_directory_files(
-                    target, Path(tmpdir), iso_dates=False
-                )
+                files = _collect_directory_files(target, Path(tmpdir), iso_dates=False)
 
             assert len(files) == 1
             f = files[0]
@@ -527,16 +524,12 @@ class TestCollectDirectoryFiles:
                 "application.file_management_views.EnquiryAttachment"
             ) as mock_ea:
                 mock_ea.objects.filter.return_value.first.return_value = None
-                files = _collect_directory_files(
-                    target, Path(tmpdir), iso_dates=True
-                )
+                files = _collect_directory_files(target, Path(tmpdir), iso_dates=True)
 
             assert isinstance(files[0]["modified"], str)
 
     def test_nonexistent_directory(self):
-        files = _collect_directory_files(
-            Path("/nonexistent/dir"), Path("/nonexistent")
-        )
+        files = _collect_directory_files(Path("/nonexistent/dir"), Path("/nonexistent"))
         assert files == []
 
 
@@ -682,9 +675,7 @@ class TestCheckPNGNeedsOptimization:
 
     def test_large_dimensions(self):
         streamer = ImageOptimizationStreamer(85, False, 1.0, 1920)
-        needs, reason = streamer._check_png_needs_optimization(
-            3000, 2000, 500000, 0.08
-        )
+        needs, reason = streamer._check_png_needs_optimization(3000, 2000, 500000, 0.08)
         assert needs is True
         assert "dimensions" in reason.lower()
 
@@ -698,17 +689,13 @@ class TestCheckPNGNeedsOptimization:
 
     def test_efficient_small_png(self):
         streamer = ImageOptimizationStreamer(85, False, 1.0, 1920)
-        needs, reason = streamer._check_png_needs_optimization(
-            100, 100, 5000, 0.3
-        )
+        needs, reason = streamer._check_png_needs_optimization(100, 100, 5000, 0.3)
         assert needs is False
         assert "efficient" in reason.lower()
 
     def test_standard_png(self):
         streamer = ImageOptimizationStreamer(85, False, 1.0, 1920)
-        needs, reason = streamer._check_png_needs_optimization(
-            800, 600, 800000, 1.67
-        )
+        needs, reason = streamer._check_png_needs_optimization(800, 600, 800000, 1.67)
         assert needs is True
 
 
@@ -732,17 +719,13 @@ class TestCheckJPEGNeedsOptimization:
 
     def test_well_compressed_small_jpeg(self):
         streamer = ImageOptimizationStreamer(85, False, 1.0, 1920)
-        needs, reason = streamer._check_jpeg_needs_optimization(
-            800, 600, 50000, 0.10
-        )
+        needs, reason = streamer._check_jpeg_needs_optimization(800, 600, 50000, 0.10)
         assert needs is False
         assert "well-compressed" in reason.lower()
 
     def test_standard_jpeg(self):
         streamer = ImageOptimizationStreamer(85, False, 1.0, 1920)
-        needs, reason = streamer._check_jpeg_needs_optimization(
-            800, 600, 1500000, 3.13
-        )
+        needs, reason = streamer._check_jpeg_needs_optimization(800, 600, 1500000, 3.13)
         assert needs is True
 
 
@@ -770,8 +753,8 @@ class TestResizeIfNeeded:
 
         with patch("application.file_management_views.Image") as mock_pil:
             mock_pil.Resampling.LANCZOS = "LANCZOS"
-            img, resized, old_dims, new_dims, events = (
-                streamer._resize_if_needed(mock_img, "big.jpg")
+            img, resized, old_dims, new_dims, events = streamer._resize_if_needed(
+                mock_img, "big.jpg"
             )
 
         assert resized is True

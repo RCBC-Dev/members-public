@@ -37,11 +37,13 @@ class TestGetByKey:
     def test_gets_attribute_from_object(self):
         class Obj:
             score = 99
+
         assert get_by_key(Obj(), "score") == 99
 
     def test_returns_zero_for_missing_object_attribute(self):
         class Obj:
             pass
+
         assert get_by_key(Obj(), "nope") == 0
 
 
@@ -138,5 +140,6 @@ class TestSmartLinebreaks:
 
     def test_result_is_mark_safe(self):
         from django.utils.safestring import SafeData
+
         result = smart_linebreaks("hello\nworld")
         assert isinstance(result, SafeData)

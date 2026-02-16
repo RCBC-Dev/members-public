@@ -38,13 +38,17 @@ class TestAddCorsHeaders:
 
     def test_development_uses_http(self):
         headers = {}
-        with patch.dict(os.environ, {"DOMAIN": "example.com", "ENVIRONMENT": "development"}):
+        with patch.dict(
+            os.environ, {"DOMAIN": "example.com", "ENVIRONMENT": "development"}
+        ):
             add_cors_headers(headers)
         assert headers["Access-Control-Allow-Origin"].startswith("http://")
 
     def test_production_uses_https(self):
         headers = {}
-        with patch.dict(os.environ, {"DOMAIN": "example.com", "ENVIRONMENT": "production"}):
+        with patch.dict(
+            os.environ, {"DOMAIN": "example.com", "ENVIRONMENT": "production"}
+        ):
             add_cors_headers(headers)
         assert headers["Access-Control-Allow-Origin"].startswith("https://")
 
@@ -62,7 +66,9 @@ class TestAddCorsHeaders:
 
     def test_domain_included_in_origin(self):
         headers = {}
-        with patch.dict(os.environ, {"DOMAIN": "mycouncil.gov.uk", "ENVIRONMENT": "production"}):
+        with patch.dict(
+            os.environ, {"DOMAIN": "mycouncil.gov.uk", "ENVIRONMENT": "production"}
+        ):
             add_cors_headers(headers)
         assert "mycouncil.gov.uk" in headers["Access-Control-Allow-Origin"]
 

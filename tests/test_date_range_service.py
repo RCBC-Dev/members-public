@@ -31,10 +31,14 @@ class TestDatesMatchPredefinedRange:
         assert DateRangeService.dates_match_predefined_range(None, None) is False
 
     def test_returns_false_for_invalid_date_format(self):
-        assert DateRangeService.dates_match_predefined_range("not-a-date", "2024-01-01") is False
+        assert (
+            DateRangeService.dates_match_predefined_range("not-a-date", "2024-01-01")
+            is False
+        )
 
     def test_matches_12months_preset(self):
         from application.date_utils import get_preset_date_range
+
         dr = get_preset_date_range("12months", timezone_aware=False)
         result = DateRangeService.dates_match_predefined_range(
             dr.date_from_str, dr.date_to_str
@@ -43,6 +47,7 @@ class TestDatesMatchPredefinedRange:
 
     def test_matches_3months_preset(self):
         from application.date_utils import get_preset_date_range
+
         dr = get_preset_date_range("3months", timezone_aware=False)
         result = DateRangeService.dates_match_predefined_range(
             dr.date_from_str, dr.date_to_str
@@ -50,7 +55,9 @@ class TestDatesMatchPredefinedRange:
         assert result is True
 
     def test_does_not_match_arbitrary_dates(self):
-        result = DateRangeService.dates_match_predefined_range("2000-01-01", "2000-06-01")
+        result = DateRangeService.dates_match_predefined_range(
+            "2000-01-01", "2000-06-01"
+        )
         assert result is False
 
 
@@ -82,6 +89,7 @@ class TestGetDefaultFilterRedirect:
 
     def test_returns_http_response_redirect(self):
         from django.http import HttpResponseRedirect
+
         result = DateRangeService.get_default_filter_redirect("/enquiries/")
         assert isinstance(result, HttpResponseRedirect)
 
@@ -95,6 +103,7 @@ class TestCleanUrlParameters:
 
     def _make_querydict(self, params):
         from django.http import QueryDict
+
         qd = QueryDict(mutable=True)
         qd.update(params)
         return qd

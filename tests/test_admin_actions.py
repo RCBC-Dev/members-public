@@ -238,7 +238,13 @@ class TestMergeJobTypes:
     @patch("application.admin._delete_duplicate_and_report")
     @patch("application.admin._validate_merge_selection")
     def test_successful_merge_reassigns_contacts(
-        self, mock_validate, mock_delete, mock_report, mock_reassign, mock_enquiry, mock_tx
+        self,
+        mock_validate,
+        mock_delete,
+        mock_report,
+        mock_reassign,
+        mock_enquiry,
+        mock_tx,
     ):
         request = MagicMock()
         primary = MagicMock()

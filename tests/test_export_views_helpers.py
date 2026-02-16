@@ -115,6 +115,7 @@ class TestCalculateResolutionTime:
 
     def test_closed_with_dates_returns_string(self):
         from django.utils import timezone
+
         enquiry = MagicMock()
         enquiry.status = "closed"
         enquiry.created_at = timezone.make_aware(datetime(2024, 6, 10))

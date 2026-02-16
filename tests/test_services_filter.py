@@ -49,15 +49,21 @@ class TestBuildDateRangeSuffix:
     """Tests for EnquiryFilterService._build_date_range_suffix."""
 
     def test_3months_returns_predefined_label(self):
-        result = EnquiryFilterService._build_date_range_suffix({"date_range": "3months"})
+        result = EnquiryFilterService._build_date_range_suffix(
+            {"date_range": "3months"}
+        )
         assert "3 months" in result
 
     def test_6months_returns_predefined_label(self):
-        result = EnquiryFilterService._build_date_range_suffix({"date_range": "6months"})
+        result = EnquiryFilterService._build_date_range_suffix(
+            {"date_range": "6months"}
+        )
         assert "6 months" in result
 
     def test_12months_returns_predefined_label(self):
-        result = EnquiryFilterService._build_date_range_suffix({"date_range": "12months"})
+        result = EnquiryFilterService._build_date_range_suffix(
+            {"date_range": "12months"}
+        )
         assert "12 months" in result
 
     def test_all_returns_all_time_label(self):
@@ -65,54 +71,66 @@ class TestBuildDateRangeSuffix:
         assert "All Time" in result
 
     def test_custom_with_both_dates_includes_both(self):
-        result = EnquiryFilterService._build_date_range_suffix({
-            "date_range": "custom",
-            "date_from": date(2024, 1, 1),
-            "date_to": date(2024, 6, 30),
-        })
+        result = EnquiryFilterService._build_date_range_suffix(
+            {
+                "date_range": "custom",
+                "date_from": date(2024, 1, 1),
+                "date_to": date(2024, 6, 30),
+            }
+        )
         assert "01/01/2024" in result
         assert "30/06/2024" in result
 
     def test_custom_with_only_date_from(self):
-        result = EnquiryFilterService._build_date_range_suffix({
-            "date_range": "custom",
-            "date_from": date(2024, 1, 1),
-            "date_to": None,
-        })
+        result = EnquiryFilterService._build_date_range_suffix(
+            {
+                "date_range": "custom",
+                "date_from": date(2024, 1, 1),
+                "date_to": None,
+            }
+        )
         assert "from" in result
         assert "01/01/2024" in result
 
     def test_custom_with_only_date_to(self):
-        result = EnquiryFilterService._build_date_range_suffix({
-            "date_range": "custom",
-            "date_from": None,
-            "date_to": date(2024, 6, 30),
-        })
+        result = EnquiryFilterService._build_date_range_suffix(
+            {
+                "date_range": "custom",
+                "date_from": None,
+                "date_to": date(2024, 6, 30),
+            }
+        )
         assert "until" in result
         assert "30/06/2024" in result
 
     def test_custom_without_dates_returns_empty(self):
-        result = EnquiryFilterService._build_date_range_suffix({
-            "date_range": "custom",
-            "date_from": None,
-            "date_to": None,
-        })
+        result = EnquiryFilterService._build_date_range_suffix(
+            {
+                "date_range": "custom",
+                "date_from": None,
+                "date_to": None,
+            }
+        )
         assert result == ""
 
     def test_empty_date_range_treated_as_custom(self):
         # Empty string date_range is treated as custom
-        result = EnquiryFilterService._build_date_range_suffix({
-            "date_range": "",
-            "date_from": None,
-            "date_to": None,
-        })
+        result = EnquiryFilterService._build_date_range_suffix(
+            {
+                "date_range": "",
+                "date_from": None,
+                "date_to": None,
+            }
+        )
         assert result == ""
 
     def test_unknown_non_custom_range_returns_empty(self):
         # Non-empty, non-predefined, non-custom range returns empty
-        result = EnquiryFilterService._build_date_range_suffix({
-            "date_range": "quarterly",
-        })
+        result = EnquiryFilterService._build_date_range_suffix(
+            {
+                "date_range": "quarterly",
+            }
+        )
         assert result == ""
 
 

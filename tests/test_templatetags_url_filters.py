@@ -26,6 +26,7 @@ def make_context(url="/enquiries/", params=None):
     query = ""
     if params:
         from urllib.parse import urlencode
+
         query = urlencode(params)
     request = factory.get(url + ("?" + query if query else ""))
     return {"request": request}

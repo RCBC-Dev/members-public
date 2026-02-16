@@ -102,7 +102,7 @@ def run_tests():
         # Run tests in the project root directory
         cwd = os.getcwd()
 
-        print("Running tests for the XXXXX project... [change this in setup_git_hooks.py]")
+        print("Running tests for the members-public project... [change this in setup_git_hooks.py]")
 
         # Run pytest with coverage reporting for SonarQube
         # Generates coverage.xml in project root (sonar.python.coverage.reportPaths=coverage.xml)

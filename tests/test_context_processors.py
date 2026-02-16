@@ -65,6 +65,7 @@ class TestVersionInfoContextProcessor:
 
     def test_council_name_falls_back_to_default(self, cp_request):
         from django.conf import settings
+
         original = getattr(settings, "COUNCIL_NAME", None)
         try:
             if hasattr(settings, "COUNCIL_NAME"):
@@ -77,6 +78,7 @@ class TestVersionInfoContextProcessor:
 
     def test_council_name_uses_settings_value(self, cp_request):
         from django.conf import settings
+
         with patch.object(settings, "COUNCIL_NAME", "Test Council", create=True):
             ctx = version_info(cp_request)
             assert ctx["council_name"] == "Test Council"

@@ -96,6 +96,7 @@ class TestApplySearchFulltextMocked:
 
     def test_single_word_uses_prefix_wildcard(self):
         from unittest.mock import patch
+
         qs = self._make_queryset()
         conn_mock = self._mock_fulltext_connection(has_index=True)
         with patch("application.search_service.connection", conn_mock):
@@ -106,6 +107,7 @@ class TestApplySearchFulltextMocked:
 
     def test_phrase_uses_exact_phrase_no_wildcard(self):
         from unittest.mock import patch
+
         qs = self._make_queryset()
         conn_mock = self._mock_fulltext_connection(has_index=True)
         with patch("application.search_service.connection", conn_mock):
@@ -117,6 +119,7 @@ class TestApplySearchFulltextMocked:
 
     def test_no_fulltext_index_falls_back_to_like(self):
         from unittest.mock import patch
+
         qs = self._make_queryset()
         conn_mock = self._mock_fulltext_connection(has_index=False)
         with patch("application.search_service.connection", conn_mock):
@@ -127,6 +130,7 @@ class TestApplySearchFulltextMocked:
     def test_short_term_skips_fulltext_check(self):
         """Terms shorter than 3 chars skip FULLTEXT even on SQL Server."""
         from unittest.mock import patch
+
         qs = self._make_queryset()
         conn_mock = self._mock_fulltext_connection(has_index=True)
         with patch("application.search_service.connection", conn_mock):

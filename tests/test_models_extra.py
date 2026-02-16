@@ -212,7 +212,9 @@ class TestEnquiryDueDate:
 
     def test_due_date_fallback_when_calculation_returns_none(self):
         enq = self._make_enquiry()
-        with patch("application.utils.calculate_working_days_due_date", return_value=None):
+        with patch(
+            "application.utils.calculate_working_days_due_date", return_value=None
+        ):
             result = enq.due_date
         # Should fall back to created_at + 5 days
         expected = enq.created_at + timezone.timedelta(days=5)
@@ -232,7 +234,9 @@ class TestEnquiryHistoryMethods:
             section=section,
             status="open",
         )
-        user, _ = User.objects.get_or_create(username="hist_user", defaults={"password": "p"})
+        user, _ = User.objects.get_or_create(
+            username="hist_user", defaults={"password": "p"}
+        )
         history = EnquiryHistory(
             enquiry=enq,
             note="Test note",

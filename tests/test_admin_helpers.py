@@ -52,6 +52,7 @@ class TestFormatProtectedObject:
         class NoMeta:
             def __str__(self):
                 return "fallback text"
+
         result = _format_protected_object(NoMeta())
         assert result == "fallback text"
 
@@ -80,8 +81,10 @@ class TestCollectProtectedObjects:
         class FakeModel:
             _meta = type("Meta", (), {"verbose_name": "section"})()
             pk = 1
+
             def __str__(self):
                 return "FakeModel"
+
         result = _collect_protected_objects([FakeModel()])
         assert len(result) == 1
         assert "section" in result[0]
@@ -91,6 +94,7 @@ class TestCollectProtectedObjects:
         class FakeModel:
             _meta = type("Meta", (), {"verbose_name": "ward"})()
             pk = 5
+
         result = _collect_protected_objects([[FakeModel()]])
         assert len(result) == 1
         assert "ward" in result[0]
@@ -100,6 +104,7 @@ class TestCollectProtectedObjects:
             def __init__(self, name, pk):
                 self._meta = type("Meta", (), {"verbose_name": name})()
                 self.pk = pk
+
         objs = [FakeModel(f"model{i}", i) for i in range(3)]
         result = _collect_protected_objects(objs)
         assert len(result) == 3
@@ -251,7 +256,9 @@ class TestShouldSkipAttachment:
     @patch("os.path.getsize", return_value=3 * 1024 * 1024)
     @patch("os.path.exists", return_value=True)
     @patch("django.conf.settings")
-    def test_image_large_file_returns_false(self, mock_settings, mock_exists, mock_size):
+    def test_image_large_file_returns_false(
+        self, mock_settings, mock_exists, mock_size
+    ):
         mock_settings.MEDIA_ROOT = "C:\\fake\\media"
         att = self._make_attachment("photo.jpeg", "uploads/photo.jpeg")
         assert _should_skip_attachment(att) is False

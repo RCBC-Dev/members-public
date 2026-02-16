@@ -117,6 +117,7 @@ class TestDateRangeCalculatorParseRequest:
 
     def _make_request(self, params):
         from django.test import RequestFactory
+
         return RequestFactory().get("/", params)
 
     def test_parses_preset_range_from_request(self):
@@ -142,7 +143,11 @@ class TestDateRangeCalculatorParseRequest:
     def test_custom_dates_that_differ_from_preset_become_custom(self):
         calc = DateRangeCalculator(timezone_aware=False)
         req = self._make_request(
-            {"date_range": "3months", "date_from": "2020-01-01", "date_to": "2020-12-31"}
+            {
+                "date_range": "3months",
+                "date_from": "2020-01-01",
+                "date_to": "2020-12-31",
+            }
         )
         dr = calc.parse_request_dates(req)
         assert dr.range_type == "custom"
@@ -187,9 +192,12 @@ class TestGetDateRangeDescription:
 
     def _make_dr(self, range_type, months=None, from_str="", to_str=""):
         return DateRange(
-            date_from=None, date_to=None,
-            date_from_str=from_str, date_to_str=to_str,
-            range_type=range_type, months=months
+            date_from=None,
+            date_to=None,
+            date_from_str=from_str,
+            date_to_str=to_str,
+            range_type=range_type,
+            months=months,
         )
 
     def test_all_range_description(self):
@@ -210,7 +218,9 @@ class TestGetDateRangeDescription:
         assert "selected period" in result
 
     def test_include_dates_appends_formatted_dates(self):
-        dr = self._make_dr("12months", months=12, from_str="2024-01-01", to_str="2024-12-31")
+        dr = self._make_dr(
+            "12months", months=12, from_str="2024-01-01", to_str="2024-12-31"
+        )
         result = get_date_range_description(dr, include_dates=True)
         assert "01/01/2024" in result
         assert "31/12/2024" in result
@@ -330,9 +340,14 @@ class TestDateUtilsErrorBranches:
     def test_parse_request_dates_invalid_date_from_string(self):
         """Invalid date_from string in request is handled without error."""
         from unittest.mock import MagicMock
+
         calc = DateRangeCalculator(timezone_aware=True)
         mock_request = MagicMock()
-        mock_request.GET = {"date_range": "custom", "date_from": "invalid", "date_to": "2024-06-30"}
+        mock_request.GET = {
+            "date_range": "custom",
+            "date_from": "invalid",
+            "date_to": "2024-06-30",
+        }
         result = calc.parse_request_dates(mock_request, "12months")
         # Should not raise
         assert result is not None
@@ -340,8 +355,13 @@ class TestDateUtilsErrorBranches:
     def test_parse_request_dates_invalid_date_to_string(self):
         """Invalid date_to string in request is handled without error."""
         from unittest.mock import MagicMock
+
         calc = DateRangeCalculator(timezone_aware=True)
         mock_request = MagicMock()
-        mock_request.GET = {"date_range": "custom", "date_from": "2024-01-01", "date_to": "invalid"}
+        mock_request.GET = {
+            "date_range": "custom",
+            "date_from": "2024-01-01",
+            "date_to": "invalid",
+        }
         result = calc.parse_request_dates(mock_request, "12months")
         assert result is not None

@@ -45,7 +45,9 @@ class TestGetEditSuccessMessage:
         assert "No changes" in msg
 
     def test_changes_only_returns_success(self):
-        msg_type, msg = _get_edit_success_message(self._make_enquiry(), ["title"], False)
+        msg_type, msg = _get_edit_success_message(
+            self._make_enquiry(), ["title"], False
+        )
         assert msg_type == "success"
         assert "updated successfully" in msg
 
@@ -182,6 +184,7 @@ class TestBuildReopenAjaxSuccess:
 
     def test_returns_json_response_with_success(self):
         from django.http import JsonResponse
+
         enquiry = MagicMock()
         enquiry.reference = "ENQ-001"
         enquiry.id = 42
@@ -191,6 +194,7 @@ class TestBuildReopenAjaxSuccess:
         response = _build_reopen_ajax_success(enquiry)
         assert isinstance(response, JsonResponse)
         import json
+
         data = json.loads(response.content)
         assert data["success"] is True
         assert "ENQ-001" in data["message"]
@@ -201,9 +205,11 @@ class TestHandleReopenMissingReason:
 
     def test_ajax_request_returns_json(self):
         from django.http import JsonResponse
+
         factory = RequestFactory()
         request = factory.post("/", HTTP_X_REQUESTED_WITH="XMLHttpRequest")
         from django.contrib.messages.storage.fallback import FallbackStorage
+
         request.session = {}
         request._messages = FallbackStorage(request)
         response = _handle_reopen_missing_reason(request, 1)

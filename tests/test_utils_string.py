@@ -71,7 +71,9 @@ class TestRemoveBanners:
         assert _remove_banners(None) == ""
 
     def test_removes_warning_banner(self):
-        text = "Hello\nWARNING: This email came from outside of the organisation.\nWorld"
+        text = (
+            "Hello\nWARNING: This email came from outside of the organisation.\nWorld"
+        )
         result = _remove_banners(text)
         assert "WARNING" not in result
         assert "Hello" in result

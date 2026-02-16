@@ -64,7 +64,9 @@ class TestColorForValue:
         assert result == "text-danger"
 
     def test_overdue_thresholds_2_days(self):
-        result = _color_for_value(1, _OVERDUE_THRESHOLDS, "fw-bold text-white bg-danger px-2 py-1 rounded")
+        result = _color_for_value(
+            1, _OVERDUE_THRESHOLDS, "fw-bold text-white bg-danger px-2 py-1 rounded"
+        )
         assert "text-warning" in result
 
 
@@ -93,7 +95,9 @@ class TestBuildFilterUrl:
         assert "status=open" in result
 
     def test_preserves_existing_filters(self):
-        result = _build_filter_url("/enquiries/", {"date_range": "12months"}, status="open")
+        result = _build_filter_url(
+            "/enquiries/", {"date_range": "12months"}, status="open"
+        )
         assert "date_range=12months" in result
         assert "status=open" in result
 
@@ -110,14 +114,16 @@ class TestFilterLink:
     """Tests for _filter_link."""
 
     def test_returns_anchor_tag(self):
-        result = _filter_link("/enquiries/", {}, {"status": "open"}, "Open", "Filter by open")
+        result = _filter_link(
+            "/enquiries/", {}, {"status": "open"}, "Open", "Filter by open"
+        )
         assert "<a " in result
         assert "</a>" in result
         assert "Open" in result
 
     def test_includes_href(self):
         result = _filter_link("/enquiries/", {}, {"status": "open"}, "Open", "Filter")
-        assert 'href=' in result
+        assert "href=" in result
         assert "status=open" in result
 
     def test_escapes_display_text(self):
@@ -133,7 +139,9 @@ class TestOptionalFilterLink:
     """Tests for _optional_filter_link."""
 
     def test_returns_fallback_for_none_object(self):
-        result = _optional_filter_link("/enquiries/", {}, None, "member", "name", "Member")
+        result = _optional_filter_link(
+            "/enquiries/", {}, None, "member", "name", "Member"
+        )
         assert result == "Not assigned"
 
     def test_custom_fallback_text(self):
@@ -262,9 +270,14 @@ class TestDataTablesInit:
 
     def test_request_data_none_falls_back_to_get(self):
         request = MagicMock()
-        request.GET = {"draw": "4", "start": "10", "length": "20",
-                       "search[value]": "", "order[0][column]": "0",
-                       "order[0][dir]": "asc"}
+        request.GET = {
+            "draw": "4",
+            "start": "10",
+            "length": "20",
+            "search[value]": "",
+            "order[0][column]": "0",
+            "order[0][dir]": "asc",
+        }
         dt = DataTablesServerSide(request, request_data=None)
         assert dt.draw == 4
         assert dt.start == 10
@@ -356,8 +369,7 @@ class TestGetActionsHtml:
     @patch("application.datatables_views.reverse")
     def test_open_enquiry_has_edit_and_close(self, mock_reverse):
         mock_reverse.side_effect = lambda name, args=None: (
-            f"/enquiry/{args[0]}/" if "detail" in name
-            else f"/enquiry/{args[0]}/edit/"
+            f"/enquiry/{args[0]}/" if "detail" in name else f"/enquiry/{args[0]}/edit/"
         )
         enquiry = MagicMock()
         enquiry.id = 42

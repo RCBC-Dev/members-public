@@ -129,12 +129,14 @@ class TestCreateJsonResponse:
     def test_success_response(self):
         response = create_json_response(True)
         import json
+
         data = json.loads(response.content)
         assert data["success"] is True
 
     def test_error_response(self):
         response = create_json_response(False, error="Something failed")
         import json
+
         data = json.loads(response.content)
         assert data["success"] is False
         assert data["error"] == "Something failed"
@@ -142,12 +144,14 @@ class TestCreateJsonResponse:
     def test_default_error_message(self):
         response = create_json_response(False)
         import json
+
         data = json.loads(response.content)
         assert "error" in data
 
     def test_success_with_message(self):
         response = create_json_response(True, message="Done!")
         import json
+
         data = json.loads(response.content)
         assert data["message"] == "Done!"
         assert data["message_type"] == "success"
@@ -155,18 +159,21 @@ class TestCreateJsonResponse:
     def test_success_with_dict_data(self):
         response = create_json_response(True, data={"id": 42})
         import json
+
         data = json.loads(response.content)
         assert data["id"] == 42
 
     def test_success_with_list_data(self):
         response = create_json_response(True, data=[1, 2, 3])
         import json
+
         data = json.loads(response.content)
         assert data["data"] == [1, 2, 3]
 
     def test_success_with_extra_kwargs(self):
         response = create_json_response(True, count=10)
         import json
+
         data = json.loads(response.content)
         assert data["count"] == 10
 
@@ -177,6 +184,7 @@ class TestCreateJsonResponse:
     def test_error_has_message_type_error(self):
         response = create_json_response(False, error="fail")
         import json
+
         data = json.loads(response.content)
         assert data["message_type"] == "error"
 

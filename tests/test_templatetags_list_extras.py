@@ -63,8 +63,8 @@ class TestBusinessDaysBetween:
     """Tests for the business_days_between filter."""
 
     def test_monday_to_friday_is_four_days(self):
-        start = date(2024, 1, 1)   # Monday
-        end = date(2024, 1, 5)     # Friday
+        start = date(2024, 1, 1)  # Monday
+        end = date(2024, 1, 5)  # Friday
         result = business_days_between(start, end)
         assert result == 4
 
@@ -133,6 +133,7 @@ class TestResolutionTimeDisplay:
     def _make_enquiry(self, status, created_at=None, closed_at=None):
         """Build a simple mock enquiry object."""
         from unittest.mock import MagicMock
+
         enquiry = MagicMock()
         enquiry.status = status
         enquiry.created_at = created_at or timezone.now() - timezone.timedelta(days=3)

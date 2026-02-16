@@ -146,12 +146,12 @@ A Django-based web application for managing council member enquiries with Azure 
 
    **What does this do?** This creates sample data in the database so you can test the application without manually entering everything. It creates example members, wards, departments, contacts, and job types that you can use to create enquiries.
 
-7. **Create a superuser (optional, for admin access)**
+7. **Create a superuser**
    ```bash
    python manage.py createsuperuser
    ```
 
-   **What does this do?** A superuser is an administrator account that has access to the Django admin interface at `/admin/`. This is useful for managing users and data directly. You can skip this if you don't need admin access.
+   **What does this do?** A superuser is an administrator account that has access to the Django admin interface at `/admin/`. This is useful for managing users and data directly. You will need at least one admin user, this admin user can adjust user accounts (to give them admin), to create/edit data such as members, departments, sections, job types. You can also use a superuser account to test the application in Development (prior to interfacing with Azure Entra).
 
 8. **Start the development server**
    ```bash
@@ -182,7 +182,7 @@ If you want to test the application without Azure AD setup:
    - Select your user account
    - Save
 
-**Important**: Whether you use Azure AD or Django admin login, you must add your account to Admin table, to have the ability to create new enquiries.Users not in Admin record can still view the application.
+**Important**: Whether you use Azure AD or Django admin login, you must add your account to Admin table, to have the ability to create new enquiries. Users not in Admin record can still view the application.
 
 ## Azure AD Configuration
 
@@ -248,6 +248,8 @@ After registration, you'll need three pieces of information:
    ```
 
 **Security Note**: The `.env` file is already excluded from version control via `.gitignore`. Never commit the `.env` file as it contains sensitive credentials.
+
+Remove the # to uncomment a line
 
 ## Environment-Specific Configuration
 
@@ -530,7 +532,7 @@ This script sets up two Git hooks:
 The easiest way to commit changes is using the `commit.bat` script:
 
 ```bash
-commit "Your descriptive commit message here"
+commit.bat "Your descriptive commit message here"
 ```
 
 **What it does:**
@@ -642,52 +644,31 @@ This application can be deployed to various hosting environments:
 
 ### Database Configuration
 
-The application supports multiple database backends:
+The application supports multiple database backends. All connection details — including the engine — are set in `.env`. No changes to settings files are needed to switch databases.
 
 **Development** (Default)
-- SQLite - No configuration needed, file-based database
+- SQLite — no configuration needed, uses `db.sqlite3` automatically
 
-**Production** - Choose one:
+**Test / Production** — set these in `.env`:
 
-**Azure SQL Database**
-```python
-# In project/settings/production.py
-DATABASES = {
-    'default': {
-        'ENGINE': 'mssql',
-        'NAME': 'your-database-name',
-        'USER': 'your-username@server-name',
-        'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
-        'HOST': 'server-name.database.windows.net',
-        'PORT': 1433,
-        'OPTIONS': {
-            'driver': 'ODBC Driver 17 for SQL Server',
-            'extra_params': 'TrustServerCertificate=yes',
-        }
-    }
-}
+```env
+DATABASE_ENGINE=mssql
+DATABASE_NAME=your_database_name
+DATABASE_USER=your_database_user
+DATABASE_PASSWORD=your_database_password
+DATABASE_HOST=your.sql.server.address
+DATABASE_PORT=1433
 ```
 
-**PostgreSQL**
-```python
-# In project/settings/production.py
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'enquiries_db',
-        'USER': 'postgres_user',
-        'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
-        'HOST': 'database.example.com',
-        'PORT': 5432,
-    }
-}
-```
-Install PostgreSQL driver: `pip install psycopg2-binary`
+To use a different backend, change `DATABASE_ENGINE`:
 
-**Other Databases** (MySQL, Oracle, etc.)
-- Update the `ENGINE` setting to the appropriate database backend
-- Install the required Python driver package
-- Update `HOST`, `PORT`, and credentials
+| Backend | `DATABASE_ENGINE` value | Driver package |
+|---|---|---|
+| Microsoft SQL Server | `mssql` | `mssql-django` (included) |
+| PostgreSQL | `django.db.backends.postgresql` | `pip install psycopg2-binary` |
+| MySQL | `django.db.backends.mysql` | `pip install mysqlclient` |
+
+When `DATABASE_ENGINE=mssql`, the settings automatically include the required ODBC options (`ODBC Driver 17 for SQL Server`). If you have ODBC Driver 18 installed, update the `driver` value in `project/settings/test.py` or `production.py`.
 
 ### Environment Variables for Deployment
 
@@ -701,6 +682,7 @@ DOMAIN=your-production-domain.org
 DJANGO_SECRET_KEY=your-secret-key-here
 
 # Database
+DATABASE_ENGINE=mssql
 DATABASE_NAME=enquiries_db
 DATABASE_USER=db_user
 DATABASE_PASSWORD=secure-password

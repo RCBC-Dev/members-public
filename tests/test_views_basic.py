@@ -21,12 +21,22 @@ from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from django.urls import reverse
 
-from application.models import Admin, Ward, Section, Department, Member, Enquiry, JobType
+from application.models import (
+    Admin,
+    Ward,
+    Section,
+    Department,
+    Member,
+    Enquiry,
+    JobType,
+)
 
 
 def _make_section():
     dept, _ = Department.objects.get_or_create(name="Test Dept")
-    section, _ = Section.objects.get_or_create(name="Test Section", defaults={"department": dept})
+    section, _ = Section.objects.get_or_create(
+        name="Test Section", defaults={"department": dept}
+    )
     return section
 
 
@@ -113,9 +123,7 @@ class TestEnquiryListView(BaseViewTest):
         self.assertIn(response.status_code, [200, 302])
 
     def test_enquiry_list_with_status_filter(self):
-        response = self.client.get(
-            reverse("application:enquiry_list") + "?status=open"
-        )
+        response = self.client.get(reverse("application:enquiry_list") + "?status=open")
         self.assertIn(response.status_code, [200, 302])
 
     def test_enquiry_list_with_date_range(self):
@@ -148,9 +156,7 @@ class TestApiEndpoints(BaseViewTest):
     """Test API endpoints."""
 
     def test_api_search_job_types_empty(self):
-        response = self.client.get(
-            reverse("application:api_search_job_types") + "?q="
-        )
+        response = self.client.get(reverse("application:api_search_job_types") + "?q=")
         self.assertIn(response.status_code, [200, 302])
 
     def test_api_search_job_types_with_query(self):
@@ -175,7 +181,8 @@ class TestApiEndpoints(BaseViewTest):
 
     def test_api_find_member_by_email_unknown(self):
         response = self.client.get(
-            reverse("application:api_find_member_by_email") + "?email=nobody@nowhere.com"
+            reverse("application:api_find_member_by_email")
+            + "?email=nobody@nowhere.com"
         )
         self.assertIn(response.status_code, [200, 302])
 
@@ -186,19 +193,16 @@ class TestApiEndpoints(BaseViewTest):
         )
         self.assertEqual(response.status_code, 200)
         import json
+
         data = json.loads(response.content)
         self.assertTrue(data.get("success"))
 
     def test_api_get_contacts_by_job_type_no_id(self):
-        response = self.client.get(
-            reverse("application:api_get_contacts_by_job_type")
-        )
+        response = self.client.get(reverse("application:api_get_contacts_by_job_type"))
         self.assertIn(response.status_code, [200, 302, 400])
 
     def test_api_get_job_types_by_contact_no_id(self):
-        response = self.client.get(
-            reverse("application:api_get_job_types_by_contact")
-        )
+        response = self.client.get(reverse("application:api_get_job_types_by_contact"))
         self.assertIn(response.status_code, [200, 302, 400])
 
     def test_api_get_contact_section_no_id(self):
@@ -210,45 +214,31 @@ class TestReportViews(BaseViewTest):
     """Test report views."""
 
     def test_average_response_time_report(self):
-        response = self.client.get(
-            reverse("application:average_response_time_report")
-        )
+        response = self.client.get(reverse("application:average_response_time_report"))
         self.assertIn(response.status_code, [200, 302])
 
     def test_overdue_enquiries_report(self):
-        response = self.client.get(
-            reverse("application:overdue_enquiries_report")
-        )
+        response = self.client.get(reverse("application:overdue_enquiries_report"))
         self.assertIn(response.status_code, [200, 302])
 
     def test_enquiries_per_member_report(self):
-        response = self.client.get(
-            reverse("application:enquiries_per_member_report")
-        )
+        response = self.client.get(reverse("application:enquiries_per_member_report"))
         self.assertIn(response.status_code, [200, 302])
 
     def test_enquiries_per_section_report(self):
-        response = self.client.get(
-            reverse("application:enquiries_per_section_report")
-        )
+        response = self.client.get(reverse("application:enquiries_per_section_report"))
         self.assertIn(response.status_code, [200, 302])
 
     def test_enquiries_per_ward_report(self):
-        response = self.client.get(
-            reverse("application:enquiries_per_ward_report")
-        )
+        response = self.client.get(reverse("application:enquiries_per_ward_report"))
         self.assertIn(response.status_code, [200, 302])
 
     def test_monthly_enquiries_report(self):
-        response = self.client.get(
-            reverse("application:monthly_enquiries_report")
-        )
+        response = self.client.get(reverse("application:monthly_enquiries_report"))
         self.assertIn(response.status_code, [200, 302])
 
     def test_performance_dashboard_report(self):
-        response = self.client.get(
-            reverse("application:performance_dashboard_report")
-        )
+        response = self.client.get(reverse("application:performance_dashboard_report"))
         self.assertIn(response.status_code, [200, 302])
 
     def test_enquiries_per_member_monthly_report(self):
@@ -264,9 +254,7 @@ class TestReportViews(BaseViewTest):
         self.assertIn(response.status_code, [200, 302])
 
     def test_enquiries_per_job_report(self):
-        response = self.client.get(
-            reverse("application:enquiries_per_job_report")
-        )
+        response = self.client.get(reverse("application:enquiries_per_job_report"))
         self.assertIn(response.status_code, [200, 302])
 
     def test_enquiries_per_job_monthly_report(self):
@@ -276,15 +264,11 @@ class TestReportViews(BaseViewTest):
         self.assertIn(response.status_code, [200, 302])
 
     def test_section_workload_chart_report(self):
-        response = self.client.get(
-            reverse("application:section_workload_chart_report")
-        )
+        response = self.client.get(reverse("application:section_workload_chart_report"))
         self.assertIn(response.status_code, [200, 302])
 
     def test_job_workload_chart_report(self):
-        response = self.client.get(
-            reverse("application:job_workload_chart_report")
-        )
+        response = self.client.get(reverse("application:job_workload_chart_report"))
         self.assertIn(response.status_code, [200, 302])
 
     def test_enquiries_per_ward_monthly_report(self):

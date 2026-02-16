@@ -45,7 +45,9 @@ class TestValidateEmailFile:
     def test_msg_extension_passes_to_security_service(self):
         mock_file = MagicMock()
         mock_file.name = "email.msg"
-        with patch("application.email_service.FileUploadService.handle_email_upload") as mock_upload:
+        with patch(
+            "application.email_service.FileUploadService.handle_email_upload"
+        ) as mock_upload:
             mock_upload.return_value = {"success": True, "file_info": {}}
             result = EmailProcessingService.validate_email_file(mock_file)
             assert result["success"] is True
@@ -54,7 +56,9 @@ class TestValidateEmailFile:
     def test_eml_extension_passes_to_security_service(self):
         mock_file = MagicMock()
         mock_file.name = "email.eml"
-        with patch("application.email_service.FileUploadService.handle_email_upload") as mock_upload:
+        with patch(
+            "application.email_service.FileUploadService.handle_email_upload"
+        ) as mock_upload:
             mock_upload.return_value = {"success": True, "file_info": {}}
             result = EmailProcessingService.validate_email_file(mock_file)
             assert result["success"] is True
@@ -62,7 +66,9 @@ class TestValidateEmailFile:
     def test_security_service_failure_propagates(self):
         mock_file = MagicMock()
         mock_file.name = "email.msg"
-        with patch("application.email_service.FileUploadService.handle_email_upload") as mock_upload:
+        with patch(
+            "application.email_service.FileUploadService.handle_email_upload"
+        ) as mock_upload:
             mock_upload.return_value = {
                 "success": False,
                 "error": "File too large",
@@ -75,7 +81,9 @@ class TestValidateEmailFile:
     def test_security_service_exception_returns_error(self):
         mock_file = MagicMock()
         mock_file.name = "email.msg"
-        with patch("application.email_service.FileUploadService.handle_email_upload") as mock_upload:
+        with patch(
+            "application.email_service.FileUploadService.handle_email_upload"
+        ) as mock_upload:
             mock_upload.side_effect = Exception("unexpected error")
             result = EmailProcessingService.validate_email_file(mock_file)
             assert result["success"] is False
@@ -84,7 +92,9 @@ class TestValidateEmailFile:
     def test_case_insensitive_extension(self):
         mock_file = MagicMock()
         mock_file.name = "email.MSG"
-        with patch("application.email_service.FileUploadService.handle_email_upload") as mock_upload:
+        with patch(
+            "application.email_service.FileUploadService.handle_email_upload"
+        ) as mock_upload:
             mock_upload.return_value = {"success": True, "file_info": {}}
             result = EmailProcessingService.validate_email_file(mock_file)
             assert result["success"] is True
@@ -200,7 +210,9 @@ class TestParseEmailFile:
 
     def test_eml_not_implemented_returns_error(self):
         f = self._make_file(name="email.eml")
-        with patch("application.email_service.FileUploadService.handle_email_upload") as mock_upload:
+        with patch(
+            "application.email_service.FileUploadService.handle_email_upload"
+        ) as mock_upload:
             mock_upload.return_value = {"success": True, "file_info": {}}
             result = EmailProcessingService.parse_email_file(f)
         assert result["success"] is False
@@ -208,28 +220,38 @@ class TestParseEmailFile:
 
     def test_invalid_parsing_mode_falls_back_to_snippet(self):
         f = self._make_file()
-        with patch("application.email_service.FileUploadService.handle_email_upload") as mock_upload:
+        with patch(
+            "application.email_service.FileUploadService.handle_email_upload"
+        ) as mock_upload:
             mock_upload.return_value = {"success": True, "file_info": {}}
             with patch("application.email_service.parse_msg_file") as mock_parse:
                 mock_parse.return_value = {"email_from": "a@b.com", "subject": "Test"}
-                result = EmailProcessingService.parse_email_file(f, parsing_mode="invalid_mode")
+                result = EmailProcessingService.parse_email_file(
+                    f, parsing_mode="invalid_mode"
+                )
         # Invalid mode falls back to snippet
         assert result["success"] is True
         assert result["parsing_mode"] == "snippet"
 
     def test_msg_parsed_successfully(self):
         f = self._make_file()
-        with patch("application.email_service.FileUploadService.handle_email_upload") as mock_upload:
+        with patch(
+            "application.email_service.FileUploadService.handle_email_upload"
+        ) as mock_upload:
             mock_upload.return_value = {"success": True, "file_info": {}}
             with patch("application.email_service.parse_msg_file") as mock_parse:
                 mock_parse.return_value = {"email_from": "a@b.com", "subject": "Test"}
-                result = EmailProcessingService.parse_email_file(f, parsing_mode="snippet")
+                result = EmailProcessingService.parse_email_file(
+                    f, parsing_mode="snippet"
+                )
         assert result["success"] is True
         assert "email_data" in result
 
     def test_parse_error_in_result_propagates(self):
         f = self._make_file()
-        with patch("application.email_service.FileUploadService.handle_email_upload") as mock_upload:
+        with patch(
+            "application.email_service.FileUploadService.handle_email_upload"
+        ) as mock_upload:
             mock_upload.return_value = {"success": True, "file_info": {}}
             with patch("application.email_service.parse_msg_file") as mock_parse:
                 mock_parse.return_value = {"error": "Parsing failed"}
@@ -239,9 +261,14 @@ class TestParseEmailFile:
 
     def test_exception_during_processing_returns_error(self):
         f = self._make_file()
-        with patch("application.email_service.FileUploadService.handle_email_upload") as mock_upload:
+        with patch(
+            "application.email_service.FileUploadService.handle_email_upload"
+        ) as mock_upload:
             mock_upload.return_value = {"success": True, "file_info": {}}
-            with patch("application.email_service.parse_msg_file", side_effect=Exception("boom")):
+            with patch(
+                "application.email_service.parse_msg_file",
+                side_effect=Exception("boom"),
+            ):
                 result = EmailProcessingService.parse_email_file(f)
         assert result["success"] is False
         assert result["error_type"] == "processing"
@@ -258,32 +285,39 @@ class TestProcessEmailForFormPopulation:
 
     def test_parse_failure_returns_json_error(self):
         from django.http import JsonResponse
+
         f = self._make_file()
         with patch.object(EmailProcessingService, "parse_email_file") as mock_parse:
             mock_parse.return_value = {"success": False, "error": "bad file"}
             response = EmailProcessingService.process_email_for_form_population(f)
         assert isinstance(response, JsonResponse)
         import json
+
         data = json.loads(response.content)
         assert data["success"] is False
 
     def test_no_sender_returns_json_error(self):
         from django.http import JsonResponse
+
         f = self._make_file()
         with patch.object(EmailProcessingService, "parse_email_file") as mock_parse:
             mock_parse.return_value = {
                 "success": True,
                 "email_data": {"email_from": ""},
             }
-            with patch.object(EmailProcessingService, "extract_sender_email") as mock_extract:
+            with patch.object(
+                EmailProcessingService, "extract_sender_email"
+            ) as mock_extract:
                 mock_extract.return_value = ("", False)
                 response = EmailProcessingService.process_email_for_form_population(f)
         import json
+
         data = json.loads(response.content)
         assert data["success"] is False
 
     def test_success_without_member(self):
         from django.http import JsonResponse
+
         f = self._make_file()
         email_data = {
             "email_from": "test@example.com",
@@ -296,18 +330,26 @@ class TestProcessEmailForFormPopulation:
         }
         with patch.object(EmailProcessingService, "parse_email_file") as mock_parse:
             mock_parse.return_value = {"success": True, "email_data": email_data}
-            with patch.object(EmailProcessingService, "extract_sender_email") as mock_extract:
+            with patch.object(
+                EmailProcessingService, "extract_sender_email"
+            ) as mock_extract:
                 mock_extract.return_value = ("test@example.com", True)
-                with patch.object(EmailProcessingService, "find_member_by_email") as mock_member:
+                with patch.object(
+                    EmailProcessingService, "find_member_by_email"
+                ) as mock_member:
                     mock_member.return_value = None
-                    response = EmailProcessingService.process_email_for_form_population(f)
+                    response = EmailProcessingService.process_email_for_form_population(
+                        f
+                    )
         import json
+
         data = json.loads(response.content)
         assert data["success"] is True
         assert data["member_found"] is False
 
     def test_success_with_member(self):
         from django.http import JsonResponse
+
         f = self._make_file()
         email_data = {
             "email_from": "member@example.com",
@@ -326,12 +368,19 @@ class TestProcessEmailForFormPopulation:
 
         with patch.object(EmailProcessingService, "parse_email_file") as mock_parse:
             mock_parse.return_value = {"success": True, "email_data": email_data}
-            with patch.object(EmailProcessingService, "extract_sender_email") as mock_extract:
+            with patch.object(
+                EmailProcessingService, "extract_sender_email"
+            ) as mock_extract:
                 mock_extract.return_value = ("member@example.com", True)
-                with patch.object(EmailProcessingService, "find_member_by_email") as mock_find:
+                with patch.object(
+                    EmailProcessingService, "find_member_by_email"
+                ) as mock_find:
                     mock_find.return_value = mock_member
-                    response = EmailProcessingService.process_email_for_form_population(f)
+                    response = EmailProcessingService.process_email_for_form_population(
+                        f
+                    )
         import json
+
         data = json.loads(response.content)
         assert data["success"] is True
         assert data["member_found"] is True

@@ -24,10 +24,14 @@ class TestHasFieldChanged:
     """Tests for EnquiryService._has_field_changed."""
 
     def test_simple_no_change(self):
-        assert EnquiryService._has_field_changed("title", "simple", "foo", "foo") is False
+        assert (
+            EnquiryService._has_field_changed("title", "simple", "foo", "foo") is False
+        )
 
     def test_simple_changed(self):
-        assert EnquiryService._has_field_changed("title", "simple", "foo", "bar") is True
+        assert (
+            EnquiryService._has_field_changed("title", "simple", "foo", "bar") is True
+        )
 
     def test_simple_none_to_value(self):
         assert EnquiryService._has_field_changed("title", "simple", None, "bar") is True
@@ -73,14 +77,21 @@ class TestCompareDescription:
         assert EnquiryService._compare_description(None, None) is False
 
     def test_same_html_content(self):
-        assert EnquiryService._compare_description("<p>Hello</p>", "<p>Hello</p>") is False
+        assert (
+            EnquiryService._compare_description("<p>Hello</p>", "<p>Hello</p>") is False
+        )
 
     def test_different_html_same_text(self):
         # Same text, different tags - should be False (text is the same)
-        assert EnquiryService._compare_description("<p>Hello</p>", "<div>Hello</div>") is False
+        assert (
+            EnquiryService._compare_description("<p>Hello</p>", "<div>Hello</div>")
+            is False
+        )
 
     def test_different_text(self):
-        assert EnquiryService._compare_description("<p>Hello</p>", "<p>World</p>") is True
+        assert (
+            EnquiryService._compare_description("<p>Hello</p>", "<p>World</p>") is True
+        )
 
     def test_empty_tags_vs_empty(self):
         # Both have empty text after stripping
@@ -156,7 +167,9 @@ class TestFormatFieldValue:
         assert EnquiryService._format_field_value("title", "My Title") == "My Title"
 
     def test_description_strips_html(self):
-        result = EnquiryService._format_field_value("description", "<p>Hello <b>World</b></p>")
+        result = EnquiryService._format_field_value(
+            "description", "<p>Hello <b>World</b></p>"
+        )
         assert "<p>" not in result
         assert "Hello" in result
         assert "World" in result
@@ -291,7 +304,12 @@ class TestCreateAttachmentHistoryMessages:
     def test_mixed_attachments(self, mock_history):
         enquiry = MagicMock()
         user = MagicMock()
-        counts = {"email": 1, "manual": 2, "total": 3, "filenames": ["a.jpg", "b.pdf", "c.png"]}
+        counts = {
+            "email": 1,
+            "manual": 2,
+            "total": 3,
+            "filenames": ["a.jpg", "b.pdf", "c.png"],
+        }
 
         EnquiryService._create_attachment_history_messages(counts, enquiry, user)
         note = mock_history.objects.create.call_args[1]["note"]
