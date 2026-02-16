@@ -25,7 +25,7 @@ if %ERRORLEVEL% neq 0 (
 
 echo.
 echo === Coverage report written to coverage.xml ===
-echo Run sonar_scan.py to upload results to SonarQube.
+echo Run 'python .\sonar_scan.py' to upload results to SonarQube.
 echo.
 
 exit /b 0

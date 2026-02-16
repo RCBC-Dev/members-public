@@ -224,143 +224,76 @@ After registration, you'll need three pieces of information:
 
 1. **Copy the example file**:
    ```bash
-   copy .env_example .env
+   copy .env.example .env
    ```
 
 2. **Edit `.env` with your credentials**:
    ```env
-   ENVIRONMENT=development
-   DJANGO_SECRET_KEY=your-secret-key-here
+   DJANGO_SETTINGS_MODULE=project.settings.development
+   ENVIRONMENT=DEVELOPMENT
+   COUNCIL_NAME=Your Council Name
+   DOMAIN=localhost
 
-   # Azure Entra ID Configuration
-   AZURE_CLIENT_ID=your-app-id-here
-   AZURE_CLIENT_SECRET=your-app-secret-here
-   AZURE_TENANT_ID=your-tenant-id-here
+   # Azure Entra ID Configuration (optional for development)
+   # AZURE_CLIENT_ID=your-app-id-here
+   # AZURE_CLIENT_SECRET=your-app-secret-here
+   # AZURE_TENANT_ID=your-tenant-id-here
 
-   # Database Configuration (if using SQL Server)
-   DATABASE_NAME=members_db
-   DATABASE_USER=sa
-   DATABASE_PASSWORD=your-password
-   DATABASE_HOST=localhost
-   DATABASE_PORT=1433
+   # Database Configuration (not required for development - uses SQLite)
+   # DATABASE_NAME=members_db
+   # DATABASE_USER=sa
+   # DATABASE_PASSWORD=your-password
+   # DATABASE_HOST=localhost
+   # DATABASE_PORT=1433
    ```
 
 **Security Note**: The `.env` file is already excluded from version control via `.gitignore`. Never commit the `.env` file as it contains sensitive credentials.
 
 ## Environment-Specific Configuration
 
-The application uses different settings files for each environment:
-- `project/settings/development.py` - Local development
-- `project/settings/test.py` - Testing environment
+The application uses three settings files, one per environment:
+- `project/settings/development.py` - Local development (SQLite, no HTTPS)
+- `project/settings/test.py` - Test server
 - `project/settings/production.py` - Production deployment
 
-### Testing Environment Changes
+**You do not need to edit any settings file.** All environment-specific values — domain, database credentials, Azure credentials, secret key, and council name — are read from the `.env` file. The settings file to use is itself selected via `DJANGO_SETTINGS_MODULE` in `.env`.
 
-When deploying to TEST, update `project/settings/test.py`:
+### Setting Up an Environment
 
-1. **ALLOWED_HOSTS**: Update to your test domain
-   ```python
-   ALLOWED_HOSTS = ['your-test-domain.org', 'localhost']
-   ```
+When cloning the project for a new environment, create a fresh `.env` file from the template:
 
-2. **CSRF_TRUSTED_ORIGINS**: Update to match your test domain
-   ```python
-   CSRF_TRUSTED_ORIGINS = ['https://your-test-domain.org']
-   ```
-
-3. **CORS_ALLOWED_ORIGINS**: Update to your test domain
-   ```python
-   CORS_ALLOWED_ORIGINS = ['https://your-test-domain.org']
-   ```
-
-4. **DATABASES**: Update with your test database credentials
-   ```python
-   DATABASES = {
-       'default': {
-           'ENGINE': 'mssql',
-           'NAME': 'members_test_db',
-           'USER': os.environ.get('DATABASE_USER'),
-           'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
-           'HOST': os.environ.get('DATABASE_HOST'),
-           'PORT': os.environ.get('DATABASE_PORT'),
-       }
-   }
-   ```
-
-5. **ACCOUNT_DEFAULT_HTTP_PROTOCOL**: Ensure set to `https`
-   ```python
-   ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'https'
-   ```
-
-### Production Environment Changes
-
-When deploying to PRODUCTION, update `project/settings/production.py`:
-
-1. **ALLOWED_HOSTS**: Update to your production domain only
-   ```python
-   ALLOWED_HOSTS = ['your-production-domain.org']
-   ```
-
-2. **DEBUG**: Must be `False`
-   ```python
-   DEBUG = False
-   ```
-   **Important**: Debug mode exposes sensitive information. Only enable if troubleshooting a critical issue, and always disable before returning to normal operation.
-
-3. **CSRF_TRUSTED_ORIGINS**: Update to production domain
-   ```python
-   CSRF_TRUSTED_ORIGINS = ['https://your-production-domain.org']
-   ```
-
-4. **CORS_ALLOWED_ORIGINS**: Update to production domain
-   ```python
-   CORS_ALLOWED_ORIGINS = ['https://your-production-domain.org']
-   ```
-
-5. **DATABASES**: Update with production database credentials and ensure it's a dedicated SQL Server instance
-   ```python
-   DATABASES = {
-       'default': {
-           'ENGINE': 'mssql',
-           'NAME': 'members_prod_db',
-           'USER': os.environ.get('DATABASE_USER'),
-           'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
-           'HOST': os.environ.get('DATABASE_HOST'),
-           'PORT': os.environ.get('DATABASE_PORT'),
-       }
-   }
-   ```
-
-6. **STATIC_ROOT**: Update to your production path
-   ```python
-   STATIC_ROOT = '/var/www/enquiries/staticfiles'
-   ```
-
-7. **MEDIA_ROOT**: Update to your production path
-   ```python
-   MEDIA_ROOT = '/var/www/enquiries/media'
-   ```
-
-8. **SECRET_KEY**: Use a strong, unique key generated from `django.core.management.utils.get_random_secret_key()`
-
-9. **Security Headers**: Review and enable additional security headers
-
-### CORS and WhiteNoise Configuration
-
-The application uses WhiteNoise for static file serving and implements CORS headers.
-
-**Update `application/whitenoise_headers.py`** for each environment:
-
-1. **Development** (`development.py`): WhiteNoise is disabled
-2. **Test** (`test.py`): Add any test-specific CORS requirements
-3. **Production** (`production.py`): Ensure restrictive CORS headers and security headers
-
-Example configuration in settings:
-```python
-WHITENOISE_ADD_HEADERS_FUNCTION = add_cors_headers
+```bash
+copy .env.example .env
 ```
 
-Update the `add_cors_headers` function to return appropriate headers for your environment.
+Then edit `.env` with the values for that environment. **Each environment (development, test, production) should have its own `.env` file** — never share or copy `.env` files between environments, as they contain unique secrets and domain values.
+
+### Key `.env` Variables by Environment
+
+| Variable | Development | Test | Production |
+|---|---|---|---|
+| `DJANGO_SETTINGS_MODULE` | `project.settings.development` | `project.settings.test` | `project.settings.production` |
+| `ENVIRONMENT` | `DEVELOPMENT` | `TEST` | `PRODUCTION` |
+| `DOMAIN` | `localhost` | `your-test-domain.org` | `your-production-domain.org` |
+| `COUNCIL_NAME` | Your council name | Your council name | Your council name |
+| `DJANGO_SECRET_KEY` | *(not required)* | Required | Required |
+| `DATABASE_*` | *(not required — uses SQLite)* | Required | Required |
+| `AZURE_CLIENT_ID` etc. | Optional | Required | Required |
+
+**Generating a secret key** for test/production:
+```bash
+python manage.py shell -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
+### How Domain Configuration Works
+
+Setting `DOMAIN` in `.env` automatically configures:
+- `ALLOWED_HOSTS` — accepts requests for that domain
+- `CSRF_TRUSTED_ORIGINS` — allows form submissions from `https://<DOMAIN>`
+- `CORS_ALLOWED_ORIGINS` — restricts cross-origin requests to `https://<DOMAIN>`
+- **CORS headers on static files** — `whitenoise_headers.py` reads `DOMAIN` and `ENVIRONMENT` from the environment and sets `Access-Control-Allow-Origin` accordingly (using `https` for test/production and `http` for development)
+
+No manual changes to settings files or `whitenoise_headers.py` are needed.
 
 ### Content Security Policy (CSP)
 
@@ -414,6 +347,43 @@ Run with coverage:
 python -m pytest --cov=application --cov=project --cov-report=term-missing
 ```
 
+## Code Quality - SonarQube
+
+[![Quality Gate Status](screenshots/quality_gate.svg)](screenshots/quality_gate.svg)
+
+[SonarQube](https://www.sonarsource.com/products/sonarqube/) is an open-source static analysis platform that inspects code for bugs, vulnerabilities, code smells, and test coverage. It provides a Quality Gate - a set of conditions a project must meet before it is considered production-ready.
+
+This project was analysed using SonarQube Community Edition, running locally under WSL (Windows Subsystem for Linux).
+
+### Quality Gate Results
+
+The project passes the SonarQube Quality Gate with the following overall code metrics:
+
+![SonarQube Quality Gate Passed](screenshots/sonarqube_pass_quality_gate.jpeg)
+
+| Metric | Result | Rating |
+|---|---|---|
+| Security | 0 open issues | A |
+| Reliability | 0 open issues | A |
+| Maintainability | 0 open issues | A |
+| Test Coverage | 80.5% (on 5.4k lines) | - |
+| Duplications | 4.4% (on 24k lines) | - |
+| Accepted Issues | 4 | - |
+
+**Accepted Issues**: The 4 accepted issues are form views that handle both `GET` and `POST` requests - this is intentional Django patterns and expected behaviour rather than a security concern.
+
+**Duplications**: The 4.4% duplication figure is primarily attributable to the copyright/licence header that appears on every `.py`, `.html`, `.js`, and `.css` file as required by the GNU AGPL v3.0 licence.
+
+### Test Coverage by Module
+
+![SonarQube Test Coverage](screenshots/sonarqube_test_coverage.jpeg)
+
+| Module | Lines of Code | Coverage |
+|---|---|---|
+| application | 16,215 | 79.7% |
+| project | 852 | 91.3% |
+| **Total** | **17,067** | **80.5%** |
+
 ## Development Server Management
 
 The development server is typically run in a separate terminal:
@@ -444,6 +414,25 @@ The project uses a three-tier dependency management system to balance stability 
    - Used for major version upgrades
    - Installs latest compatible versions of all dependencies
    - Useful for testing new features and resolving security vulnerabilities across major versions
+
+### Regenerating the Update and Upgrade Files
+
+`update_requirements.txt` and `upgrade_requirements.txt` are derived from `requirements.txt` and should be regenerated whenever `requirements.txt` changes (e.g. after adding a new package or running `pip freeze`).
+
+```bash
+python generate_requirements.py
+```
+
+This reads `requirements.txt` and writes both files, replacing `==` with the appropriate operator:
+- `~=` in `update_requirements.txt` — allows patch updates within the same minor version (e.g. `Django~=5.2.11` permits 5.2.12 but not 5.3.0)
+- `>=` in `upgrade_requirements.txt` — allows any newer version
+
+Post-release suffixes such as `.post0` are stripped automatically so the `~=` operator remains valid (e.g. `python-dateutil==2.9.0.post0` becomes `python-dateutil~=2.9.0`).
+
+**When to run it:**
+- After installing a new package and freezing (`pip freeze > requirements.txt`)
+- After running a major upgrade cycle and locking in the new versions
+- Before committing dependency changes, so all three files stay in sync
 
 ### Updating Dependencies
 
@@ -705,19 +694,20 @@ Install PostgreSQL driver: `pip install psycopg2-binary`
 Ensure these are set on your production server:
 
 ```env
-ENVIRONMENT=production
+DJANGO_SETTINGS_MODULE=project.settings.production
+ENVIRONMENT=PRODUCTION
+COUNCIL_NAME=Your Council Name
+DOMAIN=your-production-domain.org
 DJANGO_SECRET_KEY=your-secret-key-here
-DEBUG=False
-ALLOWED_HOSTS=your-domain.org
 
-# Database (adjust based on your database choice)
+# Database
 DATABASE_NAME=enquiries_db
 DATABASE_USER=db_user
 DATABASE_PASSWORD=secure-password
 DATABASE_HOST=db-server.example.com
 DATABASE_PORT=1433
 
-# Azure AD (if using)
+# Azure AD
 AZURE_CLIENT_ID=your-app-id
 AZURE_CLIENT_SECRET=your-secret
 AZURE_TENANT_ID=your-tenant-id
@@ -727,13 +717,12 @@ AZURE_TENANT_ID=your-tenant-id
 
 - [ ] Copy `webconfig.template` to `web.config` (IIS only)
 - [ ] Update all paths in web.config for IIS deployment
-- [ ] Update database credentials in `.env`
-- [ ] Set `DEBUG=False` in settings
-- [ ] Generate new `DJANGO_SECRET_KEY`
-- [ ] Update `ALLOWED_HOSTS` in settings
-- [ ] Update `CSRF_TRUSTED_ORIGINS` in settings
-- [ ] Configure CORS origins appropriately
-- [ ] Update `ACCOUNT_DEFAULT_HTTP_PROTOCOL=https` in settings
+- [ ] Create `.env` from `.env.example` with production values
+- [ ] Set `DJANGO_SETTINGS_MODULE=project.settings.production` in `.env`
+- [ ] Set `DOMAIN=your-production-domain.org` in `.env`
+- [ ] Set `DJANGO_SECRET_KEY` to a new generated key in `.env`
+- [ ] Set database credentials in `.env`
+- [ ] Set Azure AD credentials in `.env`
 - [ ] Run `python manage.py collectstatic --noinput`
 - [ ] Run `python manage.py migrate` on production database
 - [ ] Test Azure AD login (if configured)
@@ -754,6 +743,8 @@ This program is distributed in the hope that it will be useful, but without any 
 You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 Should you need to contact the copyright holder, you can email [shawn.carter@redcar-cleveland.gov.uk](mailto:shawn.carter@redcar-cleveland.gov.uk).
+
+If you need clarification on the above licensing you can email [legalservices@rcbcgov.onmicrosoft.com](mailto:legalservices@rcbcgov.onmicrosoft.com).
 
 ## Contributing
 

@@ -19,13 +19,14 @@ Version information for the Members Enquiries System.
 # - MAJOR: Significant changes that may require data migration or affect compatibility
 # - MINOR: Incremented for each release with minor changes or bug fixes
 
-VERSION = "1.08"
+VERSION = "1.09"
 
 # Change log entries should be in the format:
 # (version, date, description)
 CHANGE_LOG = [
-    ("1.08", "2026-02-12", "Added new tests to get QualityGate Pass in SonarQube"),
+    ("1.09", "2026-02-16", "Added SonarQube Quality Gate reports to README.md - some changes to README in relation to .env variables"),
 
+    ("1.08", "2026-02-12", "Added new tests to get QualityGate Pass in SonarQube"),
     (
         "1.07",
         "2026-02-11",
