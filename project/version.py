@@ -19,13 +19,23 @@ Version information for the Members Enquiries System.
 # - MAJOR: Significant changes that may require data migration or affect compatibility
 # - MINOR: Incremented for each release with minor changes or bug fixes
 
-VERSION = "1.10"
+VERSION = "1.12"
 
 # Change log entries should be in the format:
 # (version, date, description)
 CHANGE_LOG = [
-    ("1.10", "2026-02-16", "Fixed some discrepancies in the README.md - updated production and test settings files to be database agnostic"),
+    ("1.12", "2026-03-09", "Updated README.md for the REFERENCE_TYPE"),
 
+    (
+        "1.11",
+        "2026-03-09",
+        "Added the option of using the financial year for the reference ie, 25/26 instead of 26 and resetting/changing on 1st April - rather than on 1st January.  Controlled via REFERENCE_TYPE=FINANCIAL or STANDARD in the .env - can be switched at anytime, keeps track of both references",
+    ),
+    (
+        "1.10",
+        "2026-02-16",
+        "Fixed some discrepancies in the README.md - updated production and test settings files to be database agnostic",
+    ),
     (
         "1.09",
         "2026-02-16",

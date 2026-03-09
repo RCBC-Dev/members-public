@@ -927,8 +927,8 @@ class TestReferenceSequenceModeSwitch:
         ReferenceSequence.objects.all().delete()
         jan1 = self._make_aware(2026, 1, 1)
 
-        std_ref = self._gen("STANDARD", jan1)        # MEM-26-0001, key=26
-        fin_ref = self._gen("FINANCIAL", jan1)       # MEM-25/26-0001, key=2526
+        std_ref = self._gen("STANDARD", jan1)  # MEM-26-0001, key=26
+        fin_ref = self._gen("FINANCIAL", jan1)  # MEM-25/26-0001, key=2526
 
         assert std_ref == "MEM-26-0001"
         assert fin_ref == "MEM-25/26-0001"
@@ -940,8 +940,8 @@ class TestReferenceSequenceModeSwitch:
         ReferenceSequence.objects.all().delete()
         jan1 = self._make_aware(2026, 1, 1)
 
-        fin_ref = self._gen("FINANCIAL", jan1)       # MEM-25/26-0001, key=2526
-        std_ref = self._gen("STANDARD", jan1)        # MEM-26-0001, key=26
+        fin_ref = self._gen("FINANCIAL", jan1)  # MEM-25/26-0001, key=2526
+        std_ref = self._gen("STANDARD", jan1)  # MEM-26-0001, key=26
 
         assert fin_ref == "MEM-25/26-0001"
         assert std_ref == "MEM-26-0001"
@@ -955,8 +955,8 @@ class TestReferenceSequenceModeSwitch:
         ReferenceSequence.objects.all().delete()
         apr1 = self._make_aware(2026, 4, 1)
 
-        std_ref = self._gen("STANDARD", apr1)        # MEM-26-0001, key=26
-        fin_ref = self._gen("FINANCIAL", apr1)       # MEM-26/27-0001, key=2627
+        std_ref = self._gen("STANDARD", apr1)  # MEM-26-0001, key=26
+        fin_ref = self._gen("FINANCIAL", apr1)  # MEM-26/27-0001, key=2627
 
         assert std_ref == "MEM-26-0001"
         assert fin_ref == "MEM-26/27-0001"
@@ -967,8 +967,8 @@ class TestReferenceSequenceModeSwitch:
         ReferenceSequence.objects.all().delete()
         apr1 = self._make_aware(2026, 4, 1)
 
-        fin_ref = self._gen("FINANCIAL", apr1)       # MEM-26/27-0001, key=2627
-        std_ref = self._gen("STANDARD", apr1)        # MEM-26-0001, key=26
+        fin_ref = self._gen("FINANCIAL", apr1)  # MEM-26/27-0001, key=2627
+        std_ref = self._gen("STANDARD", apr1)  # MEM-26-0001, key=26
 
         assert fin_ref == "MEM-26/27-0001"
         assert std_ref == "MEM-26-0001"
@@ -982,8 +982,8 @@ class TestReferenceSequenceModeSwitch:
         ReferenceSequence.objects.all().delete()
         oct15 = self._make_aware(2026, 10, 15)
 
-        std_refs = self._gen("STANDARD", oct15, count=3)   # MEM-26-0001..0003
-        fin_ref  = self._gen("FINANCIAL", oct15)            # MEM-26/27-0001
+        std_refs = self._gen("STANDARD", oct15, count=3)  # MEM-26-0001..0003
+        fin_ref = self._gen("FINANCIAL", oct15)  # MEM-26/27-0001
 
         assert std_refs == ["MEM-26-0001", "MEM-26-0002", "MEM-26-0003"]
         assert fin_ref == "MEM-26/27-0001"
@@ -996,7 +996,7 @@ class TestReferenceSequenceModeSwitch:
         oct15 = self._make_aware(2026, 10, 15)
 
         fin_refs = self._gen("FINANCIAL", oct15, count=3)  # MEM-26/27-0001..0003
-        std_ref  = self._gen("STANDARD", oct15)             # MEM-26-0001
+        std_ref = self._gen("STANDARD", oct15)  # MEM-26-0001
 
         assert fin_refs == ["MEM-26/27-0001", "MEM-26/27-0002", "MEM-26/27-0003"]
         assert std_ref == "MEM-26-0001"
@@ -1010,8 +1010,8 @@ class TestReferenceSequenceModeSwitch:
         ReferenceSequence.objects.all().delete()
         mar31 = self._make_aware(2027, 3, 31)
 
-        std_ref = self._gen("STANDARD", mar31)       # MEM-27-0001, key=27
-        fin_ref = self._gen("FINANCIAL", mar31)      # MEM-26/27-0001, key=2627
+        std_ref = self._gen("STANDARD", mar31)  # MEM-27-0001, key=27
+        fin_ref = self._gen("FINANCIAL", mar31)  # MEM-26/27-0001, key=2627
 
         assert std_ref == "MEM-27-0001"
         assert fin_ref == "MEM-26/27-0001"
@@ -1022,8 +1022,8 @@ class TestReferenceSequenceModeSwitch:
         ReferenceSequence.objects.all().delete()
         mar31 = self._make_aware(2027, 3, 31)
 
-        fin_ref = self._gen("FINANCIAL", mar31)      # MEM-26/27-0001, key=2627
-        std_ref = self._gen("STANDARD", mar31)       # MEM-27-0001, key=27
+        fin_ref = self._gen("FINANCIAL", mar31)  # MEM-26/27-0001, key=2627
+        std_ref = self._gen("STANDARD", mar31)  # MEM-27-0001, key=27
 
         assert fin_ref == "MEM-26/27-0001"
         assert std_ref == "MEM-27-0001"

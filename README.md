@@ -11,7 +11,7 @@ A Django-based web application for managing council member enquiries with Azure 
 - **Reopen enquiries** - Reopen previously closed enquiries with updated information
 - **Status tracking** - Track enquiry lifecycle: open, closed.
 - **Service types** - Categorise enquiries by service type for reporting
-- **Reference numbers** - Auto-generated unique references (e.g., MEM-26-0001) per enquiry
+- **Reference numbers** - Auto-generated unique references per enquiry, supporting both calendar year (`MEM-26-0001`) and financial year (`MEM-26/27-0001`) formats, switchable via `.env`
 
 ### Email & Attachment Handling
 - **Automatic email parsing** - Extract enquiry information directly from email messages (supports .msg and .eml formats)
@@ -281,6 +281,7 @@ Then edit `.env` with the values for that environment. **Each environment (devel
 | `DJANGO_SECRET_KEY` | *(not required)* | Required | Required |
 | `DATABASE_*` | *(not required — uses SQLite)* | Required | Required |
 | `AZURE_CLIENT_ID` etc. | Optional | Required | Required |
+| `REFERENCE_TYPE` | `STANDARD` *(default)* | `STANDARD` or `FINANCIAL` | `STANDARD` or `FINANCIAL` |
 
 **Generating a secret key** for test/production:
 ```bash
@@ -312,6 +313,31 @@ The application implements a strict Content Security Policy to prevent security 
   <div class="my-custom-class">Content</div>
   ```
 - Use locally-hosted stylesheets and scripts, not external CDNs (unless explicitly allowed in CSP settings)
+
+### Reference Number Format
+
+Enquiry reference numbers are auto-generated and their format is controlled by the `REFERENCE_TYPE` variable in `.env`:
+
+| Value | Format | Example | Sequence resets |
+|---|---|---|---|
+| `STANDARD` *(default)* | `MEM-YY-NNNN` | `MEM-26-0001` | 1 January each year |
+| `FINANCIAL` | `MEM-YY/YY-NNNN` | `MEM-26/27-0001` | 1 April each year (financial year) |
+
+**Financial year** runs from 1 April to 31 March. For example, any date between 1 April 2026 and 31 March 2027 generates a `MEM-26/27-NNNN` reference.
+
+To switch format, set `REFERENCE_TYPE` in `.env` and restart the server:
+
+```env
+# Calendar year references (default)
+REFERENCE_TYPE=STANDARD
+
+# Financial year references
+REFERENCE_TYPE=FINANCIAL
+```
+
+**Switching between modes at any time is safe.** Each mode maintains its own independent sequence counter, so switching mid-year will not reset or corrupt the counter for either mode. If you switch back, the counter resumes from where it left off.
+
+**Existing references are unaffected** — only new enquiries created after the change will use the new format.
 
 ## Populating Test Data
 
