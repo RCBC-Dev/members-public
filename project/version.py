@@ -19,13 +19,14 @@ Version information for the Members Enquiries System.
 # - MAJOR: Significant changes that may require data migration or affect compatibility
 # - MINOR: Incremented for each release with minor changes or bug fixes
 
-VERSION = "1.12"
+VERSION = "1.13"
 
 # Change log entries should be in the format:
 # (version, date, description)
 CHANGE_LOG = [
-    ("1.12", "2026-03-09", "Updated README.md for the REFERENCE_TYPE"),
+    ("1.13", "2026-03-09", "Fixed an issue with githooks - was not pre-staging the version.py"),
 
+    ("1.12", "2026-03-09", "Updated README.md for the REFERENCE_TYPE"),
     (
         "1.11",
         "2026-03-09",

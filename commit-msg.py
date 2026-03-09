@@ -50,7 +50,7 @@ def increment_version(commit_msg_file):
     # Check if HEAD exists (not the first commit) and if the commit message matches the last commit
     try:
         last_commit_msg = subprocess.check_output(
-            ["git", "log", "-1", "--pretty=%s"], text=True
+            "git log -1 --pretty=%s", shell=True, text=True
         ).strip()
         if commit_msg == last_commit_msg:
             print("Detected amend commit. Skipping version update...")
@@ -101,7 +101,13 @@ def increment_version(commit_msg_file):
         f.write(new_content)
 
     # Stage the modified version file
-    subprocess.call(["git", "add", VERSION_FILE])
+    # Use shell=True so git is found via the shell PATH on all platforms (including Windows)
+    result = subprocess.call(f"git add {VERSION_FILE}", shell=True)
+    if result != 0:
+        print(f"Warning: Failed to stage {VERSION_FILE} (git add returned {result})")
+        print("The version.py file was updated but may not be included in this commit.")
+        print("Run: git add project/version.py && git commit --amend --no-edit --no-verify")
+        return 0  # Don't block the commit - just warn
 
     print(f"Version incremented from {current_version} to {new_version}")
     print("The version.py file has been updated and staged.")
