@@ -17,11 +17,14 @@ Comprehensive tests for application models.
 
 import pytest
 import uuid
+from datetime import datetime, timedelta
+from unittest.mock import patch
+from django.conf import settings
 from django.contrib.auth.models import User
+from django.test import override_settings
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
-from datetime import timedelta
 
 from application.models import (
     Admin,
@@ -393,6 +396,7 @@ class TestEnquiry:
         assert enquiry.closed_at is not None
         assert enquiry.status == "closed"
 
+    @override_settings(REFERENCE_TYPE="STANDARD")
     def test_enquiry_generate_reference(self):
         reference = Enquiry.generate_reference()
         current_year = timezone.now().year % 100
@@ -693,7 +697,11 @@ class TestContact:
 
 @pytest.mark.django_db
 class TestReferenceSequence:
-    """Test ReferenceSequence model and reference generation."""
+    """Test ReferenceSequence model and reference generation (STANDARD mode)."""
+
+    @pytest.fixture(autouse=True)
+    def force_standard_mode(self, settings):
+        settings.REFERENCE_TYPE = "STANDARD"
 
     def test_reference_sequence_creation(self):
         sequence = ReferenceSequence.objects.create(year=25, next_number=1)
@@ -781,6 +789,264 @@ class TestReferenceSequence:
         new_reference = ReferenceSequence.get_next_reference()
         expected = f"MEM-{current_year:02d}-0002"
         assert new_reference == expected
+
+
+@pytest.mark.django_db
+class TestReferenceSequenceFinancial:
+    """Test financial year reference generation (REFERENCE_TYPE=FINANCIAL)."""
+
+    def _make_aware(self, year, month, day):
+        """Helper to create a timezone-aware datetime."""
+        return timezone.make_aware(datetime(year, month, day))
+
+    def test_financial_year_key_april(self):
+        """April is the start of a new financial year."""
+        now = self._make_aware(2026, 4, 1)
+        key, label = ReferenceSequence._get_financial_year_key_and_label(now)
+        assert key == 2627
+        assert label == "26/27"
+
+    def test_financial_year_key_march(self):
+        """March still belongs to the previous financial year."""
+        now = self._make_aware(2026, 3, 31)
+        key, label = ReferenceSequence._get_financial_year_key_and_label(now)
+        assert key == 2526
+        assert label == "25/26"
+
+    def test_financial_year_key_january(self):
+        """January belongs to the financial year that started the previous April."""
+        now = self._make_aware(2026, 1, 15)
+        key, label = ReferenceSequence._get_financial_year_key_and_label(now)
+        assert key == 2526
+        assert label == "25/26"
+
+    def test_get_next_reference_financial_format(self):
+        """Financial mode produces MEM-YY/YY-NNNN references."""
+        ReferenceSequence.objects.all().delete()
+        april_2026 = self._make_aware(2026, 4, 1)
+
+        with self.settings_override("FINANCIAL"):
+            with patch("application.models.timezone.now", return_value=april_2026):
+                reference = ReferenceSequence.get_next_reference()
+
+        assert reference == "MEM-26/27-0001"
+
+    def test_financial_sequence_resets_on_new_financial_year(self):
+        """Sequence resets to 0001 when financial year changes."""
+        ReferenceSequence.objects.all().delete()
+        march_2026 = self._make_aware(2026, 3, 31)
+        april_2026 = self._make_aware(2026, 4, 1)
+
+        with self.settings_override("FINANCIAL"):
+            with patch("application.models.timezone.now", return_value=march_2026):
+                ref_march = ReferenceSequence.get_next_reference()
+
+            with patch("application.models.timezone.now", return_value=april_2026):
+                ref_april = ReferenceSequence.get_next_reference()
+
+        assert ref_march == "MEM-25/26-0001"
+        assert ref_april == "MEM-26/27-0001"
+
+    def test_financial_sequence_continues_within_year(self):
+        """Sequence increments within the same financial year."""
+        ReferenceSequence.objects.all().delete()
+        # Pre-seed a sequence for FY 26/27 (key=2627)
+        ReferenceSequence.objects.create(year=2627, next_number=5)
+        april_2026 = self._make_aware(2026, 4, 15)
+
+        with self.settings_override("FINANCIAL"):
+            with patch("application.models.timezone.now", return_value=april_2026):
+                reference = ReferenceSequence.get_next_reference()
+
+        assert reference == "MEM-26/27-0005"
+        assert ReferenceSequence.objects.get(year=2627).next_number == 6
+
+    def test_financial_and_standard_sequences_do_not_collide(self):
+        """STANDARD (year=26) and FINANCIAL (year=2627) keys never clash."""
+        ReferenceSequence.objects.all().delete()
+        april_2026 = self._make_aware(2026, 4, 1)
+
+        with self.settings_override("STANDARD"):
+            with patch("application.models.timezone.now", return_value=april_2026):
+                std_ref = ReferenceSequence.get_next_reference()
+
+        with self.settings_override("FINANCIAL"):
+            with patch("application.models.timezone.now", return_value=april_2026):
+                fin_ref = ReferenceSequence.get_next_reference()
+
+        assert std_ref == "MEM-26-0001"
+        assert fin_ref == "MEM-26/27-0001"
+        assert ReferenceSequence.objects.count() == 2
+
+    @staticmethod
+    def settings_override(reference_type):
+        """Context manager to temporarily override REFERENCE_TYPE."""
+        return override_settings(REFERENCE_TYPE=reference_type)
+
+
+@pytest.mark.django_db
+class TestReferenceSequenceModeSwitch:
+    """
+    Test behaviour when switching between STANDARD and FINANCIAL modes.
+
+    Each test date exercises a different relationship between the two modes:
+      Jan 1  - STANDARD year 26,  FINANCIAL year 25/26  (different periods, different keys)
+      Apr 1  - STANDARD year 26,  FINANCIAL year 26/27  (same calendar year, different periods)
+      Oct 15 - STANDARD year 26,  FINANCIAL year 26/27  (mid-year, both well within their period)
+      Mar 31 - STANDARD year 27,  FINANCIAL year 26/27  (STANDARD has rolled but FINANCIAL has not)
+
+    Key assertion in all cases: switching mode never corrupts either counter and
+    sequences from the two modes are stored under different keys so they never collide.
+    """
+
+    @staticmethod
+    def _make_aware(year, month, day):
+        return timezone.make_aware(datetime(year, month, day))
+
+    @staticmethod
+    def _override(reference_type):
+        return override_settings(REFERENCE_TYPE=reference_type)
+
+    # ------------------------------------------------------------------
+    # Helpers to generate N references under a given mode/date
+    # ------------------------------------------------------------------
+    def _gen(self, mode, dt, count=1):
+        refs = []
+        with self._override(mode):
+            with patch("application.models.timezone.now", return_value=dt):
+                for _ in range(count):
+                    refs.append(ReferenceSequence.get_next_reference())
+        return refs if count > 1 else refs[0]
+
+    # ------------------------------------------------------------------
+    # January 1 - STANDARD rolls to new calendar year but FINANCIAL
+    # is still in the old financial year (25/26).
+    # ------------------------------------------------------------------
+    def test_standard_to_financial_jan1(self):
+        """Switch from STANDARD to FINANCIAL on 1 Jan 2026."""
+        ReferenceSequence.objects.all().delete()
+        jan1 = self._make_aware(2026, 1, 1)
+
+        std_ref = self._gen("STANDARD", jan1)        # MEM-26-0001, key=26
+        fin_ref = self._gen("FINANCIAL", jan1)       # MEM-25/26-0001, key=2526
+
+        assert std_ref == "MEM-26-0001"
+        assert fin_ref == "MEM-25/26-0001"
+        assert ReferenceSequence.objects.get(year=26).next_number == 2
+        assert ReferenceSequence.objects.get(year=2526).next_number == 2
+
+    def test_financial_to_standard_jan1(self):
+        """Switch from FINANCIAL to STANDARD on 1 Jan 2026."""
+        ReferenceSequence.objects.all().delete()
+        jan1 = self._make_aware(2026, 1, 1)
+
+        fin_ref = self._gen("FINANCIAL", jan1)       # MEM-25/26-0001, key=2526
+        std_ref = self._gen("STANDARD", jan1)        # MEM-26-0001, key=26
+
+        assert fin_ref == "MEM-25/26-0001"
+        assert std_ref == "MEM-26-0001"
+        assert ReferenceSequence.objects.count() == 2
+
+    # ------------------------------------------------------------------
+    # April 1 - financial year rolls over; STANDARD is still year 26.
+    # ------------------------------------------------------------------
+    def test_standard_to_financial_apr1(self):
+        """Switch from STANDARD to FINANCIAL on 1 Apr 2026."""
+        ReferenceSequence.objects.all().delete()
+        apr1 = self._make_aware(2026, 4, 1)
+
+        std_ref = self._gen("STANDARD", apr1)        # MEM-26-0001, key=26
+        fin_ref = self._gen("FINANCIAL", apr1)       # MEM-26/27-0001, key=2627
+
+        assert std_ref == "MEM-26-0001"
+        assert fin_ref == "MEM-26/27-0001"
+        assert ReferenceSequence.objects.count() == 2
+
+    def test_financial_to_standard_apr1(self):
+        """Switch from FINANCIAL to STANDARD on 1 Apr 2026."""
+        ReferenceSequence.objects.all().delete()
+        apr1 = self._make_aware(2026, 4, 1)
+
+        fin_ref = self._gen("FINANCIAL", apr1)       # MEM-26/27-0001, key=2627
+        std_ref = self._gen("STANDARD", apr1)        # MEM-26-0001, key=26
+
+        assert fin_ref == "MEM-26/27-0001"
+        assert std_ref == "MEM-26-0001"
+        assert ReferenceSequence.objects.count() == 2
+
+    # ------------------------------------------------------------------
+    # October 15 - mid-year, both modes well within their period.
+    # ------------------------------------------------------------------
+    def test_standard_to_financial_oct15(self):
+        """Switch from STANDARD to FINANCIAL on 15 Oct 2026."""
+        ReferenceSequence.objects.all().delete()
+        oct15 = self._make_aware(2026, 10, 15)
+
+        std_refs = self._gen("STANDARD", oct15, count=3)   # MEM-26-0001..0003
+        fin_ref  = self._gen("FINANCIAL", oct15)            # MEM-26/27-0001
+
+        assert std_refs == ["MEM-26-0001", "MEM-26-0002", "MEM-26-0003"]
+        assert fin_ref == "MEM-26/27-0001"
+        assert ReferenceSequence.objects.get(year=26).next_number == 4
+        assert ReferenceSequence.objects.get(year=2627).next_number == 2
+
+    def test_financial_to_standard_oct15(self):
+        """Switch from FINANCIAL to STANDARD on 15 Oct 2026."""
+        ReferenceSequence.objects.all().delete()
+        oct15 = self._make_aware(2026, 10, 15)
+
+        fin_refs = self._gen("FINANCIAL", oct15, count=3)  # MEM-26/27-0001..0003
+        std_ref  = self._gen("STANDARD", oct15)             # MEM-26-0001
+
+        assert fin_refs == ["MEM-26/27-0001", "MEM-26/27-0002", "MEM-26/27-0003"]
+        assert std_ref == "MEM-26-0001"
+
+    # ------------------------------------------------------------------
+    # March 31 - last day of financial year but STANDARD has already
+    # rolled to year 27 (1 Jan 2027).
+    # ------------------------------------------------------------------
+    def test_standard_to_financial_mar31(self):
+        """Switch from STANDARD to FINANCIAL on 31 Mar 2027."""
+        ReferenceSequence.objects.all().delete()
+        mar31 = self._make_aware(2027, 3, 31)
+
+        std_ref = self._gen("STANDARD", mar31)       # MEM-27-0001, key=27
+        fin_ref = self._gen("FINANCIAL", mar31)      # MEM-26/27-0001, key=2627
+
+        assert std_ref == "MEM-27-0001"
+        assert fin_ref == "MEM-26/27-0001"
+        assert ReferenceSequence.objects.count() == 2
+
+    def test_financial_to_standard_mar31(self):
+        """Switch from FINANCIAL to STANDARD on 31 Mar 2027."""
+        ReferenceSequence.objects.all().delete()
+        mar31 = self._make_aware(2027, 3, 31)
+
+        fin_ref = self._gen("FINANCIAL", mar31)      # MEM-26/27-0001, key=2627
+        std_ref = self._gen("STANDARD", mar31)       # MEM-27-0001, key=27
+
+        assert fin_ref == "MEM-26/27-0001"
+        assert std_ref == "MEM-27-0001"
+        assert ReferenceSequence.objects.count() == 2
+
+    # ------------------------------------------------------------------
+    # Switching back: counter resumes from where it left off.
+    # ------------------------------------------------------------------
+    def test_switching_back_resumes_counter(self):
+        """Switching back to a mode resumes its counter, not starting from 1."""
+        ReferenceSequence.objects.all().delete()
+        oct15 = self._make_aware(2026, 10, 15)
+
+        # Start in STANDARD - generates 0001, 0002, 0003
+        self._gen("STANDARD", oct15, count=3)
+
+        # Switch to FINANCIAL - independent counter starts at 0001
+        fin_ref = self._gen("FINANCIAL", oct15)
+        assert fin_ref == "MEM-26/27-0001"
+
+        # Switch back to STANDARD - should resume at 0004
+        std_ref = self._gen("STANDARD", oct15)
+        assert std_ref == "MEM-26-0004"
 
 
 @pytest.mark.django_db

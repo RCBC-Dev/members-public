@@ -11,6 +11,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -21,7 +22,10 @@ from django.db import transaction
 
 class ReferenceSequence(models.Model):
     """
-    Tracks the next available reference number for each year.
+    Tracks the next available reference number for each period.
+    STANDARD mode: year stores the 2-digit calendar year (e.g. 26 for 2026).
+    FINANCIAL mode: year stores both years as a 4-digit key (e.g. 2627 for FY 26/27).
+    These never collide, so a single table supports both modes.
     This ensures unique, sequential references even with deletions.
     """
 
@@ -35,18 +39,47 @@ class ReferenceSequence(models.Model):
         return f"Year {self.year}: Next #{self.next_number}"
 
     @classmethod
+    def _get_financial_year_key_and_label(cls, now):
+        """
+        Return (sequence_key, label) for the financial year containing now.
+        Financial year runs 1 April to 31 March.
+        e.g. any date in Apr 2026 - Mar 2027 returns (2627, "26/27").
+        """
+        year = now.year
+        if now.month < 4:
+            # Jan-Mar: financial year started previous April
+            fy_start = year - 1
+        else:
+            fy_start = year
+        fy_end = fy_start + 1
+        key = (fy_start % 100) * 100 + (fy_end % 100)
+        label = f"{fy_start % 100:02d}/{fy_end % 100:02d}"
+        return key, label
+
+    @classmethod
     def get_next_reference(cls):
         """
-        Get the next available reference number for the current year.
+        Get the next available reference number for the current period.
+        Controlled by the REFERENCE_TYPE setting:
+          STANDARD  - MEM-YY-NNNN  (calendar year, resets 1 Jan)
+          FINANCIAL - MEM-YY/YY-NNNN (financial year Apr-Mar, resets 1 Apr)
         This method is thread-safe and handles race conditions properly.
         """
-        current_year = timezone.now().year % 100  # Last two digits
-        reference_format = f"MEM-{current_year:02d}-{{:04d}}"
+        reference_type = getattr(settings, "REFERENCE_TYPE", "STANDARD")
+        now = timezone.now()
+
+        if reference_type == "FINANCIAL":
+            sequence_key, year_label = cls._get_financial_year_key_and_label(now)
+            reference_format = f"MEM-{year_label}-{{:04d}}"
+        else:
+            current_year = now.year % 100
+            sequence_key = current_year
+            reference_format = f"MEM-{current_year:02d}-{{:04d}}"
 
         with transaction.atomic():
-            # Get or create the sequence record for this year
+            # Get or create the sequence record for this period
             sequence, _ = cls.objects.select_for_update().get_or_create(
-                year=current_year, defaults={"next_number": 1}
+                year=sequence_key, defaults={"next_number": 1}
             )
 
             # Generate reference and increment counter

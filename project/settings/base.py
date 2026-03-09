@@ -75,6 +75,11 @@ SITE_DOMAIN = os.environ.get("SITE_DOMAIN", "localhost:8000")
 # Council name - used in footer and branding
 COUNCIL_NAME = os.environ.get("COUNCIL_NAME", "Your Council Name")
 
+# Reference number format
+# STANDARD  - MEM-YY-NNNN  (calendar year, sequence resets 1 Jan each year)
+# FINANCIAL - MEM-YY/YY-NNNN (financial year 1 Apr to 31 Mar, sequence resets 1 Apr)
+REFERENCE_TYPE = os.environ.get("REFERENCE_TYPE", "STANDARD")
+
 # Domain for ALLOWED_HOSTS and CSRF/CORS settings
 # For development: 'localhost'
 # For test/production: 'yourdomain.example.net'
