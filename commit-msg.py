@@ -106,7 +106,9 @@ def increment_version(commit_msg_file):
     if result != 0:
         print(f"Warning: Failed to stage {VERSION_FILE} (git add returned {result})")
         print("The version.py file was updated but may not be included in this commit.")
-        print("Run: git add project/version.py && git commit --amend --no-edit --no-verify")
+        print(
+            "Run: git add project/version.py && git commit --amend --no-edit --no-verify"
+        )
         return 0  # Don't block the commit - just warn
 
     print(f"Version incremented from {current_version} to {new_version}")

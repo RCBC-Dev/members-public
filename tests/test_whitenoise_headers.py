@@ -27,13 +27,13 @@ class TestAddCorsHeaders:
     def test_adds_access_control_allow_origin(self):
         headers = {}
         with patch.dict(os.environ, {"DOMAIN": "example.com", "ENVIRONMENT": ""}):
-            add_cors_headers(headers)
+            add_cors_headers(headers, "/static/test.css", "http://example.com/static/test.css")
         assert "Access-Control-Allow-Origin" in headers
 
     def test_adds_vary_origin_header(self):
         headers = {}
         with patch.dict(os.environ, {"DOMAIN": "example.com", "ENVIRONMENT": ""}):
-            add_cors_headers(headers)
+            add_cors_headers(headers, "/static/test.css", "http://example.com/static/test.css")
         assert headers["Vary"] == "Origin"
 
     def test_development_uses_http(self):
@@ -41,7 +41,7 @@ class TestAddCorsHeaders:
         with patch.dict(
             os.environ, {"DOMAIN": "example.com", "ENVIRONMENT": "development"}
         ):
-            add_cors_headers(headers)
+            add_cors_headers(headers, "/static/test.css", "http://example.com/static/test.css")
         assert headers["Access-Control-Allow-Origin"].startswith("http://")
 
     def test_production_uses_https(self):
@@ -49,19 +49,19 @@ class TestAddCorsHeaders:
         with patch.dict(
             os.environ, {"DOMAIN": "example.com", "ENVIRONMENT": "production"}
         ):
-            add_cors_headers(headers)
+            add_cors_headers(headers, "/static/test.css", "http://example.com/static/test.css")
         assert headers["Access-Control-Allow-Origin"].startswith("https://")
 
     def test_test_environment_uses_https(self):
         headers = {}
         with patch.dict(os.environ, {"DOMAIN": "mysite.com", "ENVIRONMENT": "test"}):
-            add_cors_headers(headers)
+            add_cors_headers(headers, "/static/test.css", "http://example.com/static/test.css")
         assert headers["Access-Control-Allow-Origin"].startswith("https://")
 
     def test_empty_environment_uses_http(self):
         headers = {}
         with patch.dict(os.environ, {"DOMAIN": "localhost", "ENVIRONMENT": ""}):
-            add_cors_headers(headers)
+            add_cors_headers(headers, "/static/test.css", "http://example.com/static/test.css")
         assert headers["Access-Control-Allow-Origin"].startswith("http://")
 
     def test_domain_included_in_origin(self):
@@ -69,7 +69,7 @@ class TestAddCorsHeaders:
         with patch.dict(
             os.environ, {"DOMAIN": "mycouncil.gov.uk", "ENVIRONMENT": "production"}
         ):
-            add_cors_headers(headers)
+            add_cors_headers(headers, "/static/test.css", "http://example.com/static/test.css")
         assert "mycouncil.gov.uk" in headers["Access-Control-Allow-Origin"]
 
     def test_default_domain_is_localhost(self):
@@ -78,5 +78,5 @@ class TestAddCorsHeaders:
         env = {k: v for k, v in os.environ.items() if k != "DOMAIN"}
         env["ENVIRONMENT"] = ""
         with patch.dict(os.environ, env, clear=True):
-            add_cors_headers(headers)
+            add_cors_headers(headers, "/static/test.css", "http://example.com/static/test.css")
         assert "localhost" in headers["Access-Control-Allow-Origin"]

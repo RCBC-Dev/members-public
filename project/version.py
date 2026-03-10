@@ -19,13 +19,18 @@ Version information for the Members Enquiries System.
 # - MAJOR: Significant changes that may require data migration or affect compatibility
 # - MINOR: Incremented for each release with minor changes or bug fixes
 
-VERSION = "1.13"
+VERSION = "1.14"
 
 # Change log entries should be in the format:
 # (version, date, description)
 CHANGE_LOG = [
-    ("1.13", "2026-03-09", "Fixed an issue with githooks - was not pre-staging the version.py"),
+    ("1.14", "2026-03-10", "Fixed models.py to allow 15 chars to accomodate the FINANCIAL referencing was 12 chars, fixed whitenoise the add_cors_headers had incorrect number of params - wasn't detected until I deployed to IIS. Worth noting that waitress and whitenoise needed to be installed manually as they are not in the requirements.txt - because they are mandatory for deployment and are a requirement only for IIS deployment"),
 
+    (
+        "1.13",
+        "2026-03-09",
+        "Fixed an issue with githooks - was not pre-staging the version.py",
+    ),
     ("1.12", "2026-03-09", "Updated README.md for the REFERENCE_TYPE"),
     (
         "1.11",

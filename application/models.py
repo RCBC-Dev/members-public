@@ -307,7 +307,7 @@ class Enquiry(models.Model):
         ("3rd_party", "3rd Party"),
     )
     title = models.CharField(max_length=255)
-    reference = models.CharField(max_length=12, unique=True, blank=True, null=True)
+    reference = models.CharField(max_length=15, unique=True, blank=True, null=True)
     description = models.TextField()
     status = models.CharField(
         max_length=10, choices=STATUS_CHOICES, default="open", db_index=True
