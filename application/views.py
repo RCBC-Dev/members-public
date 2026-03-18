@@ -819,7 +819,8 @@ def enquiry_reopen(request, pk):
     # Re-open the enquiry
     enquiry.status = "open"
     enquiry.closed_at = None
-    enquiry.save(update_fields=["status", "closed_at"])
+    enquiry.service_type = None
+    enquiry.save(update_fields=["status", "closed_at", "service_type"])
 
     # Create history entry
     history_note = f"Enquiry re-opened by {request.user.get_full_name() or request.user.username}\nReason: {reason}"

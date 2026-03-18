@@ -19,13 +19,18 @@ Version information for the Members Enquiries System.
 # - MAJOR: Significant changes that may require data migration or affect compatibility
 # - MINOR: Incremented for each release with minor changes or bug fixes
 
-VERSION = "1.22"
+VERSION = "1.23"
 
 # Change log entries should be in the format:
 # (version, date, description)
 CHANGE_LOG = [
-    ("1.22", "2026-03-18", "Fixed Closure modal - was missing 'Service Type' in all but the Enquiry Details - added to dashboard, enquiries list, overdue jobs views"),
+    ("1.23", "2026-03-18", "Set 'Service Type' to None when enquiry re-opened"),
 
+    (
+        "1.22",
+        "2026-03-18",
+        "Fixed Closure modal - was missing 'Service Type' in all but the Enquiry Details - added to dashboard, enquiries list, overdue jobs views",
+    ),
     (
         "1.21",
         "2026-03-18",
