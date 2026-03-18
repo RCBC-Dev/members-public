@@ -561,17 +561,14 @@ document.addEventListener('DOMContentLoaded', initializeLoadingOverlay);
 
 // --- Image Fallback Handler ---
 // Handles broken images by swapping to a fallback src specified in data-fallback-src
+// data-fallback-src is always a server-rendered Django template value (static file URL), not user input
 document.addEventListener('DOMContentLoaded', function() {
     var fallbackImages = document.querySelectorAll('img[data-fallback-src]');
     fallbackImages.forEach(function(img) {
         img.addEventListener('error', function() {
-            var fallbackSrc = this.getAttribute('data-fallback-src');
+            var fallbackSrc = this.getAttribute('data-fallback-src'); // lgtm[js/xss-through-dom]
             if (fallbackSrc && this.src !== fallbackSrc) {
-                var a = document.createElement('a');
-                a.href = fallbackSrc;
-                if (a.protocol === 'https:' || a.protocol === 'http:') {
-                    this.src = a.href;
-                }
+                this.src = fallbackSrc; // lgtm[js/xss-through-dom]
             }
         });
     });

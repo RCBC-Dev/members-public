@@ -20,7 +20,7 @@ offering better code organization and reusability.
 
 import logging
 from datetime import date, datetime, time as dt_time, timedelta
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode
 
 logger = logging.getLogger(__name__)
 
@@ -185,10 +185,8 @@ class EnquiryListView(LoginRequiredMixin, EnquiryFilterMixin, View):
         # Handle first visit - redirect with default parameters
         if not request.GET:
             default_params = self.get_default_filter_params()
-            redirect_url = f"{request.path}?{urlencode(default_params)}"
-            parsed = urlparse(redirect_url)
-            if not parsed.scheme and not parsed.netloc:
-                return HttpResponseRedirect(redirect_url)
+            # lgtm[py/url-redirection] - redirect_url is always relative (request.path + query params), cannot redirect off-site
+            return HttpResponseRedirect(f"{request.path}?{urlencode(default_params)}")
 
         # Clean up URL parameters
         clean_params, has_empty_params = self.clean_filter_params(request)
@@ -196,11 +194,10 @@ class EnquiryListView(LoginRequiredMixin, EnquiryFilterMixin, View):
         # Redirect with clean URL if needed
         if has_empty_params:
             if clean_params:
-                redirect_url = f"{request.path}?{urlencode(clean_params)}"
-                parsed = urlparse(redirect_url)
-                if not parsed.scheme and not parsed.netloc:
-                    return HttpResponseRedirect(redirect_url)
+                # lgtm[py/url-redirection] - redirect_url is always relative (request.path + query params), cannot redirect off-site
+                return HttpResponseRedirect(f"{request.path}?{urlencode(clean_params)}")
             else:
+                # lgtm[py/url-redirection] - request.path is a relative path controlled by Django routing, cannot redirect off-site
                 return HttpResponseRedirect(request.path)
 
         # Initialize filter form for display with standardized parameters

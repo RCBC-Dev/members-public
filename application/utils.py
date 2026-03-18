@@ -812,7 +812,7 @@ def parse_msg_file(file_path, body_content_mode="snippet", skip_attachments=Fals
             f"Error during .msg file processing after opening {file_path}: {e_parse}",
             exc_info=True,
         )
-        return {"error": f"General error processing .msg file: {e_parse}"}
+        return {"error": "General error processing the email file."}
 
     finally:
         if "msg_obj" in locals() and msg_obj:
@@ -896,7 +896,10 @@ def create_enquiry_from_email(parsed_email_data, created_by_user):
 
     except Exception as e:
         logger.error(f"Error creating enquiry from email: {e}", exc_info=True)
-        return {"success": False, "error": "An unexpected error occurred while creating the enquiry."}
+        return {
+            "success": False,
+            "error": "An unexpected error occurred while creating the enquiry.",
+        }
 
 
 def clear_all_session_cache(request):
