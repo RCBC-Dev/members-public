@@ -566,9 +566,11 @@ document.addEventListener('DOMContentLoaded', function() {
     var fallbackImages = document.querySelectorAll('img[data-fallback-src]');
     fallbackImages.forEach(function(img) {
         img.addEventListener('error', function() {
-            var fallbackSrc = this.getAttribute('data-fallback-src'); // lgtm[js/xss-through-dom]
+            // codeql[js/xss-through-dom] - data-fallback-src is server-rendered by Django, not user input
+            var fallbackSrc = this.getAttribute('data-fallback-src');
             if (fallbackSrc && this.src !== fallbackSrc) {
-                this.src = fallbackSrc; // lgtm[js/xss-through-dom]
+                // codeql[js/xss-through-dom] - fallbackSrc originates from server-rendered data-fallback-src attribute
+                this.src = fallbackSrc;
             }
         });
     });

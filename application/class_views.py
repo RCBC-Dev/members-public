@@ -185,7 +185,7 @@ class EnquiryListView(LoginRequiredMixin, EnquiryFilterMixin, View):
         # Handle first visit - redirect with default parameters
         if not request.GET:
             default_params = self.get_default_filter_params()
-            # lgtm[py/url-redirection] - redirect_url is always relative (request.path + query params), cannot redirect off-site
+            # codeql[py/url-redirection] - redirect_url is always relative (request.path + query params), cannot redirect off-site
             return HttpResponseRedirect(f"{request.path}?{urlencode(default_params)}")
 
         # Clean up URL parameters
@@ -194,10 +194,10 @@ class EnquiryListView(LoginRequiredMixin, EnquiryFilterMixin, View):
         # Redirect with clean URL if needed
         if has_empty_params:
             if clean_params:
-                # lgtm[py/url-redirection] - redirect_url is always relative (request.path + query params), cannot redirect off-site
+                # codeql[py/url-redirection] - redirect_url is always relative (request.path + query params), cannot redirect off-site
                 return HttpResponseRedirect(f"{request.path}?{urlencode(clean_params)}")
             else:
-                # lgtm[py/url-redirection] - request.path is a relative path controlled by Django routing, cannot redirect off-site
+                # codeql[py/url-redirection] - request.path is a relative path controlled by Django routing, cannot redirect off-site
                 return HttpResponseRedirect(request.path)
 
         # Initialize filter form for display with standardized parameters
