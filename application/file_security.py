@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 
 # Common MIME type constant to avoid duplication (SonarQube S1192)
 MIME_OCTET_STREAM = "application/octet-stream"
+ERR_FILE_VALIDATION = "File validation failed. Please check the file type and size."
 
 
 class FileValidationError(Exception):
@@ -592,7 +593,7 @@ class FileUploadService:
             logger.warning(f"File validation failed for {uploaded_file.name}: {e}")
             return {
                 "success": False,
-                "error": "File validation failed. Please check the file type and size.",
+                "error": ERR_FILE_VALIDATION,
                 "error_type": "validation",
             }
         except Exception as e:
@@ -630,7 +631,7 @@ class FileUploadService:
             )
             return {
                 "success": False,
-                "error": "File validation failed. Please check the file type and size.",
+                "error": ERR_FILE_VALIDATION,
                 "error_type": "validation",
             }
         except Exception as e:
@@ -719,7 +720,7 @@ class FileUploadService:
             logger.warning(f"Document validation failed for {uploaded_file.name}: {e}")
             return {
                 "success": False,
-                "error": "File validation failed. Please check the file type and size.",
+                "error": ERR_FILE_VALIDATION,
                 "error_type": "validation",
             }
         except Exception as e:

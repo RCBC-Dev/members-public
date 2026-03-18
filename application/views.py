@@ -84,6 +84,8 @@ User = get_user_model()
 URL_ENQUIRY_LIST = "application:enquiry_list"
 URL_ENQUIRY_DETAIL = "application:enquiry_detail"
 MSG_NO_FILE_PROVIDED = "No file provided"
+ERR_UNEXPECTED_RETRY = "An unexpected error occurred. Please try again."
+ERR_UNEXPECTED = "An unexpected error occurred."
 
 
 # ---------------------------------------------------------------------------
@@ -116,7 +118,7 @@ def _handle_attach_only_request(enquiry, user, extracted_images_json):
         return JsonResponse(
             {
                 "success": False,
-                "error": "An unexpected error occurred. Please try again.",
+                "error": ERR_UNEXPECTED_RETRY,
             }
         )
 
@@ -1010,7 +1012,7 @@ def api_add_email_note(request, pk):
         return JsonResponse(
             {
                 "success": False,
-                "error": "An unexpected error occurred. Please try again.",
+                "error": ERR_UNEXPECTED_RETRY,
             }
         )
 
@@ -1085,7 +1087,7 @@ def api_delete_attachment(request, attachment_id):
         return JsonResponse(
             {
                 "success": False,
-                "error": "An unexpected error occurred. Please try again.",
+                "error": ERR_UNEXPECTED_RETRY,
             },
             status=500,
         )
@@ -1112,7 +1114,7 @@ def api_get_all_contacts(request):
         return JsonResponse(contacts_with_areas, safe=False)
     except Exception as e:
         logger.error(f"Error fetching contacts: {e}", exc_info=True)
-        return JsonResponse({"error": "An unexpected error occurred."}, status=500)
+        return JsonResponse({"error": ERR_UNEXPECTED}, status=500)
 
 
 @login_required
@@ -1140,7 +1142,7 @@ def api_get_contacts_by_job_type(request):
         return JsonResponse(contacts_data, safe=False)
     except Exception as e:
         logger.error(f"Error fetching contacts by job type: {e}", exc_info=True)
-        return JsonResponse({"error": "An unexpected error occurred."}, status=500)
+        return JsonResponse({"error": ERR_UNEXPECTED}, status=500)
 
 
 @login_required
@@ -1183,7 +1185,7 @@ def api_get_job_types_by_contact(request):
         return JsonResponse({"error": "Contact not found."}, status=404)
     except Exception as e:
         logger.error(f"Error fetching contact job types: {e}", exc_info=True)
-        return JsonResponse({"error": "An unexpected error occurred."}, status=500)
+        return JsonResponse({"error": ERR_UNEXPECTED}, status=500)
 
 
 @login_required
@@ -1331,7 +1333,7 @@ def api_update_closed_enquiry_job_type(request):
     except Exception as e:
         logger.error(f"Error updating closed enquiry job type: {str(e)}", exc_info=True)
         return JsonResponse(
-            {"success": False, "error": "An unexpected error occurred"}, status=500
+            {"success": False, "error": ERR_UNEXPECTED}, status=500
         )
 
 
@@ -1357,7 +1359,7 @@ def api_get_contact_section(request):
     except Exception as e:
         logger.error(f"Error fetching contact section: {e}", exc_info=True)
         return JsonResponse(
-            {"success": False, "error": "An unexpected error occurred."}
+            {"success": False, "error": ERR_UNEXPECTED}
         )
 
 

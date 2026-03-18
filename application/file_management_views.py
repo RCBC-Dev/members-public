@@ -53,6 +53,9 @@ from application.models import EnquiryAttachment
 from application.utils import admin_required
 from application.file_logger import file_logger
 
+# Shared error message constants (SonarQube S1192 - avoid duplicated string literals)
+ERR_UNEXPECTED = "An unexpected error occurred. Please try again."
+
 
 @login_required
 @admin_required()
@@ -166,7 +169,7 @@ def run_storage_analysis(request):
         return JsonResponse(
             {
                 "success": False,
-                "error": "An unexpected error occurred. Please try again.",
+                "error": ERR_UNEXPECTED,
             }
         )
 
@@ -225,7 +228,7 @@ def cleanup_orphaned_files(request):
         return JsonResponse(
             {
                 "success": False,
-                "error": "An unexpected error occurred. Please try again.",
+                "error": ERR_UNEXPECTED,
             }
         )
 
@@ -275,7 +278,7 @@ def optimize_enquiry_images(request):
         return JsonResponse(
             {
                 "success": False,
-                "error": "An unexpected error occurred. Please try again.",
+                "error": ERR_UNEXPECTED,
             }
         )
 
@@ -1069,7 +1072,7 @@ def storage_analytics_api(request):
         return JsonResponse(
             {
                 "success": False,
-                "error": "An unexpected error occurred. Please try again.",
+                "error": ERR_UNEXPECTED,
             }
         )
 
@@ -1224,7 +1227,7 @@ def check_missing_images(request):
         return JsonResponse(
             {
                 "success": False,
-                "error": "An unexpected error occurred. Please try again.",
+                "error": ERR_UNEXPECTED,
             }
         )
 
@@ -1347,7 +1350,7 @@ def update_attachment_sizes(request):
         return JsonResponse(
             {
                 "success": False,
-                "error": "An unexpected error occurred. Please try again.",
+                "error": ERR_UNEXPECTED,
             }
         )
 

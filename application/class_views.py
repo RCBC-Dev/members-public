@@ -31,6 +31,7 @@ from django.db.models import Q
 from django.http import HttpResponseRedirect, Http404, JsonResponse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views import View
 from django.views.generic import ListView, DetailView
@@ -185,20 +186,19 @@ class EnquiryListView(LoginRequiredMixin, EnquiryFilterMixin, View):
         # Handle first visit - redirect with default parameters
         if not request.GET:
             default_params = self.get_default_filter_params()
-            # codeql[py/url-redirection] - redirect_url is always relative (request.path + query params), cannot redirect off-site
-            return HttpResponseRedirect(f"{request.path}?{urlencode(default_params)}")
+            list_url = reverse(URL_ENQUIRY_LIST)
+            return HttpResponseRedirect(f"{list_url}?{urlencode(default_params)}")
 
         # Clean up URL parameters
         clean_params, has_empty_params = self.clean_filter_params(request)
 
         # Redirect with clean URL if needed
         if has_empty_params:
+            list_url = reverse(URL_ENQUIRY_LIST)
             if clean_params:
-                # codeql[py/url-redirection] - redirect_url is always relative (request.path + query params), cannot redirect off-site
-                return HttpResponseRedirect(f"{request.path}?{urlencode(clean_params)}")
+                return HttpResponseRedirect(f"{list_url}?{urlencode(clean_params)}")
             else:
-                # codeql[py/url-redirection] - request.path is a relative path controlled by Django routing, cannot redirect off-site
-                return HttpResponseRedirect(request.path)
+                return HttpResponseRedirect(list_url)
 
         # Initialize filter form for display with standardized parameters
         form_data = request.GET.copy()

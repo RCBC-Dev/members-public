@@ -566,10 +566,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var fallbackImages = document.querySelectorAll('img[data-fallback-src]');
     fallbackImages.forEach(function(img) {
         img.addEventListener('error', function() {
-            // codeql[js/xss-through-dom] - data-fallback-src is server-rendered by Django, not user input
             var fallbackSrc = this.getAttribute('data-fallback-src');
-            if (fallbackSrc && this.src !== fallbackSrc) {
-                // codeql[js/xss-through-dom] - fallbackSrc originates from server-rendered data-fallback-src attribute
+            if (fallbackSrc && this.src !== fallbackSrc && fallbackSrc.startsWith('/static/')) {
                 this.src = fallbackSrc;
             }
         });

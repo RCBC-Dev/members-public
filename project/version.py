@@ -19,13 +19,14 @@ Version information for the Members Enquiries System.
 # - MAJOR: Significant changes that may require data migration or affect compatibility
 # - MINOR: Incremented for each release with minor changes or bug fixes
 
-VERSION = "1.18"
+VERSION = "1.19"
 
 # Change log entries should be in the format:
 # (version, date, description)
 CHANGE_LOG = [
-    ("1.18", "2026-03-18", "Updated LGTM comments to use .github/workflows/codeql.yml"),
+    ("1.19", "2026-03-18", "Removed the custom .yml as it was deprecated"),
 
+    ("1.18", "2026-03-18", "Updated LGTM comments to use .github/workflows/codeql.yml"),
     (
         "1.17",
         "2026-03-18",
