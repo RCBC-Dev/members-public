@@ -232,17 +232,11 @@ document.addEventListener("DOMContentLoaded", function () {
  * formatDataTableExport('<span>Complex <b>HTML</b> content</span>') // Returns: "Complex HTML content"
  */
 function formatDataTableExport(data, row, column, node) {
-    if (typeof data !== 'string') return data;
-    // Strip HTML tags and decode common HTML entities for plain-text export
-    var text = data
-        .replace(/<[^>]+>/g, '')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&nbsp;/g, ' ');
-    return text.trim();
+    // Use the DOM node's textContent - already decoded, no HTML parsing needed
+    if (node && node.textContent !== undefined) {
+        return node.textContent.trim();
+    }
+    return (data == null ? '' : String(data));
 }
 
 /**
@@ -1256,7 +1250,11 @@ window.EnquirySelectionManager = {
         if (window.loadContactSectionAPI) {
             window.loadContactSectionAPI(contactId).then((data) => {
                 if (data.success && data.section) {
-                    this.elements.sectionSelect.innerHTML = `<option value="${data.section.id}">${data.section.name}</option>`;
+                    var sectionOption = document.createElement('option');
+                    sectionOption.value = data.section.id;
+                    sectionOption.textContent = data.section.name;
+                    this.elements.sectionSelect.innerHTML = '';
+                    this.elements.sectionSelect.appendChild(sectionOption);
                     this.elements.sectionSelect.value = data.section.id;
                     // Section updated
                 }
@@ -1499,11 +1497,15 @@ document.addEventListener('DOMContentLoaded', function() {
             // Find the Resolution Time column (index 11)
             const resolutionCell = cells[11];
             if (resolutionCell && enquiryData.resolution_time) {
+                var resSpan = document.createElement('span');
                 if (enquiryData.resolution_time.display === '-') {
-                    resolutionCell.innerHTML = '<span class="text-muted">-</span>';
+                    resSpan.className = 'text-muted';
                 } else {
-                    resolutionCell.innerHTML = `<span class="${enquiryData.resolution_time.color_class}">${enquiryData.resolution_time.display}</span>`;
+                    resSpan.className = enquiryData.resolution_time.color_class;
                 }
+                resSpan.textContent = enquiryData.resolution_time.display;
+                resolutionCell.textContent = '';
+                resolutionCell.appendChild(resSpan);
             }
         }
 

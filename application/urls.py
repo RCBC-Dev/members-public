@@ -13,7 +13,7 @@
 
 from django.urls import path
 
-from . import views
+from application import views
 from .class_views import EnquiryListView, EnquiryDetailView, EnquiryCloseView
 from .datatables_views import enquiry_list_datatables
 from .export_views import export_enquiries_csv, export_enquiries_excel, get_export_info

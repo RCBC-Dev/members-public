@@ -21,7 +21,7 @@ The `urlpatterns` list routes URLs to views. For more information please see:
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.conf import settings
-from .views import serve_media_file
+from project.views import serve_media_file
 
 urlpatterns = [
     # Admin URLs should be first to avoid being overridden
