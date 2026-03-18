@@ -1332,9 +1332,7 @@ def api_update_closed_enquiry_job_type(request):
         )
     except Exception as e:
         logger.error(f"Error updating closed enquiry job type: {str(e)}", exc_info=True)
-        return JsonResponse(
-            {"success": False, "error": ERR_UNEXPECTED}, status=500
-        )
+        return JsonResponse({"success": False, "error": ERR_UNEXPECTED}, status=500)
 
 
 @login_required
@@ -1358,9 +1356,7 @@ def api_get_contact_section(request):
         return JsonResponse({"success": False, "error": "Contact not found."})
     except Exception as e:
         logger.error(f"Error fetching contact section: {e}", exc_info=True)
-        return JsonResponse(
-            {"success": False, "error": ERR_UNEXPECTED}
-        )
+        return JsonResponse({"success": False, "error": ERR_UNEXPECTED})
 
 
 # Reports Views

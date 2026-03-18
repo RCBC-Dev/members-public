@@ -232,20 +232,17 @@ document.addEventListener("DOMContentLoaded", function () {
  * formatDataTableExport('<span>Complex <b>HTML</b> content</span>') // Returns: "Complex HTML content"
  */
 function formatDataTableExport(data, row, column, node) {
-    // Extract text content from HTML, removing tags and decoding HTML entities
-    var textContent = data;
-
-    if (typeof data === 'string') {
-        // Always create a temporary div to handle both HTML tags and HTML entities
-        var tempDiv = document.createElement('div');
-        tempDiv.innerHTML = data;
-        textContent = tempDiv.textContent || tempDiv.innerText || data;
-    }
-
-    // Trim whitespace from the result
-    textContent = textContent ? textContent.trim() : textContent;
-
-    return textContent;
+    if (typeof data !== 'string') return data;
+    // Strip HTML tags and decode common HTML entities for plain-text export
+    var text = data
+        .replace(/<[^>]+>/g, '')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, ' ');
+    return text.trim();
 }
 
 /**
