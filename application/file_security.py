@@ -28,8 +28,10 @@ from io import BytesIO
 from typing import Dict, List, Optional, Tuple, Union
 
 from django.conf import settings
+from django.core.exceptions import SuspiciousFileOperation
 from django.core.files.uploadedfile import UploadedFile
 from django.utils import timezone
+from django.utils._os import safe_join
 
 logger = logging.getLogger(__name__)
 
@@ -489,8 +491,11 @@ class ImageProcessingService:
         # Ensure destination directory exists
         os.makedirs(destination_dir, exist_ok=True)
 
-        # Save processed file
-        file_path = os.path.join(destination_dir, safe_filename)
+        # Save processed file (safe_join ensures path stays within destination_dir)
+        try:
+            file_path = safe_join(destination_dir, safe_filename)
+        except SuspiciousFileOperation:
+            return {"success": False, "error": "Invalid file path.", "error_type": "security"}
         with open(file_path, "wb") as f:
             f.write(processed_data)
 
@@ -581,14 +586,14 @@ class FileUploadService:
 
         except FileValidationError as e:
             logger.warning(f"File validation failed for {uploaded_file.name}: {e}")
-            return {"success": False, "error": str(e), "error_type": "validation"}
+            return {"success": False, "error": "File validation failed. Please check the file type and size.", "error_type": "validation"}
         except Exception as e:
             logger.error(
                 f"Unexpected error processing image upload: {e}", exc_info=True
             )
             return {
                 "success": False,
-                "error": f"File processing failed: {str(e)}",
+                "error": "File processing failed. Please try again.",
                 "error_type": "processing",
             }
 
@@ -615,12 +620,12 @@ class FileUploadService:
             logger.warning(
                 f"Email file validation failed for {uploaded_file.name}: {e}"
             )
-            return {"success": False, "error": str(e), "error_type": "validation"}
+            return {"success": False, "error": "File validation failed. Please check the file type and size.", "error_type": "validation"}
         except Exception as e:
             logger.error(f"Unexpected error validating email file: {e}", exc_info=True)
             return {
                 "success": False,
-                "error": f"File validation failed: {str(e)}",
+                "error": "File validation failed. Please check the file and try again.",
                 "error_type": "processing",
             }
 
@@ -661,7 +666,11 @@ class FileUploadService:
             # Generate secure filename
             extension = file_info["extension"]
             unique_filename = f"{uuid.uuid4()}{extension}"
-            file_path = os.path.join(destination_dir, unique_filename)
+            # safe_join ensures path stays within destination_dir
+            try:
+                file_path = safe_join(destination_dir, unique_filename)
+            except SuspiciousFileOperation:
+                return {"success": False, "error": "Invalid file path.", "error_type": "security"}
 
             # Save the file
             uploaded_file.seek(0)
@@ -692,13 +701,13 @@ class FileUploadService:
 
         except FileValidationError as e:
             logger.warning(f"Document validation failed for {uploaded_file.name}: {e}")
-            return {"success": False, "error": str(e), "error_type": "validation"}
+            return {"success": False, "error": "File validation failed. Please check the file type and size.", "error_type": "validation"}
         except Exception as e:
             logger.error(
                 f"Unexpected error processing document upload: {e}", exc_info=True
             )
             return {
                 "success": False,
-                "error": f"File processing failed: {str(e)}",
+                "error": "File processing failed. Please try again.",
                 "error_type": "processing",
             }

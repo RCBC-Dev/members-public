@@ -70,7 +70,7 @@ class TestAddCorsHeaders:
             os.environ, {"DOMAIN": "mycouncil.gov.uk", "ENVIRONMENT": "production"}
         ):
             add_cors_headers(headers, "/static/test.css", "http://example.com/static/test.css")
-        assert "mycouncil.gov.uk" in headers["Access-Control-Allow-Origin"]
+        assert headers["Access-Control-Allow-Origin"] == "https://mycouncil.gov.uk"
 
     def test_default_domain_is_localhost(self):
         headers = {}

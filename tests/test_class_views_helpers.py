@@ -430,7 +430,7 @@ class TestHandleAjaxClose:
         data = json.loads(response.content)
 
         assert data["success"] is False
-        assert data["message"] == "Invalid service type"
+        assert data["message"] == "Unable to close enquiry. Please check the details and try again."
 
     @patch("application.class_views.EnquiryService.close_enquiry")
     def test_already_closed_returns_error(self, mock_close):
@@ -545,7 +545,7 @@ class TestHandleStandardClose:
 
         view._handle_standard_close(request, enquiry, pk=4, service_type="type_a")
 
-        mock_messages.error.assert_called_once_with(request, "Bad value")
+        mock_messages.error.assert_called_once_with(request, "Unable to close enquiry. Please check the details and try again.")
         mock_redirect.assert_called_with("application:enquiry_detail", pk=4)
 
 
@@ -565,6 +565,7 @@ class TestResolveRedirect:
         view = self._make_view()
         request = MagicMock()
         request.META = {"HTTP_REFERER": "http://example.com/enquiries/10/"}
+        request.get_host.return_value = "example.com"
         enquiry = MagicMock()
         enquiry.pk = 10
 
@@ -578,6 +579,7 @@ class TestResolveRedirect:
         request = MagicMock()
         referer = "http://example.com/enquiries/?status=open"
         request.META = {"HTTP_REFERER": referer}
+        request.get_host.return_value = "example.com"
         enquiry = MagicMock()
         enquiry.pk = 10
 
@@ -591,6 +593,7 @@ class TestResolveRedirect:
         request = MagicMock()
         referer = "http://example.com/home/"
         request.META = {"HTTP_REFERER": referer}
+        request.get_host.return_value = "example.com"
         enquiry = MagicMock()
         enquiry.pk = 10
 

@@ -566,7 +566,7 @@ document.addEventListener('DOMContentLoaded', function() {
     fallbackImages.forEach(function(img) {
         img.addEventListener('error', function() {
             var fallbackSrc = this.getAttribute('data-fallback-src');
-            if (fallbackSrc && this.src !== fallbackSrc) {
+            if (fallbackSrc && this.src !== fallbackSrc && /^(https?:\/\/|\/)/i.test(fallbackSrc)) {
                 this.src = fallbackSrc;
             }
         });

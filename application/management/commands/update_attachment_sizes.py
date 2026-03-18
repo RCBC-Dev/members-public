@@ -26,8 +26,10 @@ Usage:
 import os
 from pathlib import Path
 
+from django.core.exceptions import SuspiciousFileOperation
 from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
+from django.utils._os import safe_join
 from django.db.models import Q
 
 from application.models import EnquiryAttachment
@@ -88,7 +90,14 @@ class Command(BaseCommand):
 
         for attachment in attachments:
             stats["total_checked"] += 1
-            file_path = media_root / attachment.file_path
+            try:
+                file_path = Path(safe_join(str(media_root), attachment.file_path))
+            except SuspiciousFileOperation:
+                self.stdout.write(
+                    self.style.WARNING(f"  Skipped (suspicious path): {attachment.file_path}")
+                )
+                stats["files_missing"] += 1
+                continue
 
             # Check if file exists
             if not file_path.exists():

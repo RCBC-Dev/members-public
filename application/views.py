@@ -32,6 +32,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Q
 from django.http import HttpResponseRedirect, JsonResponse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -109,8 +110,8 @@ def _handle_attach_only_request(enquiry, user, extracted_images_json):
         )
         return create_json_response(True, message="Images attached successfully")
     except Exception as e:
-        logger.error(f"Error attaching images to enquiry {enquiry.pk}: {e}")
-        return JsonResponse({"success": False, "error": str(e)})
+        logger.error(f"Error attaching images to enquiry {enquiry.pk}: {e}", exc_info=True)
+        return JsonResponse({"success": False, "error": "An unexpected error occurred. Please try again."})
 
 
 def _get_edit_success_message(enquiry, changes, has_new_attachments):
@@ -162,7 +163,9 @@ def _redirect_to_referer_or_detail(request, pk, allowed_paths=None):
     referer = request.META.get("HTTP_REFERER", "")
     if allowed_paths is None:
         allowed_paths = ["/enquiries/", "/home/"]
-    if referer and any(path in referer for path in allowed_paths):
+    if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}) and any(
+        path in referer for path in allowed_paths
+    ):
         return HttpResponseRedirect(referer)
     return redirect(URL_ENQUIRY_DETAIL, pk=pk)
 
@@ -214,7 +217,7 @@ def _handle_reopen_redirect(request, pk, enquiry):
         request, f'Enquiry "{enquiry.reference}" has been re-opened successfully.'
     )
     referer = request.META.get("HTTP_REFERER", "")
-    if referer:
+    if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
         if f"/enquiries/{pk}/" in referer and "/edit" not in referer:
             return redirect(URL_ENQUIRY_DETAIL, pk=enquiry.pk)
         if "/enquiries/" in referer or "/home/" in referer:
@@ -908,9 +911,7 @@ def api_upload_photos(request):
 
     except Exception as e:
         logger.error(f"Unexpected error in api_upload_photos: {e}", exc_info=True)
-        return JsonResponse(
-            {"success": False, "error": f"Error uploading file: {str(e)}"}
-        )
+        return JsonResponse({"success": False, "error": "Error uploading file. Please try again."})
 
 
 @login_required
@@ -943,7 +944,7 @@ def upload_image(request):
 
     except Exception as e:
         logger.error(f"Unexpected error in upload_image: {e}", exc_info=True)
-        return JsonResponse({"error": f"Error uploading image: {str(e)}"}, status=500)
+        return JsonResponse({"error": "Error uploading image. Please try again."}, status=500)
 
 
 @login_required
@@ -991,7 +992,7 @@ def api_add_email_note(request, pk):
 
     except Exception as e:
         logger.error(f"Error adding email note: {e}", exc_info=True)
-        return JsonResponse({"success": False, "error": str(e)})
+        return JsonResponse({"success": False, "error": "An unexpected error occurred. Please try again."})
 
 
 @login_required
@@ -1061,7 +1062,7 @@ def api_delete_attachment(request, attachment_id):
 
     except Exception as e:
         logger.error(f"Error deleting attachment {attachment_id}: {e}", exc_info=True)
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
+        return JsonResponse({"success": False, "error": "An unexpected error occurred. Please try again."}, status=500)
 
 
 # API Views for AJAX lookups
@@ -1084,7 +1085,8 @@ def api_get_all_contacts(request):
 
         return JsonResponse(contacts_with_areas, safe=False)
     except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+        logger.error(f"Error fetching contacts: {e}", exc_info=True)
+        return JsonResponse({"error": "An unexpected error occurred."}, status=500)
 
 
 @login_required
@@ -1111,7 +1113,8 @@ def api_get_contacts_by_job_type(request):
 
         return JsonResponse(contacts_data, safe=False)
     except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+        logger.error(f"Error fetching contacts by job type: {e}", exc_info=True)
+        return JsonResponse({"error": "An unexpected error occurred."}, status=500)
 
 
 @login_required
@@ -1151,11 +1154,10 @@ def api_get_job_types_by_contact(request):
 
         return JsonResponse(job_types, safe=False)
     except Contact.DoesNotExist:
-        return JsonResponse(
-            {"error": f"Contact not found with ID: {contact_id}"}, status=404
-        )
+        return JsonResponse({"error": "Contact not found."}, status=404)
     except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+        logger.error(f"Error fetching contact job types: {e}", exc_info=True)
+        return JsonResponse({"error": "An unexpected error occurred."}, status=500)
 
 
 @login_required
@@ -1325,11 +1327,10 @@ def api_get_contact_section(request):
             }
         )
     except Contact.DoesNotExist:
-        return JsonResponse(
-            {"success": False, "error": f"Contact not found with ID: {contact_id}"}
-        )
+        return JsonResponse({"success": False, "error": "Contact not found."})
     except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)})
+        logger.error(f"Error fetching contact section: {e}", exc_info=True)
+        return JsonResponse({"success": False, "error": "An unexpected error occurred."})
 
 
 # Reports Views

@@ -492,7 +492,6 @@ def enquiry_list_datatables(request):
         return JsonResponse(response_data)
 
     except Exception as e:
-        # Return error response for debugging
         import traceback
         import logging
 
@@ -502,8 +501,7 @@ def enquiry_list_datatables(request):
 
         return JsonResponse(
             {
-                "error": str(e),
-                "traceback": traceback.format_exc(),
+                "error": "An error occurred loading the data. Please try again.",
                 "draw": request_data.get("draw", 1),
                 "recordsTotal": 0,
                 "recordsFiltered": 0,

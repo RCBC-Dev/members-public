@@ -103,7 +103,7 @@ class EmailProcessingService:
             logger.error(f"Email file validation failed: {e}", exc_info=True)
             return {
                 "success": False,
-                "error": f"File validation failed: {str(e)}",
+                "error": "File validation failed. Please check the file and try again.",
                 "error_type": "processing",
             }
 
@@ -182,7 +182,7 @@ class EmailProcessingService:
             logger.error(f"Error parsing email file: {e}", exc_info=True)
             return {
                 "success": False,
-                "error": f"Error processing email file: {str(e)}",
+                "error": "Error processing email file. Please try again.",
                 "error_type": "processing",
             }
 

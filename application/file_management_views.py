@@ -21,12 +21,15 @@ This module provides views for:
 - File system health monitoring
 """
 
+import logging
 import os
 import json
 import shutil
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 try:
     from PIL import Image
@@ -35,12 +38,14 @@ except ImportError:
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import SuspiciousFileOperation
 from django.core.management import call_command
 from django.core.paginator import Paginator
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render
 from django.conf import settings
 from django.utils import timezone
+from django.utils._os import safe_join
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_protect
 
@@ -157,7 +162,8 @@ def run_storage_analysis(request):
         return JsonResponse({"success": True, "metrics": metrics, "output": output})
 
     except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)})
+        logger.error(f"Error scanning orphaned files: {e}", exc_info=True)
+        return JsonResponse({"success": False, "error": "An unexpected error occurred. Please try again."})
 
 
 @login_required
@@ -210,7 +216,8 @@ def cleanup_orphaned_files(request):
         )
 
     except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)})
+        logger.error(f"Error cleaning orphaned files: {e}", exc_info=True)
+        return JsonResponse({"success": False, "error": "An unexpected error occurred. Please try again."})
 
 
 @login_required
@@ -254,7 +261,8 @@ def optimize_enquiry_images(request):
         )
 
     except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)})
+        logger.error(f"Error optimizing images: {e}", exc_info=True)
+        return JsonResponse({"success": False, "error": "An unexpected error occurred. Please try again."})
 
 
 # ---------------------------------------------------------------------------
@@ -780,7 +788,8 @@ class ImageOptimizationStreamer:
             yield self._build_final_results(total_files)
 
         except Exception as e:
-            yield self._sse_event({"status": "error", "error": str(e)})
+            logger.error(f"Error during image optimization stream: {e}", exc_info=True)
+            yield self._sse_event({"status": "error", "error": "An unexpected error occurred during optimization."})
 
 
 def _parse_optimization_params(request):
@@ -909,7 +918,10 @@ def file_browser(request):
     )
 
     media_root = Path(settings.MEDIA_ROOT)
-    target_dir = media_root / directory
+    try:
+        target_dir = Path(safe_join(str(media_root), directory))
+    except SuspiciousFileOperation:
+        target_dir = media_root / "enquiry_photos"
 
     files = _collect_directory_files(target_dir, media_root, iso_dates=False)
 
@@ -941,7 +953,10 @@ def file_browser_data(request):
     directory, _ = _sanitize_directory(request.GET.get("directory", "enquiry_photos"))
 
     media_root = Path(settings.MEDIA_ROOT)
-    target_dir = media_root / directory
+    try:
+        target_dir = Path(safe_join(str(media_root), directory))
+    except SuspiciousFileOperation:
+        target_dir = media_root / "enquiry_photos"
 
     files = _collect_directory_files(target_dir, media_root, iso_dates=True)
 
@@ -1029,7 +1044,8 @@ def storage_analytics_api(request):
         )
 
     except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)})
+        logger.error(f"Error fetching storage analytics: {e}", exc_info=True)
+        return JsonResponse({"success": False, "error": "An unexpected error occurred. Please try again."})
 
 
 # ---------------------------------------------------------------------------
@@ -1108,7 +1124,8 @@ def _check_file_corruption(file_path, attachment):
     try:
         actual_size = file_path.stat().st_size
     except Exception as e:
-        return _build_corrupted_file_record(attachment, f"Cannot read file: {str(e)}")
+        logger.warning(f"Cannot read file stats for {file_path}: {e}")
+        return _build_corrupted_file_record(attachment, "Cannot read file: permission denied or file system error")
 
     if actual_size == 0:
         return _build_corrupted_file_record(attachment, "File is 0 bytes (corrupted)")
@@ -1143,7 +1160,11 @@ def check_missing_images(request):
 
         for attachment in attachments:
             total_checked += 1
-            file_path = media_root / attachment.file_path
+            try:
+                file_path = Path(safe_join(str(media_root), attachment.file_path))
+            except SuspiciousFileOperation:
+                logger.warning(f"Suspicious file path in attachment {attachment.pk}: {attachment.file_path}")
+                continue
 
             if not file_path.exists():
                 missing_files.append(_build_missing_file_record(attachment))
@@ -1168,7 +1189,8 @@ def check_missing_images(request):
         )
 
     except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)})
+        logger.error(f"Error checking missing images: {e}", exc_info=True)
+        return JsonResponse({"success": False, "error": "An unexpected error occurred. Please try again."})
 
 
 # ---------------------------------------------------------------------------
@@ -1253,7 +1275,12 @@ def update_attachment_sizes(request):
 
         for attachment in attachments:
             stats["total_checked"] += 1
-            file_path = media_root / attachment.file_path
+            try:
+                file_path = Path(safe_join(str(media_root), attachment.file_path))
+            except SuspiciousFileOperation:
+                logger.warning(f"Suspicious file path in attachment {attachment.pk}: {attachment.file_path}")
+                stats["files_missing"] += 1
+                continue
 
             if not file_path.exists():
                 stats["files_missing"] += 1
@@ -1278,7 +1305,8 @@ def update_attachment_sizes(request):
         return JsonResponse(response)
 
     except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)})
+        logger.error(f"Error updating attachment sizes: {e}", exc_info=True)
+        return JsonResponse({"success": False, "error": "An unexpected error occurred. Please try again."})
 
 
 def format_file_size(size_bytes):

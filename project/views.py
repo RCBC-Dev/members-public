@@ -17,7 +17,9 @@ Views for the Members Enquiries System project.
 
 import os
 from django.conf import settings
+from django.core.exceptions import SuspiciousFileOperation
 from django.http import FileResponse, Http404
+from django.utils._os import safe_join
 from django.views.static import serve
 from django.contrib.auth.decorators import login_required
 
@@ -29,8 +31,11 @@ def serve_media_file(request, path):
     This is not recommended for production use with high traffic,
     but works well for smaller applications.
     """
-    # Construct the full path to the media file
-    full_path = os.path.join(settings.MEDIA_ROOT, path)
+    # Construct the full path to the media file, preventing path traversal
+    try:
+        full_path = safe_join(settings.MEDIA_ROOT, path)
+    except SuspiciousFileOperation:
+        raise Http404("Media file does not exist")
 
     # Check if the file exists
     if not os.path.exists(full_path):

@@ -18,14 +18,18 @@ This module provides class-based views for complex functionality,
 offering better code organization and reusability.
 """
 
+import logging
 from datetime import date, datetime, time as dt_time, timedelta
 from urllib.parse import urlencode
+
+logger = logging.getLogger(__name__)
 
 from django.contrib import messages
 from .message_service import MessageService
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
 from django.http import HttpResponseRedirect, Http404, JsonResponse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views import View
@@ -181,7 +185,9 @@ class EnquiryListView(LoginRequiredMixin, EnquiryFilterMixin, View):
         # Handle first visit - redirect with default parameters
         if not request.GET:
             default_params = self.get_default_filter_params()
-            return HttpResponseRedirect(f"{request.path}?{urlencode(default_params)}")
+            redirect_url = f"{request.path}?{urlencode(default_params)}"
+            if url_has_allowed_host_and_scheme(redirect_url, allowed_hosts={request.get_host()}):
+                return HttpResponseRedirect(redirect_url)
 
         # Clean up URL parameters
         clean_params, has_empty_params = self.clean_filter_params(request)
@@ -189,7 +195,9 @@ class EnquiryListView(LoginRequiredMixin, EnquiryFilterMixin, View):
         # Redirect with clean URL if needed
         if has_empty_params:
             if clean_params:
-                return HttpResponseRedirect(f"{request.path}?{urlencode(clean_params)}")
+                redirect_url = f"{request.path}?{urlencode(clean_params)}"
+                if url_has_allowed_host_and_scheme(redirect_url, allowed_hosts={request.get_host()}):
+                    return HttpResponseRedirect(redirect_url)
             else:
                 return HttpResponseRedirect(request.path)
 
@@ -370,7 +378,8 @@ class EnquiryCloseView(LoginRequiredMixin, View):
                 enquiry, request.user, service_type=service_type
             )
         except ValueError as e:
-            return JsonResponse({"success": False, "message": str(e)})
+            logger.warning(f"Close enquiry validation error: {e}")
+            return JsonResponse({"success": False, "message": "Unable to close enquiry. Please check the details and try again."})
 
         if not closed:
             return JsonResponse(
@@ -399,7 +408,8 @@ class EnquiryCloseView(LoginRequiredMixin, View):
                     request, f'Enquiry "{enquiry.reference}" is already closed.'
                 )
         except ValueError as e:
-            messages.error(request, str(e))
+            logger.warning(f"Close enquiry validation error: {e}")
+            messages.error(request, "Unable to close enquiry. Please check the details and try again.")
             return redirect(URL_ENQUIRY_DETAIL, pk=pk)
 
         return self._resolve_redirect(request, pk, enquiry)
@@ -407,7 +417,7 @@ class EnquiryCloseView(LoginRequiredMixin, View):
     def _resolve_redirect(self, request, pk, enquiry):
         """Determine where to redirect after closing."""
         referer = request.META.get("HTTP_REFERER", "")
-        if referer:
+        if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
             if f"/enquiries/{pk}/" in referer and "/edit" not in referer:
                 return redirect(URL_ENQUIRY_DETAIL, pk=enquiry.pk)
             if "/enquiries/" in referer or "/home/" in referer:
