@@ -184,6 +184,21 @@
         </div>
         <p class="text-muted mb-0" id="modalActionDetails">Additional details...</p>
 
+        <!-- Close specific fields (hidden by default) -->
+        <div id="closeFields" class="d-none">
+          <div class="mb-3">
+            <label for="closeServiceType" class="form-label">Service Type: <span class="text-danger">*</span></label>
+            <select class="form-select" id="closeServiceType" required>
+              <option value="">Select service type...</option>
+              <option value="failed_service">Failed service</option>
+              <option value="new_addition">New/addition requests</option>
+              <option value="pre_programmed">Pre-programmed work</option>
+              <option value="3rd_party">3rd Party</option>
+            </select>
+          </div>
+          <p class="text-muted mb-0"><small>Service type cannot be changed after closure.</small></p>
+        </div>
+
         <!-- Re-open specific fields (hidden by default) -->
         <div id="reopenFields" class="d-none">
           <div class="mb-3">
@@ -490,19 +505,22 @@ $(document).ready(function() {
         // Update modal content based on action
         if (action === 'close') {
             modal.find('#modalActionTitle').text('Close Enquiry');
-            modal.find('#modalActionMessage').text('Are you sure you want to close this enquiry?');
-            modal.find('#modalActionDetails').text('This will mark the enquiry as resolved. You can still view the enquiry details, but it will be considered complete.');
-            modal.find('#confirmActionBtn').removeClass('btn-success').addClass('btn-danger');
+            modal.find('#modalActionMessage').text('Please classify this enquiry before closing:');
+            modal.find('#modalActionDetails').text('');
+            modal.find('#confirmActionBtn').removeClass('btn-success').addClass('btn-danger').prop('disabled', true);
             modal.find('#confirmActionBtn i').removeClass('bi-arrow-clockwise').addClass('bi-x-circle');
             modal.find('#confirmActionText').text('Close Enquiry');
+            modal.find('#closeServiceType').val('');
+            modal.find('#closeFields').removeClass('d-none');
             modal.find('#reopenFields').addClass('d-none');
         } else if (action === 'reopen') {
             modal.find('#modalActionTitle').text('Re-Open Enquiry');
             modal.find('#modalActionMessage').text('Please select a reason for re-opening this enquiry:');
             modal.find('#modalActionDetails').text('');
-            modal.find('#confirmActionBtn').removeClass('btn-danger').addClass('btn-success');
+            modal.find('#confirmActionBtn').removeClass('btn-danger').addClass('btn-success').prop('disabled', true);
             modal.find('#confirmActionBtn i').removeClass('bi-x-circle').addClass('bi-arrow-clockwise');
             modal.find('#confirmActionText').text('Re-Open Enquiry');
+            modal.find('#closeFields').addClass('d-none');
             modal.find('#reopenFields').removeClass('d-none');
 
             // Reset reopen form
@@ -517,6 +535,12 @@ $(document).ready(function() {
     });
 
     // Enable/disable reopen button based on reason selection
+    $('#closeServiceType').on('change', function() {
+        if ($('#enquiryActionModal').data('action') === 'close') {
+            $('#confirmActionBtn').prop('disabled', !this.value);
+        }
+    });
+
     $('#reopenReason').on('change', function() {
         var hasReason = $(this).val() !== '';
         $('#confirmActionBtn').prop('disabled', !hasReason);
@@ -529,8 +553,9 @@ $(document).ready(function() {
         var action = modal.data('action');
 
         if (action === 'close') {
-            // Close enquiry via AJAX
-            closeEnquiryAjax(enquiryId);
+            // Close enquiry via AJAX with service type
+            var serviceType = $('#closeServiceType').val();
+            closeEnquiryAjax(enquiryId, serviceType);
         } else if (action === 'reopen') {
             // Reopen enquiry via AJAX
             var reason = $('#reopenReason').val();
@@ -542,12 +567,13 @@ $(document).ready(function() {
     });
 
     // AJAX close function
-    function closeEnquiryAjax(enquiryId) {
+    function closeEnquiryAjax(enquiryId, serviceType) {
         $.ajax({
             url: "{% url 'application:enquiry_close' 0 %}".replace('0', enquiryId),
             type: 'POST',
             data: {
-                'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val()
+                'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val(),
+                'service_type': serviceType
             },
             success: function(response) {
                 if (response.success) {

@@ -19,13 +19,18 @@ Version information for the Members Enquiries System.
 # - MAJOR: Significant changes that may require data migration or affect compatibility
 # - MINOR: Incremented for each release with minor changes or bug fixes
 
-VERSION = "1.21"
+VERSION = "1.22"
 
 # Change log entries should be in the format:
 # (version, date, description)
 CHANGE_LOG = [
-    ("1.21", "2026-03-18", "More bug squashing - trying to resolve these Security issues from CodeGL"),
+    ("1.22", "2026-03-18", "Fixed Closure modal - was missing 'Service Type' in all but the Enquiry Details - added to dashboard, enquiries list, overdue jobs views"),
 
+    (
+        "1.21",
+        "2026-03-18",
+        "More bug squashing - trying to resolve these Security issues from CodeGL",
+    ),
     ("1.20", "2026-03-18", "Fix for JS where DOM text could be reinterpreted as HTML"),
     ("1.19", "2026-03-18", "Removed the custom .yml as it was deprecated"),
     ("1.18", "2026-03-18", "Updated LGTM comments to use .github/workflows/codeql.yml"),

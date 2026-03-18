@@ -232,20 +232,32 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="closeEnquiryModalLabel{{ item.enquiry.id }}">Close Enquiry</h5>
+        <h5 class="modal-title" id="closeEnquiryModalLabel{{ item.enquiry.id }}">
+          <i class="bi bi-exclamation-triangle text-warning me-2"></i>Close Enquiry
+        </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <p><strong>Reference:</strong> {{ item.enquiry.reference|default:"No Ref" }}</p>
-        <p><strong>Title:</strong> {{ item.enquiry.title }}</p>
-        <p><strong>Member:</strong> {{ item.enquiry.member.full_name }}</p>
-        <p><strong>Days Overdue:</strong> <span class="text-danger fw-bold">{{ item.days_overdue }} business days</span></p>
-        <hr>
-        <p class="text-muted mb-0">This will mark the enquiry as resolved. You can still view the enquiry details, but it will be considered complete.</p>
+        <p>Please classify this enquiry before closing:</p>
+        <div class="alert alert-info">
+          <strong>{{ item.enquiry.reference|default:"No Ref" }}</strong> - {{ item.enquiry.title }}
+          <br><small>{{ item.enquiry.member.full_name }} &mdash; <span class="text-danger fw-bold">{{ item.days_overdue }} business days overdue</span></small>
+        </div>
+        <div class="mb-3">
+          <label for="serviceType{{ item.enquiry.id }}" class="form-label">Service Type: <span class="text-danger">*</span></label>
+          <select class="form-select close-service-type" id="serviceType{{ item.enquiry.id }}" data-enquiry-id="{{ item.enquiry.id }}" required>
+            <option value="">Select service type...</option>
+            <option value="failed_service">Failed service</option>
+            <option value="new_addition">New/addition requests</option>
+            <option value="pre_programmed">Pre-programmed work</option>
+            <option value="3rd_party">3rd Party</option>
+          </select>
+        </div>
+        <p class="text-muted mb-0"><small>Service type cannot be changed after closure.</small></p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-danger close-enquiry-btn" data-enquiry-id="{{ item.enquiry.id }}">
+        <button type="button" class="btn btn-danger close-enquiry-btn" data-enquiry-id="{{ item.enquiry.id }}" disabled>
           <i class="bi bi-x-circle me-1"></i>Close Enquiry
         </button>
       </div>
@@ -413,19 +425,27 @@ $(document).ready(function() {
         $('#mostOverdueDays').text(maxOverdue);
     }
 
+    // Enable close button when service type is selected
+    $(document).on('change', '.close-service-type', function() {
+        const enquiryId = $(this).data('enquiry-id');
+        $(`#closeEnquiryModal${enquiryId} .close-enquiry-btn`).prop('disabled', !this.value);
+    });
+
     // AJAX Close Enquiry Functionality
     $('.close-enquiry-btn').on('click', function() {
         const enquiryId = $(this).data('enquiry-id');
         const modal = $(`#closeEnquiryModal${enquiryId}`);
+        const serviceType = $(`#serviceType${enquiryId}`).val();
 
-        // Close enquiry via AJAX
+        // Close enquiry via AJAX with service type
         fetch(`/enquiries/${enquiryId}/close/`, {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
                 'Content-Type': 'application/x-www-form-urlencoded',
-            }
+            },
+            body: `service_type=${encodeURIComponent(serviceType)}`
         })
         .then(response => response.json())
         .then(data => {
