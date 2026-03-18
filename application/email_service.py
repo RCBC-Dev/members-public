@@ -166,9 +166,10 @@ class EmailProcessingService:
 
             # Check for parsing errors
             if isinstance(parsed_data, dict) and "error" in parsed_data:
+                logger.error(f"Error parsing email file: {parsed_data['error']}")
                 return {
                     "success": False,
-                    "error": f'Error parsing email: {parsed_data["error"]}',
+                    "error": "Error parsing email file. The file may be corrupted or in an unsupported format.",
                     "error_type": "parsing_error",
                 }
 

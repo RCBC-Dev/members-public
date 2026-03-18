@@ -495,7 +495,11 @@ class ImageProcessingService:
         try:
             file_path = safe_join(destination_dir, safe_filename)
         except SuspiciousFileOperation:
-            return {"success": False, "error": "Invalid file path.", "error_type": "security"}
+            return {
+                "success": False,
+                "error": "Invalid file path.",
+                "error_type": "security",
+            }
         with open(file_path, "wb") as f:
             f.write(processed_data)
 
@@ -586,7 +590,11 @@ class FileUploadService:
 
         except FileValidationError as e:
             logger.warning(f"File validation failed for {uploaded_file.name}: {e}")
-            return {"success": False, "error": "File validation failed. Please check the file type and size.", "error_type": "validation"}
+            return {
+                "success": False,
+                "error": "File validation failed. Please check the file type and size.",
+                "error_type": "validation",
+            }
         except Exception as e:
             logger.error(
                 f"Unexpected error processing image upload: {e}", exc_info=True
@@ -620,7 +628,11 @@ class FileUploadService:
             logger.warning(
                 f"Email file validation failed for {uploaded_file.name}: {e}"
             )
-            return {"success": False, "error": "File validation failed. Please check the file type and size.", "error_type": "validation"}
+            return {
+                "success": False,
+                "error": "File validation failed. Please check the file type and size.",
+                "error_type": "validation",
+            }
         except Exception as e:
             logger.error(f"Unexpected error validating email file: {e}", exc_info=True)
             return {
@@ -670,7 +682,11 @@ class FileUploadService:
             try:
                 file_path = safe_join(destination_dir, unique_filename)
             except SuspiciousFileOperation:
-                return {"success": False, "error": "Invalid file path.", "error_type": "security"}
+                return {
+                    "success": False,
+                    "error": "Invalid file path.",
+                    "error_type": "security",
+                }
 
             # Save the file
             uploaded_file.seek(0)
@@ -701,7 +717,11 @@ class FileUploadService:
 
         except FileValidationError as e:
             logger.warning(f"Document validation failed for {uploaded_file.name}: {e}")
-            return {"success": False, "error": "File validation failed. Please check the file type and size.", "error_type": "validation"}
+            return {
+                "success": False,
+                "error": "File validation failed. Please check the file type and size.",
+                "error_type": "validation",
+            }
         except Exception as e:
             logger.error(
                 f"Unexpected error processing document upload: {e}", exc_info=True

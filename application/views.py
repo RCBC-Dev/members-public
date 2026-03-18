@@ -110,8 +110,15 @@ def _handle_attach_only_request(enquiry, user, extracted_images_json):
         )
         return create_json_response(True, message="Images attached successfully")
     except Exception as e:
-        logger.error(f"Error attaching images to enquiry {enquiry.pk}: {e}", exc_info=True)
-        return JsonResponse({"success": False, "error": "An unexpected error occurred. Please try again."})
+        logger.error(
+            f"Error attaching images to enquiry {enquiry.pk}: {e}", exc_info=True
+        )
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "An unexpected error occurred. Please try again.",
+            }
+        )
 
 
 def _get_edit_success_message(enquiry, changes, has_new_attachments):
@@ -163,8 +170,10 @@ def _redirect_to_referer_or_detail(request, pk, allowed_paths=None):
     referer = request.META.get("HTTP_REFERER", "")
     if allowed_paths is None:
         allowed_paths = ["/enquiries/", "/home/"]
-    if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}) and any(
-        path in referer for path in allowed_paths
+    if (
+        referer
+        and url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()})
+        and any(path in referer for path in allowed_paths)
     ):
         return HttpResponseRedirect(referer)
     return redirect(URL_ENQUIRY_DETAIL, pk=pk)
@@ -217,7 +226,9 @@ def _handle_reopen_redirect(request, pk, enquiry):
         request, f'Enquiry "{enquiry.reference}" has been re-opened successfully.'
     )
     referer = request.META.get("HTTP_REFERER", "")
-    if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
+    if referer and url_has_allowed_host_and_scheme(
+        referer, allowed_hosts={request.get_host()}
+    ):
         if f"/enquiries/{pk}/" in referer and "/edit" not in referer:
             return redirect(URL_ENQUIRY_DETAIL, pk=enquiry.pk)
         if "/enquiries/" in referer or "/home/" in referer:
@@ -911,7 +922,9 @@ def api_upload_photos(request):
 
     except Exception as e:
         logger.error(f"Unexpected error in api_upload_photos: {e}", exc_info=True)
-        return JsonResponse({"success": False, "error": "Error uploading file. Please try again."})
+        return JsonResponse(
+            {"success": False, "error": "Error uploading file. Please try again."}
+        )
 
 
 @login_required
@@ -944,7 +957,9 @@ def upload_image(request):
 
     except Exception as e:
         logger.error(f"Unexpected error in upload_image: {e}", exc_info=True)
-        return JsonResponse({"error": "Error uploading image. Please try again."}, status=500)
+        return JsonResponse(
+            {"error": "Error uploading image. Please try again."}, status=500
+        )
 
 
 @login_required
@@ -992,7 +1007,12 @@ def api_add_email_note(request, pk):
 
     except Exception as e:
         logger.error(f"Error adding email note: {e}", exc_info=True)
-        return JsonResponse({"success": False, "error": "An unexpected error occurred. Please try again."})
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "An unexpected error occurred. Please try again.",
+            }
+        )
 
 
 @login_required
@@ -1062,7 +1082,13 @@ def api_delete_attachment(request, attachment_id):
 
     except Exception as e:
         logger.error(f"Error deleting attachment {attachment_id}: {e}", exc_info=True)
-        return JsonResponse({"success": False, "error": "An unexpected error occurred. Please try again."}, status=500)
+        return JsonResponse(
+            {
+                "success": False,
+                "error": "An unexpected error occurred. Please try again.",
+            },
+            status=500,
+        )
 
 
 # API Views for AJAX lookups
@@ -1330,7 +1356,9 @@ def api_get_contact_section(request):
         return JsonResponse({"success": False, "error": "Contact not found."})
     except Exception as e:
         logger.error(f"Error fetching contact section: {e}", exc_info=True)
-        return JsonResponse({"success": False, "error": "An unexpected error occurred."})
+        return JsonResponse(
+            {"success": False, "error": "An unexpected error occurred."}
+        )
 
 
 # Reports Views

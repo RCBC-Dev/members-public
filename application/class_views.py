@@ -20,7 +20,7 @@ offering better code organization and reusability.
 
 import logging
 from datetime import date, datetime, time as dt_time, timedelta
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -186,7 +186,8 @@ class EnquiryListView(LoginRequiredMixin, EnquiryFilterMixin, View):
         if not request.GET:
             default_params = self.get_default_filter_params()
             redirect_url = f"{request.path}?{urlencode(default_params)}"
-            if url_has_allowed_host_and_scheme(redirect_url, allowed_hosts={request.get_host()}):
+            parsed = urlparse(redirect_url)
+            if not parsed.scheme and not parsed.netloc:
                 return HttpResponseRedirect(redirect_url)
 
         # Clean up URL parameters
@@ -196,7 +197,8 @@ class EnquiryListView(LoginRequiredMixin, EnquiryFilterMixin, View):
         if has_empty_params:
             if clean_params:
                 redirect_url = f"{request.path}?{urlencode(clean_params)}"
-                if url_has_allowed_host_and_scheme(redirect_url, allowed_hosts={request.get_host()}):
+                parsed = urlparse(redirect_url)
+                if not parsed.scheme and not parsed.netloc:
                     return HttpResponseRedirect(redirect_url)
             else:
                 return HttpResponseRedirect(request.path)
@@ -379,7 +381,12 @@ class EnquiryCloseView(LoginRequiredMixin, View):
             )
         except ValueError as e:
             logger.warning(f"Close enquiry validation error: {e}")
-            return JsonResponse({"success": False, "message": "Unable to close enquiry. Please check the details and try again."})
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "Unable to close enquiry. Please check the details and try again.",
+                }
+            )
 
         if not closed:
             return JsonResponse(
@@ -409,7 +416,10 @@ class EnquiryCloseView(LoginRequiredMixin, View):
                 )
         except ValueError as e:
             logger.warning(f"Close enquiry validation error: {e}")
-            messages.error(request, "Unable to close enquiry. Please check the details and try again.")
+            messages.error(
+                request,
+                "Unable to close enquiry. Please check the details and try again.",
+            )
             return redirect(URL_ENQUIRY_DETAIL, pk=pk)
 
         return self._resolve_redirect(request, pk, enquiry)
@@ -417,7 +427,9 @@ class EnquiryCloseView(LoginRequiredMixin, View):
     def _resolve_redirect(self, request, pk, enquiry):
         """Determine where to redirect after closing."""
         referer = request.META.get("HTTP_REFERER", "")
-        if referer and url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}):
+        if referer and url_has_allowed_host_and_scheme(
+            referer, allowed_hosts={request.get_host()}
+        ):
             if f"/enquiries/{pk}/" in referer and "/edit" not in referer:
                 return redirect(URL_ENQUIRY_DETAIL, pk=enquiry.pk)
             if "/enquiries/" in referer or "/home/" in referer:

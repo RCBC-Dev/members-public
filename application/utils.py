@@ -745,7 +745,7 @@ def parse_msg_file(file_path, body_content_mode="snippet", skip_attachments=Fals
         logger.error(
             f"Failed to open or parse .msg file at {file_path}: {e_open}", exc_info=True
         )
-        return {"error": f"Failed to open/parse .msg file: {e_open}"}
+        return {"error": "Failed to open or parse the email file."}
 
     try:
         # --- Sender & Recipient Parsing ---
@@ -896,7 +896,7 @@ def create_enquiry_from_email(parsed_email_data, created_by_user):
 
     except Exception as e:
         logger.error(f"Error creating enquiry from email: {e}", exc_info=True)
-        return {"success": False, "error": f"Error creating enquiry: {str(e)}"}
+        return {"success": False, "error": "An unexpected error occurred while creating the enquiry."}
 
 
 def clear_all_session_cache(request):

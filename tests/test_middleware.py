@@ -75,7 +75,7 @@ class CSPMiddlewareTest(TestCase):
         # This script is conditional on {% if messages %}.
         # We check if the script structure for messages exists, and if so, it must have the nonce.
         inline_script_matches = re.finditer(
-            r"<script([^>]*)>(.*?)</script>", html_content, re.DOTALL | re.IGNORECASE
+            r"<script([^>]*)>(.*?)</script\s*>", html_content, re.DOTALL | re.IGNORECASE
         )
         found_messages_script_without_correct_nonce = False
         messages_script_exists_heuristic = False

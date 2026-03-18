@@ -94,7 +94,9 @@ class Command(BaseCommand):
                 file_path = Path(safe_join(str(media_root), attachment.file_path))
             except SuspiciousFileOperation:
                 self.stdout.write(
-                    self.style.WARNING(f"  Skipped (suspicious path): {attachment.file_path}")
+                    self.style.WARNING(
+                        f"  Skipped (suspicious path): {attachment.file_path}"
+                    )
                 )
                 stats["files_missing"] += 1
                 continue

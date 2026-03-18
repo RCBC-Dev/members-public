@@ -430,7 +430,10 @@ class TestHandleAjaxClose:
         data = json.loads(response.content)
 
         assert data["success"] is False
-        assert data["message"] == "Unable to close enquiry. Please check the details and try again."
+        assert (
+            data["message"]
+            == "Unable to close enquiry. Please check the details and try again."
+        )
 
     @patch("application.class_views.EnquiryService.close_enquiry")
     def test_already_closed_returns_error(self, mock_close):
@@ -545,7 +548,9 @@ class TestHandleStandardClose:
 
         view._handle_standard_close(request, enquiry, pk=4, service_type="type_a")
 
-        mock_messages.error.assert_called_once_with(request, "Unable to close enquiry. Please check the details and try again.")
+        mock_messages.error.assert_called_once_with(
+            request, "Unable to close enquiry. Please check the details and try again."
+        )
         mock_redirect.assert_called_with("application:enquiry_detail", pk=4)
 
 
